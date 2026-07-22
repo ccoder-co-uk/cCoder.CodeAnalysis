@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Sample Projects/">
+    <Project Path="cCoder.CodeAnalysis.Sample.AcceptanceTests/cCoder.CodeAnalysis.Sample.AcceptanceTests.csproj" />
+    <Project Path="cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj" />
+    <Project Path="cCoder.CodeAnalysis.Sample/cCoder.CodeAnalysis.Sample.csproj" />
+    <Project Path="cCoder.CodeAnalysis.SampleWeb/cCoder.CodeAnalysis.SampleWeb.csproj" />
+  </Folder>
+  <Project Path="cCoder.CodeAnalysis.Tests/cCoder.CodeAnalysis.Tests.csproj" />
+  <Project Path="cCoder.CodeAnalysis.Analyzers/cCoder.CodeAnalysis.Analyzers.csproj" />
+  <Project Path="cCoder.CodeAnalysis.BuildTasks/cCoder.CodeAnalysis.BuildTasks.csproj" />
+  <Project Path="cCoder.CodeAnalysis/cCoder.CodeAnalysis.csproj" />
+</Solution>

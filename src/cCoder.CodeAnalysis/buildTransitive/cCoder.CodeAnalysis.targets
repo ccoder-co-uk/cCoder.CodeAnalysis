@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskAssembly)' == ''">$(MSBuildThisFileDirectory)..\tools\net10.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
+  </PropertyGroup>
+  <UsingTask
+    TaskName="cCoder.CodeAnalysis.BuildTasks.GenerateArchitectureTask"
+    AssemblyFile="$(cCoderCodeAnalysisBuildTaskAssembly)"
+  />
+  <PropertyGroup>
+    <cCoderCodeAnalysisGenerateArchitecture Condition="'$(cCoderCodeAnalysisGenerateArchitecture)' == ''">true</cCoderCodeAnalysisGenerateArchitecture>
+    <cCoderCodeAnalysisArchitecturePath Condition="'$(cCoderCodeAnalysisArchitecturePath)' == ''">$(MSBuildProjectDirectory)\project.stxjson</cCoderCodeAnalysisArchitecturePath>
+  </PropertyGroup>
+  <Target
+    Name="cCoderGenerateArchitecture"
+    AfterTargets="Build"
+    Condition="'$(cCoderCodeAnalysisGenerateArchitecture)' == 'true'
+      and '$(IsTestProject)' != 'true'
+      and '$(DesignTimeBuild)' != 'true'"
+  >
+    <GenerateArchitectureTask
+      ProjectPath="$(MSBuildProjectFullPath)"
+      OutputPath="$(cCoderCodeAnalysisArchitecturePath)"
+    />
+  </Target>
+</Project>

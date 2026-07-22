@@ -1,0 +1,30 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = false
+trim_trailing_whitespace = true
+
+[*.cs]
+max_line_length = 120
+dotnet_sort_system_directives_first = true
+dotnet_separate_import_directive_groups = false
+csharp_using_directive_placement = outside_namespace:suggestion
+dotnet_diagnostic.IDE0005.severity = warning
+
+# The repository has explicit readability rules for these optional syntax styles.
+dotnet_diagnostic.IDE0017.severity = none
+dotnet_diagnostic.IDE0028.severity = none
+dotnet_diagnostic.IDE0033.severity = none
+dotnet_diagnostic.IDE0037.severity = none
+dotnet_diagnostic.IDE0057.severity = none
+dotnet_diagnostic.IDE0066.severity = none
+dotnet_diagnostic.IDE0075.severity = none
+dotnet_diagnostic.IDE0083.severity = none
+dotnet_diagnostic.IDE0090.severity = none
+dotnet_diagnostic.IDE0130.severity = none
+dotnet_diagnostic.IDE0300.severity = none
+dotnet_diagnostic.IDE0301.severity = none
+dotnet_diagnostic.IDE0305.severity = none
+dotnet_diagnostic.IDE0350.severity = none

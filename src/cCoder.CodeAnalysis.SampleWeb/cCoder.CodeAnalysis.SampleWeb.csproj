@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cCoder.CodeAnalysis.Sample\cCoder.CodeAnalysis.Sample.csproj" />
+    <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
+    <ProjectReference Include="..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj" ReferenceOutputAssembly="false" />
+  </ItemGroup>
+  <PropertyGroup>
+    <cCoderCodeAnalysisBuildTaskAssembly>$(MSBuildThisFileDirectory)..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\net10.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
+  </PropertyGroup>
+  <Import Project="..\cCoder.CodeAnalysis\buildTransitive\cCoder.CodeAnalysis.targets" />
+</Project>

@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\cCoder.CodeAnalysis\Analyzers\ArchitectureDiagnosticAnalyzer.cs" Link="ArchitectureDiagnosticAnalyzer.cs" />
+  </ItemGroup>
+</Project>
