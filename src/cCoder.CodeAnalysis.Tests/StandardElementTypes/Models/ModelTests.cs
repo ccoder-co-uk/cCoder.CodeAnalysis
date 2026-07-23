@@ -26,6 +26,18 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void ShouldAllowModelObjectOverrides()
+    {
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.LegacyDataModel");
+
+        Architecture.AnalysisItems
+            .Should()
+            .NotContain(
+                item => item.Code == "STXM001" && item.Type == element.Name,
+                "");
+    }
+
+    [Fact]
     public void ShouldGenerateStudentModel()
     {
         Class element = GetElement("cCoder.CodeAnalysis.Sample.Models.Schools.Student");

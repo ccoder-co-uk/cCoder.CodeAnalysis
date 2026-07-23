@@ -421,6 +421,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Broker;
         }
+        if (ImplementsExternalInterface(type))
+        {
+            return StandardElementType.Dependency;
+        }
         if (IsDataOnlyType(type))
         {
             return StandardElementType.Model;
@@ -438,7 +442,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         bool hasMethods = type
             .GetMembers()
             .OfType<IMethodSymbol>()
-            .Any((IMethodSymbol method) => method.MethodKind == MethodKind.Ordinary);
+            .Any(
+                (IMethodSymbol method) =>
+                    method.MethodKind == MethodKind.Ordinary
+                    && !method.IsOverride);
 
         return type.TypeKind == TypeKind.Class
             && hasProperties
@@ -452,6 +459,11 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
             && baseType.SpecialType != SpecialType.System_Object
             && !baseType.Locations.Any((Location location) => location.IsInSource);
     }
+
+    private static bool ImplementsExternalInterface(INamedTypeSymbol type) =>
+        type.Interfaces.Any(
+            (INamedTypeSymbol contract) =>
+                !contract.Locations.Any((Location location) => location.IsInSource));
 
     private static string GetTypeName(ITypeSymbol type)
     {

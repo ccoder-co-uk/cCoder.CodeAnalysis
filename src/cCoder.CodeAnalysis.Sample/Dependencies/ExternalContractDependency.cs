@@ -4,10 +4,9 @@
 
 namespace cCoder.CodeAnalysis.Sample;
 
-internal sealed class LegacyDataModel
+internal sealed class ExternalContractDependency : IDisposable
 {
-    public required string Value { get; set; }
-
-    public override string ToString() =>
-        Value;
+    public void Dispose()
+    {
+    }
 }
