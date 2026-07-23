@@ -359,6 +359,20 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Exposure;
         }
+        if (
+            type.Name.EndsWith("EventHub", StringComparison.Ordinal)
+            || type.Name == "WebApplicationExtensions"
+        )
+        {
+            return StandardElementType.Exposure;
+        }
+        if (
+            type.Name.StartsWith("EventProvider", StringComparison.Ordinal)
+            || type.Name.StartsWith("BulkEventProvider", StringComparison.Ordinal)
+        )
+        {
+            return StandardElementType.Dependency;
+        }
         if (containingNamespace.Contains(".Exposures", StringComparison.Ordinal))
         {
             return StandardElementType.Exposure;
