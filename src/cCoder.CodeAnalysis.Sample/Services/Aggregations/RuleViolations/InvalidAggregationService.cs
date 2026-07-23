@@ -4,17 +4,22 @@
 
 using System.Runtime.InteropServices;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Sample.Services.Coordinations.SchoolImports;
 using cCoder.CodeAnalysis.Sample.Services.Managements.SchoolImports;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
-internal sealed partial class InvalidAggregationService(ISchoolImportManagementService importService) : IInvalidAggregationService
+internal sealed partial class InvalidAggregationService(
+	ISchoolImportManagementService importService,
+	ISchoolImportCoordinationService coordinationService
+) : IInvalidAggregationService
 {
 	public ValueTask ImportSchoolAsync(School school)
 =>
 	    TryCatch(operation:() => {
 			Validate(inputs:[school]);
 			ISchoolImportManagementService schoolImportManagementService = importService;
+			_ = coordinationService;
 
 			School school2 = new School
 			{

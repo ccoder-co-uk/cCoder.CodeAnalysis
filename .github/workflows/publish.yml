@@ -21,16 +21,11 @@ defaults:
 
 jobs:
   build-test-pack:
-    runs-on: windows-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: 10.x
 
       - name: Create version number
         id: version
@@ -50,8 +45,6 @@ jobs:
         run: dotnet test src/cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj -c Release --no-build -m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false
 
       - name: Test sample application
-        env:
-          ConnectionStrings__Students: Server=(localdb)\MSSQLLocalDB;Database=cCoderCodeAnalysisAcceptanceTests;Trusted_Connection=True;TrustServerCertificate=True
         run: dotnet test src/cCoder.CodeAnalysis.Sample.AcceptanceTests/cCoder.CodeAnalysis.Sample.AcceptanceTests.csproj -c Release --no-build -m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false
 
       - name: Pack

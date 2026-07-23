@@ -5,11 +5,17 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+    <MSBuildReferencePath
+      Condition="Exists('$(MSBuildBinPath)\Microsoft.Build.Framework.dll')"
+    >$(MSBuildBinPath)</MSBuildReferencePath>
+    <MSBuildReferencePath
+      Condition="'$(MSBuildReferencePath)' == '' and Exists('$(MSBuildBinPath)\..\Microsoft.Build.Framework.dll')"
+    >$(MSBuildBinPath)\..</MSBuildReferencePath>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <Reference Include="Microsoft.Build.Framework" HintPath="$(MSBuildBinPath)\Microsoft.Build.Framework.dll" Private="false" />
-    <Reference Include="Microsoft.Build.Utilities.Core" HintPath="$(MSBuildBinPath)\Microsoft.Build.Utilities.Core.dll" Private="false" />
+    <Reference Include="Microsoft.Build.Framework" HintPath="$(MSBuildReferencePath)\Microsoft.Build.Framework.dll" Private="false" />
+    <Reference Include="Microsoft.Build.Utilities.Core" HintPath="$(MSBuildReferencePath)\Microsoft.Build.Utilities.Core.dll" Private="false" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
