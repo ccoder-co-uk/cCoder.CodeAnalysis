@@ -29,6 +29,8 @@ internal sealed class TestCodeAnalysisRulesProcessingService
     private static AnalysisItem[] EvaluateAcceptanceCrudCompleteness(EvaluationContext context)
     {
         if (
+            !IsTestSuite(context)
+            ||
             !context.TypeName.Contains("Acceptance", StringComparison.Ordinal)
             || context.TypeName.EndsWith("ImportControllerAcceptanceTests", StringComparison.Ordinal)
         )
@@ -131,6 +133,11 @@ internal sealed class TestCodeAnalysisRulesProcessingService
 
     private static AnalysisItem[] EvaluateInheritedTestSuites(EvaluationContext context)
     {
+        if (!IsTestSuite(context))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         return (
             from declaration in context.Declarations
             where declaration.BaseList != null
@@ -145,6 +152,11 @@ internal sealed class TestCodeAnalysisRulesProcessingService
 
     private static AnalysisItem[] EvaluateTestSuiteNames(EvaluationContext context)
     {
+        if (!IsTestSuite(context))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         return context.TypeName.EndsWith("Tests", StringComparison.Ordinal)
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
@@ -160,6 +172,11 @@ internal sealed class TestCodeAnalysisRulesProcessingService
 
     private static AnalysisItem[] EvaluatePartialTestSuites(EvaluationContext context)
     {
+        if (!IsTestSuite(context))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         return (
             !context.Declarations.Any(
                 (TypeDeclarationSyntax declaration) =>
@@ -184,4 +201,23 @@ internal sealed class TestCodeAnalysisRulesProcessingService
                 ),
             };
     }
+
+    private static bool IsTestSuite(EvaluationContext context) =>
+        context.TypeName.EndsWith("Tests", StringComparison.Ordinal)
+        || context.Declarations
+            .SelectMany(
+                selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .Any(predicate: method =>
+                method.AttributeLists
+                    .SelectMany(selector: attributes => attributes.Attributes)
+                    .Any(predicate: attribute =>
+                    {
+                        string attributeName = attribute.Name.ToString();
+
+                        return attributeName is "Fact"
+                            or "FactAttribute"
+                            or "Theory"
+                            or "TheoryAttribute";
+                    }));
 }
