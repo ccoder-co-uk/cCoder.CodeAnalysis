@@ -12,6 +12,9 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.Students;
 /// </summary>
 internal sealed partial class StudentProcessingService(IStudentService studentService) : IStudentProcessingService
 {
+    /// <summary>
+    /// Adds or updates the supplied students for a school.
+    /// </summary>
     public ValueTask AddOrUpdateStudentsAsync(IEnumerable<Student> students, int schoolId) =>
         TryCatch(operation: async () =>
         {
