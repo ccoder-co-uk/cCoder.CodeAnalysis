@@ -350,6 +350,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Dependency;
         }
+        if (containingNamespace.Contains(".Migrations", StringComparison.Ordinal))
+        {
+            return StandardElementType.Dependency;
+        }
         if (
             (
                 containingNamespace.Contains(".Brokers", StringComparison.Ordinal)
