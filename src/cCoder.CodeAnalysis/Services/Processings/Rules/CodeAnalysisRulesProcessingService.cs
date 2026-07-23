@@ -338,6 +338,11 @@ internal abstract class CodeAnalysisRulesProcessingService
 
     private static bool IsInStandardFolder(string filePath, StandardElementType elementType)
     {
+        if (elementType == StandardElementType.Test)
+        {
+            return true;
+        }
+
         if (string.IsNullOrWhiteSpace(filePath))
         {
             return true;
@@ -356,7 +361,7 @@ internal abstract class CodeAnalysisRulesProcessingService
             StandardElementType.CoordinationService => new string[1] { "/Services/Coordinations/" },
             StandardElementType.ManagementService => new string[1] { "/Services/Managements/" },
             StandardElementType.AggregationService => new string[1] { "/Services/Aggregations/" },
-            StandardElementType.Test => new string[2] { "/Tests/", ".Tests/" },
+            StandardElementType.Test => Array.Empty<string>(),
             _ => Array.Empty<string>(),
         };
         if (1 == 0) { }
