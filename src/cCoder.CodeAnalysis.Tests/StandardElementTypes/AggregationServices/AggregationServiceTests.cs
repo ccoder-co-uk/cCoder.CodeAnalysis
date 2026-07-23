@@ -19,7 +19,7 @@ public sealed class AggregationServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXA001",
             "cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations.InvalidAggregationService",
-            11
+            12
         );
     }
 

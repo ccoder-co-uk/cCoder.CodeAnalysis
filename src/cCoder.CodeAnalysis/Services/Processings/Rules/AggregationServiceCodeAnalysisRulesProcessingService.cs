@@ -28,11 +28,23 @@ internal sealed class AggregationServiceCodeAnalysisRulesProcessingService
 
     private static AnalysisItem[] EvaluateSTXA001(EvaluationContext context)
     {
-        return CodeAnalysisRulesProcessingService.EvaluateDependencyLayer(
-            context,
-            StandardElementType.ManagementService,
-            "STXA001"
-        );
+        bool hasSingleDependencyVariation = context
+            .Dependencies.Select(
+                (TypeDependency dependency) => dependency.StandardElementType
+            )
+            .Distinct()
+            .Count() <= 1;
+
+        return hasSingleDependencyVariation
+            ? Array.Empty<AnalysisItem>()
+            : new AnalysisItem[1]
+            {
+                CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                    "STXA001",
+                    "An aggregation service may have any number of dependencies, but they must share the same service variation.",
+                    context
+                ),
+            };
     }
 
     private static AnalysisItem[] EvaluateSTXA002(EvaluationContext context)
