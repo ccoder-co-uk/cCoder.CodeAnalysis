@@ -324,6 +324,11 @@ internal abstract class CodeAnalysisRulesProcessingService
 
     private static AnalysisItem[] EvaluateStandardFolderStructure(EvaluationContext context)
     {
+        if (context.TypeName.Split('.').Last() == "Program")
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         return (
             from declaration in context.Declarations
             where !IsInStandardFolder(declaration.SyntaxTree.FilePath, context.StandardElementType)
