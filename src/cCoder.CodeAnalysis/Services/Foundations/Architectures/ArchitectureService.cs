@@ -328,11 +328,18 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return (INamedTypeSymbol)dependency;
         }
-        return declaredTypes.SingleOrDefault(
-            (INamedTypeSymbol type) =>
-                type.TypeKind == TypeKind.Class
-                && type.AllInterfaces.Contains(dependency, SymbolEqualityComparer.Default)
-        );
+        INamedTypeSymbol[] implementations = declaredTypes
+            .Where(
+                (INamedTypeSymbol type) =>
+                    type.TypeKind == TypeKind.Class
+                    && type.AllInterfaces.Contains(dependency, SymbolEqualityComparer.Default)
+            )
+            .Take(2)
+            .ToArray();
+
+        return implementations.Length == 1
+            ? implementations[0]
+            : null;
     }
 
     private static StandardElementType Classify(INamedTypeSymbol type)
