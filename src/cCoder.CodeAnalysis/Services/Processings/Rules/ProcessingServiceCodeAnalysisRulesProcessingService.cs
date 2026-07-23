@@ -77,9 +77,14 @@ internal sealed class ProcessingServiceCodeAnalysisRulesProcessingService
         {
             return Array.Empty<AnalysisItem>();
         }
-        string serviceName = context.TypeName.Split('.').Last();
-        string foundationName = foundationDependencies.Single().TypeName.Split('.').Last();
+        string serviceName = RemoveGenericTypeArguments(
+            typeName: context.TypeName.Split('.').Last());
+
+        string foundationName = RemoveGenericTypeArguments(
+            typeName: foundationDependencies.Single().TypeName.Split('.').Last());
+
         string entityName = foundationName.TrimStart('I').Replace("Service", string.Empty);
+
         return serviceName.Contains(entityName, StringComparison.Ordinal)
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
@@ -90,5 +95,18 @@ internal sealed class ProcessingServiceCodeAnalysisRulesProcessingService
                     context
                 ),
             };
+    }
+
+    internal static string RemoveGenericTypeArguments(string typeName)
+    {
+        int genericArgumentsStart = typeName.IndexOf(
+            value: "<",
+            comparisonType: StringComparison.Ordinal);
+
+        return genericArgumentsStart < 0
+            ? typeName
+            : typeName.Substring(
+                startIndex: 0,
+                length: genericArgumentsStart);
     }
 }
