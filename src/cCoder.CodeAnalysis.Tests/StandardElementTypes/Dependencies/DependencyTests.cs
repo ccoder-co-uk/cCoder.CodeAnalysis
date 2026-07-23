@@ -24,7 +24,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(2, "");
+        Count(StandardElementType.Dependency).Should().Be(3, "");
     }
 
     [Fact]
@@ -33,6 +33,15 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
         Class element = GetElement("cCoder.CodeAnalysis.Sample.Brokers.Storage.SchoolContext");
         EnumAssertionsExtensions.Should(element.StandardElementType).Be(StandardElementType.Dependency, "");
         ((IEnumerable<Property>)element.Properties).Should().HaveCount(4, "");
+    }
+
+    [Fact]
+    public void ShouldClassifyDependencyNamespaceAsDependency()
+    {
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.Dependencies.CompatibilityDependency");
+
+        element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
+        Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
     }
 
     private Class GetElement(string name)
