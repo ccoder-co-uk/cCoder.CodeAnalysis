@@ -4,8 +4,9 @@
 
 using cCoder.CodeAnalysis.Sample.Services.Processings.ServiceCollections;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Sample.Controllers;
 
-namespace cCoder.CodeAnalysis.Sample.Exposures.ServiceCollections;
+namespace cCoder.CodeAnalysis.Sample;
 
 public static class IServiceCollectionExtensions
 {
@@ -14,9 +15,17 @@ public static class IServiceCollectionExtensions
         School school) =>
         services;
 
-    public static IServiceCollection AddCodeAnalysisSample(this IServiceCollection services, string connectionString) =>
-        new ServiceCollectionProcessingService().AddCodeAnalysisSample(
+    public static IServiceCollection AddCodeAnalysisSample(this IServiceCollection services, string connectionString)
+    {
+        services
+            .AddControllersWithViews(options =>
+                options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true
+            )
+            .AddApplicationPart(typeof(StudentsController).Assembly);
+
+        return new ServiceCollectionProcessingService().AddCodeAnalysisSample(
             services: services,
             connectionString: connectionString
         );
+    }
 }

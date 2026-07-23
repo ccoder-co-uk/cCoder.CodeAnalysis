@@ -11,7 +11,7 @@ public sealed class InvalidFoundationService : IInvalidFoundationService
 {
 	private readonly IStudentService studentService;
 
-	internal InvalidFoundationService(IStudentService studentService)
+	internal InvalidFoundationService(IStudentService studentService, ExternalFrameworkDependency frameworkDependency)
 	{
 		this.studentService = studentService;
 	}
@@ -25,7 +25,7 @@ public sealed class InvalidFoundationService : IInvalidFoundationService
 	{
 		for (int index = 0; index < 1; index++)
 		{
-			studentService.GetStudent(studentId:index);
+			Student? student = studentService.GetStudent(studentId:index);
 		}
 	}
 

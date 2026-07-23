@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -14,19 +15,15 @@ internal sealed class ModelCodeAnalysisRulesProcessingService
 {
     public AnalysisItem[] Evaluate(EvaluationContext context)
     {
-        AnalysisItem[] array = CodeAnalysisRulesProcessingService.EvaluateSourceFormatting(context);
-        AnalysisItem[] array2 = ModelCodeAnalysisRulesProcessingService.EvaluateSTXM001(context);
-        int num = 0;
-        AnalysisItem[] array3 = new AnalysisItem[array.Length + array2.Length];
-        ReadOnlySpan<AnalysisItem> readOnlySpan = new ReadOnlySpan<AnalysisItem>(array);
-        readOnlySpan.CopyTo(new Span<AnalysisItem>(array3).Slice(num, readOnlySpan.Length));
-        num += readOnlySpan.Length;
-        ReadOnlySpan<AnalysisItem> readOnlySpan2 = new ReadOnlySpan<AnalysisItem>(array2);
-        readOnlySpan2.CopyTo(new Span<AnalysisItem>(array3).Slice(num, readOnlySpan2.Length));
-        return array3;
+        return CodeAnalysisRulesProcessingService
+            .EvaluateSourceFormatting(context)
+            .Concat(ModelCodeAnalysisRulesProcessingService.EvaluateSTXM001(context))
+            .Concat(ModelCodeAnalysisRulesProcessingService.EvaluateSTXM002(context))
+            .Concat(ModelCodeAnalysisRulesProcessingService.EvaluateSTXM003(context))
+            .ToArray();
     }
 
-    private static AnalysisItem[] EvaluateSTXM001(EvaluationContext context)
+    private static IEnumerable<AnalysisItem> EvaluateSTXM001(EvaluationContext context)
     {
         return (
             from method in context
@@ -40,6 +37,62 @@ internal sealed class ModelCodeAnalysisRulesProcessingService
                 context,
                 method.GetLocation()
             )
-        ).ToArray();
+        );
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXM002(EvaluationContext context)
+    {
+        return (
+            from property in context
+                .Declarations.SelectMany((TypeDeclarationSyntax declaration) => declaration.Members)
+                .OfType<PropertyDeclarationSyntax>()
+            where property.Initializer is not null
+            select CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                "STXM002",
+                "Model properties must not declare default values.",
+                context,
+                property.Initializer!.GetLocation()
+            )
+        );
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXM003(EvaluationContext context)
+    {
+        string[] validationAttributeNames =
+        [
+            "Compare",
+            "CreditCard",
+            "CustomValidation",
+            "DataType",
+            "EmailAddress",
+            "MaxLength",
+            "MinLength",
+            "Phone",
+            "Range",
+            "RegularExpression",
+            "Required",
+            "StringLength",
+            "Url",
+            "Validation"
+        ];
+
+        return (
+            from property in context
+                .Declarations.SelectMany((TypeDeclarationSyntax declaration) => declaration.Members)
+                .OfType<PropertyDeclarationSyntax>()
+            where property.Modifiers.Any(
+                    (SyntaxToken modifier) => modifier.IsKind(SyntaxKind.RequiredKeyword))
+                || property.AttributeLists
+                    .SelectMany((AttributeListSyntax attributeList) => attributeList.Attributes)
+                    .Any(attribute =>
+                        validationAttributeNames.Contains(
+                            attribute.Name.ToString().Split('.').Last().Replace("Attribute", "")))
+            select CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                "STXM003",
+                "Model properties must not use framework validation attributes or the required modifier; validation belongs in service collectors.",
+                context,
+                property.GetLocation()
+            )
+        );
     }
 }

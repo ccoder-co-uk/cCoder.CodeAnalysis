@@ -12,7 +12,7 @@ internal sealed partial class TeacherService(ITeacherBroker teacherBroker) : ITe
     public Teacher? GetTeacher(int teacherId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: teacherId);
+            ValidateTeacherOnGet(teacherId: teacherId);
 
             return teacherBroker.SelectAllTeachers()
                 .FirstOrDefault(predicate: (Teacher item) => item.Id == teacherId);
@@ -26,7 +26,7 @@ internal sealed partial class TeacherService(ITeacherBroker teacherBroker) : ITe
     public ValueTask<Teacher> AddTeacherAsync(Teacher newTeacher) =>
         TryCatch<Teacher>(operation: async () =>
         {
-            Validate(inputs: newTeacher);
+            ValidateTeacherOnAdd(newTeacher: newTeacher);
             Teacher storageTeacher = WithoutRelationships(teacher: newTeacher);
             await teacherBroker.InsertTeacherAsync(newTeacher: storageTeacher);
             return storageTeacher;
@@ -35,7 +35,7 @@ internal sealed partial class TeacherService(ITeacherBroker teacherBroker) : ITe
     public ValueTask<Teacher> UpdateTeacherAsync(Teacher updatedTeacher) =>
         TryCatch<Teacher>(operation: async () =>
         {
-            Validate(inputs: updatedTeacher);
+            ValidateTeacherOnUpdate(updatedTeacher: updatedTeacher);
             Teacher storageTeacher = WithoutRelationships(teacher: updatedTeacher);
             await teacherBroker.UpdateTeacherAsync(updatedTeacher: storageTeacher);
             return storageTeacher;
@@ -44,7 +44,7 @@ internal sealed partial class TeacherService(ITeacherBroker teacherBroker) : ITe
     public ValueTask DeleteTeacherAsync(int teacherId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: teacherId);
+            ValidateTeacherOnDelete(teacherId: teacherId);
 
             Teacher? deletedTeacher = teacherBroker
                 .SelectAllTeachers()

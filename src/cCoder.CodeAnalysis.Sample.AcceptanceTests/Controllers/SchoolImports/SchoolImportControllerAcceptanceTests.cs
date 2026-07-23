@@ -62,7 +62,11 @@ public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
 
     private static School CreateSchool()
     {
-        School obj = new School { Name = $"Imported School {Guid.NewGuid():N}" };
+        School obj = new School
+        {
+            Name = $"Imported School {Guid.NewGuid():N}",
+            Courses = [],
+        };
         int num = 1;
         List<Student> list = new List<Student>(num);
         CollectionsMarshal.SetCount(list, num);

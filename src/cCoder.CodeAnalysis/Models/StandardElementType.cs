@@ -18,4 +18,5 @@ public enum StandardElementType
     Broker,
     Dependency,
     Test,
+    App,
 }

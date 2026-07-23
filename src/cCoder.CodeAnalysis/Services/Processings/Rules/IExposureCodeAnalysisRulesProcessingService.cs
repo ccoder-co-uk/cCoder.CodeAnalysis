@@ -2,11 +2,8 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Models;
-
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
-internal interface IExposureCodeAnalysisRulesProcessingService
+internal interface IExposureCodeAnalysisRulesProcessingService : IRuleProcessingService
 {
-    AnalysisItem[] Evaluate(EvaluationContext context);
 }

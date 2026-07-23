@@ -42,12 +42,22 @@ internal sealed class FoundationServiceCodeAnalysisRulesProcessingService
                     || node is WhileStatementSyntax
                     || node is DoStatementSyntax
                 )
-                    ? true
-                    : false
+                    && !node.SyntaxTree.FilePath.EndsWith(".Validations.cs", StringComparison.Ordinal)
+                    && context.PublicApiModelTypes.Any(
+                        (string modelType) =>
+                            node
+                                .DescendantNodes()
+                                .OfType<IdentifierNameSyntax>()
+                                .Any(
+                                    (IdentifierNameSyntax identifier) =>
+                                        identifier.Identifier.Text
+                                        == modelType.Substring(modelType.LastIndexOf('.') + 1)
+                                )
+                    )
             select new AnalysisItem
             {
                 Code = "STXF001",
-                Description = "A foundation service must not contain loops.",
+                Description = "A foundation service must not loop over its service model type.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
                 LineNumber = node.GetLocation().GetLineSpan().StartLinePosition.Line + 1,
@@ -63,7 +73,6 @@ internal sealed class FoundationServiceCodeAnalysisRulesProcessingService
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;
                     return standardElementType != StandardElementType.Broker
-                        && standardElementType != StandardElementType.Dependency
                         && standardElementType != StandardElementType.Exposure;
                 }
             )
@@ -74,7 +83,7 @@ internal sealed class FoundationServiceCodeAnalysisRulesProcessingService
                 new AnalysisItem
                 {
                     Code = "STXF002",
-                    Description = "A foundation service may only depend on brokers, boundary dependencies, or nothing.",
+                    Description = "A foundation service may only depend on brokers, exposures, or nothing.",
                     Severity = AnalysisSeverity.Warning,
                     Type = context.TypeName,
                     LineNumber = context.LineNumber,

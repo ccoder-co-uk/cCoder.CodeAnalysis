@@ -14,6 +14,11 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
 {
     public AnalysisItem[] Evaluate(EvaluationContext context)
     {
+        if (context.StandardElementType == StandardElementType.App)
+        {
+            return EvaluateAppRules(context);
+        }
+
         List<AnalysisItem> list = new List<AnalysisItem>();
         list.AddRange(CodeAnalysisRulesProcessingService.EvaluateSourceFormatting(context));
         list.AddRange(ExposureCodeAnalysisRulesProcessingService.EvaluateSTXE001(context));
@@ -30,6 +35,144 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
         list.AddRange(CodeAnalysisRulesProcessingService.EvaluateCreationReturnTypeNaming(context));
         list.AddRange(CodeAnalysisRulesProcessingService.EvaluateMutationNaming(context));
         return list.ToArray();
+    }
+
+    private static AnalysisItem[] EvaluateAppRules(EvaluationContext context)
+    {
+        List<AnalysisItem> items = new List<AnalysisItem>();
+        string typeName = context.TypeName.Split('.').Last();
+        TypeDeclarationSyntax? declaration = context.Declarations.FirstOrDefault();
+        string filePath = context.FilePath.Replace('\\', '/');
+        string[] filePathParts = filePath.Split('/');
+        string fileName = filePathParts.LastOrDefault() ?? string.Empty;
+        string parentFolder = filePathParts.Length > 1 ? filePathParts[filePathParts.Length - 2] : string.Empty;
+        bool livesAtProjectRoot = fileName == $"{typeName}.cs"
+            && parentFolder.Equals(context.ProjectName, StringComparison.Ordinal);
+
+        if (!livesAtProjectRoot)
+        {
+            items.Add(
+                CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                    "STXAPP001",
+                    "Program.cs, IServiceCollectionExtensions.cs, and WebApplicationExtensions.cs must live at the project root.",
+                    context
+                )
+            );
+        }
+
+        if (typeName == "IServiceCollectionExtensions")
+        {
+            MethodDeclarationSyntax[] methods = context.Declarations
+                .SelectMany((TypeDeclarationSyntax item) => item.Members)
+                .OfType<MethodDeclarationSyntax>()
+                .ToArray();
+            bool exposesDomainRegistration = methods.Any(
+                (MethodDeclarationSyntax method) =>
+                    method.Identifier.Text.StartsWith("Add", StringComparison.Ordinal)
+                    && !method.Identifier.Text.EndsWith("HostedServices", StringComparison.Ordinal)
+                    && method.ParameterList.Parameters.Any(
+                        (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
+                    )
+            );
+
+            if (!exposesDomainRegistration)
+            {
+                items.Add(
+                    CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                        "STXAPP002",
+                        "IServiceCollectionExtensions must expose an Add{Domain} IServiceCollection extension.",
+                        context
+                    )
+                );
+            }
+
+            InvocationExpressionSyntax? invalidConfigurationRegistration = context.Declarations
+                .SelectMany((TypeDeclarationSyntax item) => item.DescendantNodes())
+                .OfType<InvocationExpressionSyntax>()
+                .FirstOrDefault(
+                    (InvocationExpressionSyntax invocation) =>
+                        invocation.ToString().Contains("Configuration", StringComparison.Ordinal)
+                        && (
+                            invocation.Expression.ToString().Contains("AddScoped", StringComparison.Ordinal)
+                            || invocation.Expression.ToString().Contains("AddTransient", StringComparison.Ordinal)
+                        )
+                );
+
+            if (invalidConfigurationRegistration is not null)
+            {
+                items.Add(
+                    CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                        "STXAPP003",
+                        "Configuration objects should be registered as singletons.",
+                        context,
+                        invalidConfigurationRegistration.GetLocation()
+                    )
+                );
+            }
+        }
+
+        if (typeName == "Program")
+        {
+            string[] applicationNamespaces = context.UsingNamespaces
+                .Where(
+                    (string item) =>
+                        !item.Equals("System", StringComparison.Ordinal)
+                        && !item.StartsWith("System.", StringComparison.Ordinal)
+                        && !item.Equals("Microsoft", StringComparison.Ordinal)
+                        && !item.StartsWith("Microsoft.", StringComparison.Ordinal)
+                )
+                .ToArray();
+
+            bool usesServiceCollection =
+                context.SourceCode.Contains(".Services", StringComparison.Ordinal)
+                && context.SourceCode.Contains(".Add", StringComparison.Ordinal);
+
+            if (applicationNamespaces.Length > 1 || !usesServiceCollection)
+            {
+                items.Add(
+                    CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                        "STXAPP005",
+                        "Program.cs must compose the app through IServiceCollection using SDK namespaces and one local composition namespace only.",
+                        context
+                    )
+                );
+            }
+        }
+
+        if (typeName == "WebApplicationExtensions")
+        {
+            bool startsServicesThroughProvider = context.Declarations
+                .SelectMany((TypeDeclarationSyntax item) => item.Members)
+                .OfType<MethodDeclarationSyntax>()
+                .Any(
+                    (MethodDeclarationSyntax method) =>
+                        method.ParameterList.Parameters.Any(
+                            (ParameterSyntax parameter) =>
+                                parameter.Type?.ToString() is "IServiceProvider" or "WebApplication"
+                        )
+                        && method
+                            .DescendantNodes()
+                            .OfType<InvocationExpressionSyntax>()
+                            .Any(
+                                (InvocationExpressionSyntax invocation) =>
+                                    invocation.Expression.ToString().Contains("GetRequiredService", StringComparison.Ordinal)
+                                    || invocation.Expression.ToString().Contains("GetService", StringComparison.Ordinal)
+                            )
+                );
+
+            if (!startsServicesThroughProvider)
+            {
+                items.Add(
+                    CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                        "STXAPP004",
+                        "WebApplicationExtensions must consume the service provider to start application services.",
+                        context
+                    )
+                );
+            }
+        }
+
+        return items.ToArray();
     }
 
     private static AnalysisItem[] EvaluateSTXE001(EvaluationContext context)

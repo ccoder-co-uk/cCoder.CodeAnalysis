@@ -7,6 +7,7 @@ using cCoder.CodeAnalysis.Services.Foundations.Architectures;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Foundations.Architectures;
 
@@ -47,7 +48,11 @@ public sealed class ArchitectureServiceTests
             assemblyName: "Sample",
             syntaxTrees: [syntaxTree],
             references: [runtimeReference]);
-        ArchitectureService architectureService = new ArchitectureService();
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        ArchitectureService architectureService =
+            (ArchitectureService)serviceProvider.GetRequiredService<IArchitectureService>();
 
         // When
         Architecture architecture = architectureService.Build(

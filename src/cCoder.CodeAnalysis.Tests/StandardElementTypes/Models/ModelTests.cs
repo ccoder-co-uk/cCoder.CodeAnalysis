@@ -16,7 +16,19 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     [Fact]
     public void RuleSTXM001EvaluatesAsExpected()
     {
-        AssertRuleEvaluatesAsExpected("STXM001", "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel", 9);
+        AssertRuleEvaluatesAsExpected("STXM001", "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel", 11);
+    }
+
+    [Fact]
+    public void RuleSTXM002EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected("STXM002", "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel", 9);
+    }
+
+    [Fact]
+    public void RuleSTXM003EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected("STXM003", "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel", 9);
     }
 
     [Fact]

@@ -4,8 +4,6 @@
 
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Coordinations.Rules;
-using cCoder.CodeAnalysis.Services.Orchestrations.Rules;
-using cCoder.CodeAnalysis.Services.Processings.Rules;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -28,9 +26,6 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         SymbolDisplayKindOptions.None,
         SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
     );
-
-    public ArchitectureService()
-        : this(CreateDefaultRuleEvaluationCoordinationService()) { }
 
     public Architecture Build(string projectFilePath)
     {
@@ -123,6 +118,7 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
             .FirstOrDefault();
         EvaluationContext evaluationContext = new EvaluationContext();
         evaluationContext.TypeName = GetTypeName(type);
+        evaluationContext.ProjectName = type.ContainingAssembly.Name;
         evaluationContext.StandardElementType = Classify(type);
         evaluationContext.LineNumber = (
             (declaration != null) ? (declaration.GetLocation().GetLineSpan().StartLinePosition.Line + 1) : 0
@@ -138,6 +134,24 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
             .DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
             .ToArray();
+        SyntaxTree? sourceTree = declaration?.SyntaxTree
+            ?? (
+                type.Name == "Program"
+                    ? compilation.SyntaxTrees.FirstOrDefault(
+                        (SyntaxTree tree) => tree.FilePath.EndsWith("Program.cs", StringComparison.Ordinal)
+                    )
+                    : null
+            );
+        evaluationContext.FilePath = sourceTree?.FilePath ?? string.Empty;
+        evaluationContext.SourceCode = sourceTree?.GetText().ToString() ?? string.Empty;
+        evaluationContext.UsingNamespaces = sourceTree
+            ?.GetRoot()
+            .DescendantNodes()
+            .OfType<UsingDirectiveSyntax>()
+            .Select((UsingDirectiveSyntax item) => item.Name?.ToString() ?? string.Empty)
+            .Where((string item) => item.Length != 0)
+            .ToArray()
+            ?? Array.Empty<string>();
         evaluationContext.Dependencies = (
             from parameter in type.InstanceConstructors.SelectMany(
                 (IMethodSymbol constructor) => constructor.Parameters
@@ -354,7 +368,7 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         }
         if (type.Name == "Program")
         {
-            return StandardElementType.Exposure;
+            return StandardElementType.App;
         }
         if (containingNamespace.Contains(".Controllers", StringComparison.Ordinal))
         {
@@ -374,11 +388,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         }
         if (type.Name == "IServiceCollectionExtensions")
         {
-            return StandardElementType.Exposure;
+            return StandardElementType.App;
         }
         if (
             type.Name.EndsWith("EventHub", StringComparison.Ordinal)
-            || type.Name == "WebApplicationExtensions"
         )
         {
             return StandardElementType.Exposure;
@@ -427,6 +440,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         if (containingNamespace.Contains(".Brokers", StringComparison.Ordinal))
         {
             return StandardElementType.Broker;
+        }
+        if (type.Name == "WebApplicationExtensions")
+        {
+            return StandardElementType.App;
         }
         if (ImplementsExternalInterface(type))
         {
@@ -530,42 +547,4 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
             || relativePath.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static RuleEvaluationCoordinationService CreateDefaultRuleEvaluationCoordinationService()
-    {
-        BrokerCodeAnalysisRulesProcessingService brokerRules = new BrokerCodeAnalysisRulesProcessingService();
-        FoundationServiceCodeAnalysisRulesProcessingService foundationRules =
-            new FoundationServiceCodeAnalysisRulesProcessingService();
-        DependencyCodeAnalysisRulesProcessingService dependencyRules =
-            new DependencyCodeAnalysisRulesProcessingService();
-        ProcessingServiceCodeAnalysisRulesProcessingService processingRules =
-            new ProcessingServiceCodeAnalysisRulesProcessingService();
-        OrchestrationServiceCodeAnalysisRulesProcessingService orchestrationRules =
-            new OrchestrationServiceCodeAnalysisRulesProcessingService();
-        CoordinationServiceCodeAnalysisRulesProcessingService coordinationRules =
-            new CoordinationServiceCodeAnalysisRulesProcessingService();
-        ManagementServiceCodeAnalysisRulesProcessingService managementRules =
-            new ManagementServiceCodeAnalysisRulesProcessingService();
-        AggregationServiceCodeAnalysisRulesProcessingService aggregationRules =
-            new AggregationServiceCodeAnalysisRulesProcessingService();
-        ExposureCodeAnalysisRulesProcessingService exposureRules = new ExposureCodeAnalysisRulesProcessingService();
-        ModelCodeAnalysisRulesProcessingService modelRules = new ModelCodeAnalysisRulesProcessingService();
-        TestCodeAnalysisRulesProcessingService testRules = new TestCodeAnalysisRulesProcessingService();
-        CulDeSacServicesAndBrokerRuleEvaluationOrchestrationService culDeSacRules =
-            new CulDeSacServicesAndBrokerRuleEvaluationOrchestrationService(
-                brokerRules,
-                foundationRules,
-                dependencyRules
-            );
-        HigherLevelServicesRuleEvaluationOrchestrationService higherLevelRules =
-            new HigherLevelServicesRuleEvaluationOrchestrationService(
-                processingRules,
-                orchestrationRules,
-                coordinationRules,
-                managementRules,
-                aggregationRules
-            );
-        ExposuresAndModelsRuleEvaluationOrchestrationService exposuresAndModelsRules =
-            new ExposuresAndModelsRuleEvaluationOrchestrationService(exposureRules, modelRules, testRules);
-        return new RuleEvaluationCoordinationService(culDeSacRules, higherLevelRules, exposuresAndModelsRules);
-    }
 }

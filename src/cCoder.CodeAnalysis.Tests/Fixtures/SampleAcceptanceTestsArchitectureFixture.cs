@@ -2,12 +2,9 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Brokers.Files;
 using cCoder.CodeAnalysis.Exposures;
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Foundations.Architectures;
-using cCoder.CodeAnalysis.Services.Foundations.Projects;
-using cCoder.CodeAnalysis.Services.Orchestrations.Architectures;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace cCoder.CodeAnalysis.Tests.Fixtures;
 
@@ -22,9 +19,10 @@ public sealed class SampleAcceptanceTestsArchitectureFixture : IAsyncLifetime
             "cCoder.CodeAnalysis.Sample.AcceptanceTests",
             "cCoder.CodeAnalysis.Sample.AcceptanceTests.csproj"
         );
-        ArchitectureBuilder architectureBuilder = new ArchitectureBuilder(
-            new ArchitectureOrchestrationService(new ProjectService(new FileBroker()), new ArchitectureService())
-        );
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        IArchitectureBuilder architectureBuilder = serviceProvider.GetRequiredService<IArchitectureBuilder>();
         Architecture = architectureBuilder.Generate(projectPath);
         return Task.CompletedTask;
     }
