@@ -24,7 +24,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(1, "");
+        Count(StandardElementType.Dependency).Should().Be(2, "");
     }
 
     [Fact]
