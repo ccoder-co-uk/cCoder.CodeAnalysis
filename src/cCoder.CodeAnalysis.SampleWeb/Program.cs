@@ -2,16 +2,9 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Sample.Controllers;
-using cCoder.CodeAnalysis.Sample.Exposures.ServiceCollections;
+using cCoder.CodeAnalysis.Sample;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
-
-builder
-    .Services.AddControllersWithViews(options =>
-        options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true
-    )
-    .AddApplicationPart(typeof(StudentsController).Assembly);
 
 builder.Services.AddCodeAnalysisSample(
     connectionString: builder.Configuration.GetConnectionString(name: "Students") ?? string.Empty

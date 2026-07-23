@@ -33,4 +33,12 @@ public sealed class EvaluationContext
     public IReadOnlyList<int> PublicMethodCallLineNumbers { get; set; } = Array.Empty<int>();
 
     public IReadOnlyList<string> PublicApiModelTypes { get; set; } = Array.Empty<string>();
+
+    public string FilePath { get; set; } = string.Empty;
+
+    public IReadOnlyList<string> UsingNamespaces { get; set; } = Array.Empty<string>();
+
+    public string ProjectName { get; set; } = string.Empty;
+
+    public string SourceCode { get; set; } = string.Empty;
 }

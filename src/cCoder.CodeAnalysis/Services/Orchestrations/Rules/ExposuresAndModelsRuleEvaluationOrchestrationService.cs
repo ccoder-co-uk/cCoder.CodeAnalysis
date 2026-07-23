@@ -17,7 +17,7 @@ internal sealed class ExposuresAndModelsRuleEvaluationOrchestrationService(
     {
         return context.StandardElementType switch
         {
-            StandardElementType.Exposure => exposureRules.Evaluate(context),
+            StandardElementType.App or StandardElementType.Exposure => exposureRules.Evaluate(context),
             StandardElementType.Model => modelRules.Evaluate(context),
             StandardElementType.Test => testRules.Evaluate(context),
             _ => Array.Empty<AnalysisItem>(),

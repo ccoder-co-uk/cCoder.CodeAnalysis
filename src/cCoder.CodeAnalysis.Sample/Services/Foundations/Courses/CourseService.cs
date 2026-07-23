@@ -12,7 +12,7 @@ internal sealed partial class CourseService(ICourseBroker courseBroker) : ICours
     public Course? GetCourse(int courseId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: courseId);
+            ValidateCourseOnGet(courseId: courseId);
 
             return courseBroker.SelectAllCourses()
                 .FirstOrDefault(predicate: (Course item) => item.Id == courseId);
@@ -26,7 +26,7 @@ internal sealed partial class CourseService(ICourseBroker courseBroker) : ICours
     public ValueTask<Course> AddCourseAsync(Course newCourse) =>
         TryCatch<Course>(operation: async () =>
         {
-            Validate(inputs: newCourse);
+            ValidateCourseOnAdd(newCourse: newCourse);
             Course storageCourse = WithoutRelationships(course: newCourse);
             await courseBroker.InsertCourseAsync(newCourse: storageCourse);
             return storageCourse;
@@ -35,7 +35,7 @@ internal sealed partial class CourseService(ICourseBroker courseBroker) : ICours
     public ValueTask<Course> UpdateCourseAsync(Course updatedCourse) =>
         TryCatch<Course>(operation: async () =>
         {
-            Validate(inputs: updatedCourse);
+            ValidateCourseOnUpdate(updatedCourse: updatedCourse);
             Course storageCourse = WithoutRelationships(course: updatedCourse);
             await courseBroker.UpdateCourseAsync(updatedCourse: storageCourse);
             return storageCourse;
@@ -44,7 +44,7 @@ internal sealed partial class CourseService(ICourseBroker courseBroker) : ICours
     public ValueTask DeleteCourseAsync(int courseId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: courseId);
+            ValidateCourseOnDelete(courseId: courseId);
 
             Course? deletedCourse = courseBroker
                 .SelectAllCourses()

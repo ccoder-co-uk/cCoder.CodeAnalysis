@@ -90,7 +90,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfExposures()
     {
-        Count(StandardElementType.Exposure).Should().Be(15, "");
+        Count(StandardElementType.Exposure).Should().Be(14, "");
     }
 
     [Fact]
@@ -140,7 +140,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfLinks()
     {
-        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(68, "");
+        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(69, "");
     }
 
     [Fact]

@@ -12,7 +12,7 @@ internal sealed partial class SchoolService(ISchoolBroker schoolBroker) : ISchoo
     public School? GetSchool(int schoolId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: schoolId);
+            ValidateSchoolOnGet(schoolId: schoolId);
 
             return schoolBroker.SelectAllSchools()
                 .FirstOrDefault(predicate: (School item) => item.Id == schoolId);
@@ -26,7 +26,7 @@ internal sealed partial class SchoolService(ISchoolBroker schoolBroker) : ISchoo
     public ValueTask<School> AddSchoolAsync(School newSchool) =>
         TryCatch<School>(operation: async () =>
         {
-            Validate(inputs: newSchool);
+            ValidateSchoolOnAdd(newSchool: newSchool);
             School storageSchool = WithoutRelationships(school: newSchool);
             await schoolBroker.InsertSchoolAsync(newSchool: storageSchool);
             return storageSchool;
@@ -35,7 +35,7 @@ internal sealed partial class SchoolService(ISchoolBroker schoolBroker) : ISchoo
     public ValueTask<School> UpdateSchoolAsync(School updatedSchool) =>
         TryCatch<School>(operation: async () =>
         {
-            Validate(inputs: updatedSchool);
+            ValidateSchoolOnUpdate(updatedSchool: updatedSchool);
             School storageSchool = WithoutRelationships(school: updatedSchool);
             await schoolBroker.UpdateSchoolAsync(updatedSchool: storageSchool);
             return storageSchool;
@@ -44,7 +44,7 @@ internal sealed partial class SchoolService(ISchoolBroker schoolBroker) : ISchoo
     public ValueTask DeleteSchoolAsync(int schoolId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: schoolId);
+            ValidateSchoolOnDelete(schoolId: schoolId);
 
             School? deletedSchool = schoolBroker
                 .SelectAllSchools()

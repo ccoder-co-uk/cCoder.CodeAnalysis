@@ -14,7 +14,7 @@ namespace cCoder.CodeAnalysis.Analyzers;
 [DiagnosticAnalyzer("C#", new string[] { })]
 public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly string[] RuleCodes = new string[75]
+    private static readonly string[] RuleCodes = new string[84]
     {
         "STX0001",
         "STX0002",
@@ -38,6 +38,12 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STX0020",
         "STX0021",
         "STX0022",
+        "STX0023",
+        "STXAPP001",
+        "STXAPP002",
+        "STXAPP003",
+        "STXAPP004",
+        "STXAPP005",
         "STXA001",
         "STXA002",
         "STXAPI001",
@@ -53,6 +59,7 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STXB007",
         "STXC001",
         "STXC002",
+        "STXD001",
         "STXE001",
         "STXE002",
         "STXE003",
@@ -79,6 +86,8 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STXMG001",
         "STXMG002",
         "STXM001",
+        "STXM002",
+        "STXM003",
         "STXO001",
         "STXO002",
         "STXP001",
@@ -105,12 +114,17 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
                     DiagnosticSeverity.Warning,
                     true,
                     null,
-                    null
+                    $"https://ccoder.co.uk/Documentation/CodeAnalysis/{GetRulePrefix(code)}/{code}"
                 ),
             StringComparer.Ordinal
         );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Descriptors.Values.ToImmutableArray();
+
+    private static string GetRulePrefix(string code)
+    {
+        return new string(code.TakeWhile(char.IsLetter).ToArray());
+    }
 
     public override void Initialize(AnalysisContext context)
     {

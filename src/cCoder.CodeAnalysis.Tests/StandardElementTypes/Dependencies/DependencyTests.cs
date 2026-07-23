@@ -14,6 +14,21 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     private Architecture Architecture => fixture.Architecture;
 
     [Fact]
+    public void RuleSTXD001EvaluatesAsExpected()
+    {
+        AnalysisItem item = Architecture.AnalysisItems
+            .Where((AnalysisItem analysisItem) => analysisItem.Code == "STXD001")
+            .Should()
+            .ContainSingle("")
+            .Which;
+
+        item.Type.Should().Be(
+            "cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations.InvalidFoundationService",
+            "");
+        item.LineNumber.Should().Be(10, "");
+    }
+
+    [Fact]
     public void ShouldNotGenerateDependencyAnalysisItems()
     {
         ((IEnumerable<AnalysisItem>)Architecture.AnalysisItems)

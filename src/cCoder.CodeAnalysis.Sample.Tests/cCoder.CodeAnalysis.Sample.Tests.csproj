@@ -31,5 +31,8 @@
       ReferenceOutputAssembly="false"
     />
     <Analyzer Include="..\cCoder.CodeAnalysis\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll" />
+    <Analyzer Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll" />
+    <Analyzer Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" />
+    <Analyzer Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll" />
   </ItemGroup>
 </Project>

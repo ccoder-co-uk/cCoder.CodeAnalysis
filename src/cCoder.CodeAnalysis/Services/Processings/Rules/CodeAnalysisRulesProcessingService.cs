@@ -349,7 +349,7 @@ internal abstract class CodeAnalysisRulesProcessingService
 
     private static bool IsInStandardFolder(string filePath, StandardElementType elementType)
     {
-        if (elementType == StandardElementType.Test)
+        if (elementType is StandardElementType.Test or StandardElementType.App)
         {
             return true;
         }
@@ -705,6 +705,10 @@ internal abstract class CodeAnalysisRulesProcessingService
         );
         bool allUseTryCatch = publicMethods.All(UsesTryCatch);
         bool allValidateInputs = publicMethods.All(ValidatesInputs);
+        bool isFoundationService = context.StandardElementType == StandardElementType.FoundationService;
+        bool requiresOperationValidation = publicMethods.Any(RequiresOperationSpecificValidation);
+        bool allUseOperationSpecificValidations =
+            !isFoundationService || publicMethods.All(UsesOperationSpecificValidation);
         MethodDeclarationSyntax[] tryCatchMethods = (
             from method in context
                 .Declarations.Where(
@@ -727,18 +731,32 @@ internal abstract class CodeAnalysisRulesProcessingService
                 (MethodDeclarationSyntax method) => HasWrappedExceptionCategory(method, "Dependency")
             );
         bool capturesDefaultExceptions = tryCatchMethods.Length != 0 && tryCatchMethods.All(HasWrappedDefaultException);
-        bool usesRulesEngine = context
+        MethodDeclarationSyntax[] operationValidationMethods = context
             .Declarations.Where(
                 (TypeDeclarationSyntax declaration) =>
                     declaration.SyntaxTree.FilePath.EndsWith(".Validations.cs", StringComparison.Ordinal)
             )
-            .SelectMany((TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
-            .OfType<InvocationExpressionSyntax>()
-            .Any(
-                (InvocationExpressionSyntax invocation) =>
-                    invocation
-                        .Expression.ToString()
-                        .Contains("ValidationRulesEngine.Validate", StringComparison.Ordinal)
+            .SelectMany((TypeDeclarationSyntax declaration) => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .Where(
+                (MethodDeclarationSyntax method) =>
+                    method.Identifier.Text.StartsWith("Validate", StringComparison.Ordinal)
+                    && method.Identifier.Text.Contains("On", StringComparison.Ordinal)
+            )
+            .ToArray();
+        bool usesValidationCollector =
+            !isFoundationService
+            || !requiresOperationValidation
+            || operationValidationMethods.Length != 0
+            && operationValidationMethods.All(
+                (MethodDeclarationSyntax method) =>
+                    method
+                        .DescendantNodes()
+                        .OfType<InvocationExpressionSyntax>()
+                        .Any(
+                            (InvocationExpressionSyntax invocation) =>
+                                invocation.Expression.ToString().EndsWith("Validate", StringComparison.Ordinal)
+                        )
             );
         List<AnalysisItem> list = new List<AnalysisItem>();
         list.AddRange(
@@ -775,9 +793,17 @@ internal abstract class CodeAnalysisRulesProcessingService
         );
         list.AddRange(
             CreateWhenInvalid(
-                !usesRulesEngine,
+                !usesValidationCollector,
                 "STX0012",
-                "Service validations must be evaluated through a rules engine.",
+                "Business-operation validation methods must evaluate their rules through a validation collector.",
+                context
+            )
+        );
+        list.AddRange(
+            CreateWhenInvalid(
+                !allUseOperationSpecificValidations,
+                "STX0023",
+                "Each business operation must call its operation-specific validation method.",
                 context
             )
         );
@@ -1178,7 +1204,10 @@ internal abstract class CodeAnalysisRulesProcessingService
         InvocationExpressionSyntax? validation = method
             .DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault((InvocationExpressionSyntax invocation) => invocation.Expression.ToString() == "Validate");
+            .FirstOrDefault(
+                (InvocationExpressionSyntax invocation) =>
+                    invocation.Expression.ToString().StartsWith("Validate", StringComparison.Ordinal)
+            );
         return validation != null
             && parameters.All(
                 (string parameter) =>
@@ -1190,6 +1219,53 @@ internal abstract class CodeAnalysisRulesProcessingService
                                 .Any((IdentifierNameSyntax identifier) => identifier.Identifier.Text == parameter)
                     )
             );
+    }
+
+    private static bool UsesOperationSpecificValidation(MethodDeclarationSyntax method)
+    {
+        if (!RequiresOperationSpecificValidation(method))
+        {
+            return true;
+        }
+
+        string methodName = method.Identifier.Text;
+        string operationName = methodName.EndsWith("Async", StringComparison.Ordinal)
+            ? methodName.Substring(0, methodName.Length - "Async".Length)
+            : methodName;
+        string[] operations = { "Retrieve", "Update", "Delete", "Add", "Get" };
+        string? operation = operations.FirstOrDefault(
+            (string candidate) => operationName.StartsWith(candidate, StringComparison.Ordinal)
+        );
+
+        string entity = operationName.Substring(operation!.Length);
+        string expectedValidation = $"Validate{entity}On{operation}";
+
+        return method
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Any(
+                (InvocationExpressionSyntax invocation) =>
+                    invocation.Expression.ToString() == expectedValidation
+            );
+    }
+
+    private static bool RequiresOperationSpecificValidation(MethodDeclarationSyntax method)
+    {
+        if (method.ParameterList.Parameters.Count == 0)
+        {
+            return false;
+        }
+
+        string methodName = method.Identifier.Text.EndsWith("Async", StringComparison.Ordinal)
+            ? method.Identifier.Text.Substring(0, method.Identifier.Text.Length - "Async".Length)
+            : method.Identifier.Text;
+        string[] operations = { "Retrieve", "Update", "Delete", "Add", "Get" };
+
+        return operations.Any(
+            (string operation) =>
+                methodName.StartsWith(operation, StringComparison.Ordinal)
+                && methodName.Length > operation.Length
+        );
     }
 
     protected static AnalysisItem CreateAnalysisItem(

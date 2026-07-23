@@ -4,19 +4,21 @@
 
 namespace cCoder.CodeAnalysis.Sample.Models.Schools;
 
+#pragma warning disable CS8618
 public sealed class Course
 {
     public int Id { get; set; }
 
-    public string Name { get; set; } = string.Empty;
+    public string Name { get; set; }
 
     public int SchoolId { get; set; }
 
-    public School School { get; set; } = null!;
+    public School School { get; set; }
 
     public int TeacherId { get; set; }
 
-    public Teacher Teacher { get; set; } = null!;
+    public Teacher Teacher { get; set; }
 
-    public ICollection<Student> Students { get; set; } = new List<Student>();
+    public ICollection<Student> Students { get; set; }
 }
+#pragma warning restore CS8618

@@ -5,6 +5,7 @@
 using System.Reflection;
 using cCoder.CodeAnalysis.Exposures;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -71,5 +72,38 @@ public sealed class PublicApiTests
         services.AddCodeAnalysis();
         using ServiceProvider provider = services.BuildServiceProvider();
         ((object)provider.GetRequiredService<IArchitectureBuilder>()).Should().NotBeNull("");
+    }
+
+    [Fact]
+    public void AddCodeAnalysisShouldRegisterAllRuleProcessingServices()
+    {
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        provider.GetServices<IRuleProcessingService>().Should().HaveCount(11, "");
+    }
+
+    [Theory]
+    [InlineData("STXA", typeof(IAggregationServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXB", typeof(IBrokerCodeAnalysisRulesProcessingService))]
+    [InlineData("STXC", typeof(ICoordinationServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXD", typeof(IDependencyCodeAnalysisRulesProcessingService))]
+    [InlineData("STXE", typeof(IExposureCodeAnalysisRulesProcessingService))]
+    [InlineData("STXF", typeof(IFoundationServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXM", typeof(IModelCodeAnalysisRulesProcessingService))]
+    [InlineData("STXMG", typeof(IManagementServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXO", typeof(IOrchestrationServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXP", typeof(IProcessingServiceCodeAnalysisRulesProcessingService))]
+    [InlineData("STXTEST", typeof(ITestCodeAnalysisRulesProcessingService))]
+    public void AddCodeAnalysisShouldRegisterRulesByPrefix(string prefix, Type expectedServiceType)
+    {
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        IRuleProcessingService rule = provider.GetRequiredKeyedService<IRuleProcessingService>(prefix);
+
+        expectedServiceType.IsInstanceOfType(rule).Should().BeTrue("");
     }
 }
