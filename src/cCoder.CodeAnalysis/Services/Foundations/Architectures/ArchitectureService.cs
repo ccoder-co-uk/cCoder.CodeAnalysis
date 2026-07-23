@@ -361,12 +361,7 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Dependency;
         }
-        if (
-            (
-                containingNamespace.Contains(".Brokers", StringComparison.Ordinal)
-                || containingNamespace.Contains(".Exposures", StringComparison.Ordinal)
-            ) && InheritsFromExternalType(type)
-        )
+        if (InheritsFromExternalType(type))
         {
             return StandardElementType.Dependency;
         }
@@ -384,6 +379,8 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         if (
             type.Name == "EventProvider"
             || type.Name == "BulkEventProvider"
+            || type.IsStatic
+            || containingNamespace.Contains(".Extensions", StringComparison.Ordinal)
         )
         {
             return StandardElementType.Dependency;
@@ -424,7 +421,28 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Broker;
         }
+        if (IsDataOnlyType(type))
+        {
+            return StandardElementType.Model;
+        }
         return StandardElementType.Unknown;
+    }
+
+    private static bool IsDataOnlyType(INamedTypeSymbol type)
+    {
+        bool hasProperties = type
+            .GetMembers()
+            .OfType<IPropertySymbol>()
+            .Any();
+
+        bool hasMethods = type
+            .GetMembers()
+            .OfType<IMethodSymbol>()
+            .Any((IMethodSymbol method) => method.MethodKind == MethodKind.Ordinary);
+
+        return type.TypeKind == TypeKind.Class
+            && hasProperties
+            && !hasMethods;
     }
 
     private static bool InheritsFromExternalType(INamedTypeSymbol type)
