@@ -137,16 +137,21 @@ internal sealed class TestCodeAnalysisRulesProcessingService
             return Array.Empty<AnalysisItem>();
         }
 
-        return (
-            from declaration in context.Declarations
-            where declaration.BaseList != null
-            select CodeAnalysisRulesProcessingService.CreateAnalysisItem(
-                "STXTEST002",
-                "Test suites must not inherit from base test classes.",
-                context,
-                declaration.BaseList!.GetLocation()
-            )
-        ).ToArray();
+        TypeDeclarationSyntax? declaration =
+            context.Declarations.FirstOrDefault(
+                (TypeDeclarationSyntax candidate) => candidate.BaseList != null);
+
+        return !context.HasBaseClass
+            ? Array.Empty<AnalysisItem>()
+            :
+            [
+                CodeAnalysisRulesProcessingService.CreateAnalysisItem(
+                    "STXTEST002",
+                    "Test suites must not inherit from base test classes.",
+                    context,
+                    declaration?.BaseList?.GetLocation()
+                )
+            ];
     }
 
     private static AnalysisItem[] EvaluateTestSuiteNames(EvaluationContext context)
