@@ -7,6 +7,9 @@ using cCoder.CodeAnalysis.Sample.Services.Foundations.Students;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Processings.Students;
 
+/// <summary>
+/// Applies domain processing operations to students.
+/// </summary>
 internal sealed partial class StudentProcessingService(IStudentService studentService) : IStudentProcessingService
 {
     public ValueTask AddOrUpdateStudentsAsync(IEnumerable<Student> students, int schoolId) =>
