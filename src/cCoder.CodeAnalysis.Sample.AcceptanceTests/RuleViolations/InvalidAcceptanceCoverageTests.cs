@@ -6,7 +6,7 @@ using FluentAssertions;
 
 namespace cCoder.CodeAnalysis.Sample.AcceptanceTests.RuleViolations;
 
-public sealed class InvalidAcceptanceCoverageTests
+public sealed class InvalidStudentControllerAcceptanceTests
 {
 	[Fact]
 	public void GetStudentReturnsStudent()

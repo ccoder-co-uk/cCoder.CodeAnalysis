@@ -30,8 +30,7 @@ internal sealed class TestCodeAnalysisRulesProcessingService
     {
         if (
             !IsTestSuite(context)
-            ||
-            !context.TypeName.Contains("Acceptance", StringComparison.Ordinal)
+            || !context.TypeName.EndsWith("ControllerAcceptanceTests", StringComparison.Ordinal)
             || context.TypeName.EndsWith("ImportControllerAcceptanceTests", StringComparison.Ordinal)
         )
         {

@@ -21,6 +21,8 @@ public sealed class AcceptanceTestSuiteTests(SampleAcceptanceTestsArchitectureFi
             .Which;
         analysisItem
             .Type.Should()
-            .Be("cCoder.CodeAnalysis.Sample.AcceptanceTests.RuleViolations.InvalidAcceptanceCoverageTests", "");
+            .Be(
+                "cCoder.CodeAnalysis.Sample.AcceptanceTests.RuleViolations.InvalidStudentControllerAcceptanceTests",
+                "");
     }
 }
