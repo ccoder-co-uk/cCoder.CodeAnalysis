@@ -94,6 +94,18 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void ShouldNotApplyMutationParameterNamingToServiceCollectionExtensions()
+    {
+        Architecture
+            .AnalysisItems.Should()
+            .NotContain(
+                item =>
+                    item.Code == "STX0019"
+                    && item.Type.EndsWith(".IServiceCollectionExtensions", StringComparison.Ordinal),
+                "");
+    }
+
+    [Fact]
     public void ShouldSerializeStandardElementTypeAsAString()
     {
         ArchitectureJson.Should().Contain("\"StandardElementType\": \"Exposure\"", "");

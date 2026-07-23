@@ -367,8 +367,8 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
             return StandardElementType.Exposure;
         }
         if (
-            type.Name.StartsWith("EventProvider", StringComparison.Ordinal)
-            || type.Name.StartsWith("BulkEventProvider", StringComparison.Ordinal)
+            type.Name == "EventProvider"
+            || type.Name == "BulkEventProvider"
         )
         {
             return StandardElementType.Dependency;

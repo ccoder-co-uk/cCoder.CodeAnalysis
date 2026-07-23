@@ -934,6 +934,11 @@ internal abstract class CodeAnalysisRulesProcessingService
 
     protected static AnalysisItem[] EvaluateMutationNaming(EvaluationContext context)
     {
+        if (context.TypeName.EndsWith(".IServiceCollectionExtensions", StringComparison.Ordinal))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         List<AnalysisItem> items = new List<AnalysisItem>();
         foreach (
             MethodDeclarationSyntax method in context
