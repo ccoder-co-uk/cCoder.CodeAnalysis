@@ -18,6 +18,8 @@ public sealed class EvaluationContext
 
     public bool IsApiController { get; set; }
 
+    public bool HasBaseClass { get; set; }
+
     public IReadOnlyList<TypeDeclarationSyntax> Declarations { get; set; } = Array.Empty<TypeDeclarationSyntax>();
 
     public IReadOnlyList<TypeDependency> Dependencies { get; set; } = Array.Empty<TypeDependency>();

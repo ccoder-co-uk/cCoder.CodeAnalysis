@@ -131,6 +131,9 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         evaluationContext.IsApiController = type
             .ContainingNamespace.ToDisplayString()
             .Contains(".Controllers", StringComparison.Ordinal);
+        evaluationContext.HasBaseClass =
+            type.BaseType != null
+            && type.BaseType.SpecialType != SpecialType.System_Object;
         evaluationContext.Declarations = type
             .DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
@@ -341,6 +344,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         )
         {
             return StandardElementType.Test;
+        }
+        if (type.Name == "Program")
+        {
+            return StandardElementType.Exposure;
         }
         if (containingNamespace.Contains(".Controllers", StringComparison.Ordinal))
         {

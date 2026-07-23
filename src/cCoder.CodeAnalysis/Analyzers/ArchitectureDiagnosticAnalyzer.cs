@@ -105,12 +105,19 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
                     DiagnosticSeverity.Warning,
                     true,
                     null,
-                    null
+                    GetHelpLinkUri(code)
                 ),
             StringComparer.Ordinal
         );
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Descriptors.Values.ToImmutableArray();
+
+    private static string GetHelpLinkUri(string code)
+    {
+        string prefix = new string(code.TakeWhile(character => !char.IsDigit(character)).ToArray());
+
+        return $"https://ccoder.co.uk/Documentation/CodeAnalysis/{prefix}/{code}";
+    }
 
     public override void Initialize(AnalysisContext context)
     {
