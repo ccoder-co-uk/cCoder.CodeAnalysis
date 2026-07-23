@@ -88,10 +88,7 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
 
-                return (uint)(standardElementType - 1) <= 6u
-                    || dependency.TypeName.EndsWith(
-                        value: "Service",
-                        comparisonType: StringComparison.Ordinal);
+                return (uint)(standardElementType - 1) <= 6u;
             }
         );
         return (serviceDependencyCount <= 1)
@@ -162,7 +159,10 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
             delegate(TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 1) <= 6u;
+                return (uint)(standardElementType - 1) <= 6u
+                    || dependency.TypeName.EndsWith(
+                        value: "Service",
+                        comparisonType: StringComparison.Ordinal);
             }
         );
         return (serviceDependencyCount == 1)
