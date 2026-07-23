@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
@@ -31,6 +32,8 @@ internal sealed class ModelCodeAnalysisRulesProcessingService
             from method in context
                 .Declarations.SelectMany((TypeDeclarationSyntax declaration) => declaration.Members)
                 .OfType<MethodDeclarationSyntax>()
+            where !method.Modifiers.Any(
+                modifier => modifier.RawKind == (int)SyntaxKind.OverrideKeyword)
             select CodeAnalysisRulesProcessingService.CreateAnalysisItem(
                 "STXM001",
                 "Models must not declare methods.",
