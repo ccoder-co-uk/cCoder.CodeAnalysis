@@ -23,10 +23,19 @@ public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
 
     private int importedSchoolId;
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
         client = applicationFactory.CreateClient();
-        return Task.CompletedTask;
+        await using AsyncServiceScope scope = applicationFactory.Services.CreateAsyncScope();
+
+        IDbContextFactory<SchoolContext> contextFactory = scope.ServiceProvider
+            .GetRequiredService<IDbContextFactory<SchoolContext>>();
+
+        await using SchoolContext context = await contextFactory
+            .CreateDbContextAsync();
+
+        await context.Database
+            .EnsureCreatedAsync();
     }
 
     public async Task DisposeAsync()
