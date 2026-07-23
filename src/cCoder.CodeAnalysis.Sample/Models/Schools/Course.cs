@@ -9,6 +9,9 @@ public sealed class Course
 {
     public int Id { get; set; }
 
+    /// <summary>
+    /// Gets or sets the course name.
+    /// </summary>
     public string Name { get; set; }
 
     public int SchoolId { get; set; }

@@ -59,6 +59,7 @@ internal abstract class CodeAnalysisRulesProcessingService
                 where
                     trivia.IsKind(SyntaxKind.SingleLineCommentTrivia)
                     || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia)
+                where !IsDocumentationComment(trivia)
                 where !IsCopyrightHeaderComment(trivia)
                 select CreateAnalysisItem(
                     "STXFORMAT010",
@@ -67,6 +68,14 @@ internal abstract class CodeAnalysisRulesProcessingService
                     trivia.GetLocation()
                 )
             ).ToArray();
+    }
+
+    private static bool IsDocumentationComment(SyntaxTrivia trivia)
+    {
+        string comment = trivia.ToFullString().TrimStart();
+
+        return comment.StartsWith("///", StringComparison.Ordinal)
+            || comment.StartsWith("/**", StringComparison.Ordinal);
     }
 
     private static AnalysisItem[] EvaluateCopyrightHeader(EvaluationContext context)
