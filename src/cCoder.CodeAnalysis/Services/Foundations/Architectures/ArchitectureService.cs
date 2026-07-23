@@ -346,6 +346,10 @@ internal sealed class ArchitectureService(IRuleEvaluationCoordinationService rul
         {
             return StandardElementType.Exposure;
         }
+        if (containingNamespace.Contains(".Dependencies", StringComparison.Ordinal))
+        {
+            return StandardElementType.Dependency;
+        }
         if (
             (
                 containingNamespace.Contains(".Brokers", StringComparison.Ordinal)

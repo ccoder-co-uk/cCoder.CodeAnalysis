@@ -347,7 +347,7 @@ internal abstract class CodeAnalysisRulesProcessingService
         string[] array = elementType switch
         {
             StandardElementType.Broker => new string[1] { "/Brokers/" },
-            StandardElementType.Dependency => new string[2] { "/Brokers/", "/Exposures/" },
+            StandardElementType.Dependency => new string[3] { "/Brokers/", "/Dependencies/", "/Exposures/" },
             StandardElementType.Exposure => new string[2] { "/Exposures/", "/Controllers/" },
             StandardElementType.Model => new string[1] { "/Models/" },
             StandardElementType.FoundationService => new string[1] { "/Services/Foundations/" },
