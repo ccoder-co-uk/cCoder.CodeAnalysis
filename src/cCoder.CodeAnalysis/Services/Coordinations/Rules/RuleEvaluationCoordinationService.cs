@@ -27,8 +27,9 @@ internal sealed class RuleEvaluationCoordinationService(
     {
         return context.StandardElementType switch
         {
-            StandardElementType.FoundationService or StandardElementType.Broker or StandardElementType.Dependency =>
+            StandardElementType.FoundationService or StandardElementType.Broker =>
                 culDeSacRules.Evaluate(context),
+            StandardElementType.Dependency => [],
             StandardElementType.ProcessingService
             or StandardElementType.OrchestrationService
             or StandardElementType.CoordinationService
