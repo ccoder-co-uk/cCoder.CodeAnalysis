@@ -19,7 +19,6 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.Sample\cCoder.CodeAnalysis.Sample.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.SampleWeb\cCoder.CodeAnalysis.SampleWeb.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
