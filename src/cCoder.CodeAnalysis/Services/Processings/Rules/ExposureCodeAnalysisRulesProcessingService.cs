@@ -35,6 +35,7 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
     private static AnalysisItem[] EvaluateSTXE001(EvaluationContext context)
     {
         return context.IsApiController
+            || context.TypeName.Split('.').Last() == "Program"
             ? Array.Empty<AnalysisItem>()
             : (
                 from node in context.Declarations.SelectMany(
@@ -124,6 +125,7 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
     private static AnalysisItem[] EvaluateSTXE005(EvaluationContext context)
     {
         return context.IsApiController
+            || context.TypeName.Split('.').Last() == "Program"
             ? Array.Empty<AnalysisItem>()
             : (
                 from method in context
