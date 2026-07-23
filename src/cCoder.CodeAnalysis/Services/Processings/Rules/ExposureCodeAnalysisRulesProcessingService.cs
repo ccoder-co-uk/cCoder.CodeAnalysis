@@ -87,7 +87,11 @@ internal sealed class ExposureCodeAnalysisRulesProcessingService
             delegate(TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 1) <= 6u;
+
+                return (uint)(standardElementType - 1) <= 6u
+                    || dependency.TypeName.EndsWith(
+                        value: "Service",
+                        comparisonType: StringComparison.Ordinal);
             }
         );
         return (serviceDependencyCount <= 1)
