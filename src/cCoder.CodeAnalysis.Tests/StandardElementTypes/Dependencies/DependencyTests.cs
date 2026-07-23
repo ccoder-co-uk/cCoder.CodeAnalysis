@@ -24,7 +24,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(3, "");
+        Count(StandardElementType.Dependency).Should().Be(8, "");
     }
 
     [Fact]
@@ -39,6 +39,24 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     public void ShouldClassifyDependencyNamespaceAsDependency()
     {
         Class element = GetElement("cCoder.CodeAnalysis.Sample.Dependencies.CompatibilityDependency");
+
+        element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
+        Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
+    }
+
+    [Fact]
+    public void ShouldClassifyExternalFrameworkSubclassAsDependency()
+    {
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.ExternalFrameworkDependency");
+
+        element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
+        Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
+    }
+
+    [Fact]
+    public void ShouldClassifyExtensionContainerAsDependency()
+    {
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.Extensions.LegacyExtensions");
 
         element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
         Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
