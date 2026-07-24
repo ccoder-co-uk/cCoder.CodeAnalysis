@@ -2,7 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-namespace cCoder.CodeAnalysis.Sample.Extensions;
+namespace cCoder.CodeAnalysis.Sample.Exposures;
 
 internal static class LegacyExtensions
 {

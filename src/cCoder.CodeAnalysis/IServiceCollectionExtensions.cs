@@ -176,7 +176,7 @@ public static class IServiceCollectionExtensions
             standardElementType: StandardElementType.ProcessingService
         );
 
-        AddRuleHandlingServices<ISTXRulesProcessingService>(
+        AddRuleHandlingServices<ISTXRulesProcessingService, ISTXDRulesProcessingService>(
             services: services,
             standardElementType: StandardElementType.Unknown
         );

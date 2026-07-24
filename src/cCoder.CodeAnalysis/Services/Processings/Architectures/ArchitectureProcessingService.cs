@@ -205,18 +205,16 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             containingNamespace.Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal)
             || containingNamespace.Contains(value: ".Exposures", comparisonType: StringComparison.Ordinal)
             || type.Name.EndsWith(value: "EventHub", comparisonType: StringComparison.Ordinal)
+            || type.Name is "EventProvider" or "BulkEventProvider"
+            || IsStaticExtensionContainer(type: type)
         )
         {
             return StandardElementType.Exposure;
         }
 
         if (
-            containingNamespace.Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
-            || containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
+            containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
             || InheritsFromExternalType(type: type)
-            || type.Name is "EventProvider" or "BulkEventProvider"
-            || type.IsStatic
-            || containingNamespace.Contains(value: ".Extensions", comparisonType: StringComparison.Ordinal)
         )
         {
             return StandardElementType.Dependency;
@@ -303,6 +301,15 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         type.Interfaces.Any(
             predicate: (INamedTypeSymbol contract) =>
                 !contract.Locations.Any(predicate: (Location location) => location.IsInSource)
+        );
+
+    private static bool IsStaticExtensionContainer(INamedTypeSymbol type) =>
+
+        type.IsStatic
+        && (
+            type.ContainingNamespace.ToDisplayString()
+                .Contains(value: ".Extensions", comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(value: "Extensions", comparisonType: StringComparison.Ordinal)
         );
 
     private static string GetTypeName(ITypeSymbol type) =>

@@ -13,7 +13,7 @@ namespace cCoder.CodeAnalysis.Analyzers;
 [DiagnosticAnalyzer("C#", new string[] { })]
 public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly string[] RuleCodes = new string[89]
+    private static readonly string[] RuleCodes = new string[90]
     {
         "STX0001",
         "STX0002",
@@ -63,6 +63,7 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STXC001",
         "STXC002",
         "STXD001",
+        "STXD002",
         "STXE001",
         "STXE002",
         "STXE003",
