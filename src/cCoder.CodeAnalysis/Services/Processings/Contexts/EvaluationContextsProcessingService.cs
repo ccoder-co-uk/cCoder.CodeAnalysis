@@ -271,6 +271,11 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
     private static StandardElementType Classify(INamedTypeSymbol type)
     {
+        if (type.TypeKind == TypeKind.Error || type.ContainingAssembly is null)
+        {
+            return StandardElementType.Dependency;
+        }
+
         string containingNamespace = type.ContainingNamespace.ToDisplayString();
 
         if (
