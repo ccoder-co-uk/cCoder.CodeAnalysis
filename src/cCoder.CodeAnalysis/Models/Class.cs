@@ -1,16 +1,13 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
+#nullable disable
 namespace cCoder.CodeAnalysis.Models;
 
 public sealed class Class
 {
-    public string Name { get; set; } = string.Empty;
-
+    public string Name { get; set; }
     public StandardElementType StandardElementType { get; set; }
-
-    public List<Property> Properties { get; set; } = new List<Property>();
-
-    public List<Method> Methods { get; set; } = new List<Method>();
+    public List<Property> Properties { get; set; }
+    public List<Method> Methods { get; set; }
 }

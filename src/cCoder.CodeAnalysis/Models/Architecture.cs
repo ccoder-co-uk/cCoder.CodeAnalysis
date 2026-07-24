@@ -1,14 +1,12 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
+#nullable disable
 namespace cCoder.CodeAnalysis.Models;
 
 public sealed class Architecture
 {
-    public List<Class> Classes { get; set; } = new List<Class>();
-
-    public List<Link> Links { get; set; } = new List<Link>();
-
-    public List<AnalysisItem> AnalysisItems { get; set; } = new List<AnalysisItem>();
+    public List<Class> Classes { get; set; }
+    public List<Link> Links { get; set; }
+    public List<AnalysisItem> AnalysisItems { get; set; }
 }

@@ -1,12 +1,13 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace cCoder.CodeAnalysis.Services.Foundations.Architectures;
 
-internal interface IArchitectureService
+internal interface IArchitectureService : ICodeAnalysisInfrastructureService
 {
-    Architecture Build(string projectFilePath);
+    ArchitectureBuild Build(string projectFilePath);
+    ArchitectureBuild Build(CSharpCompilation compilation);
 }

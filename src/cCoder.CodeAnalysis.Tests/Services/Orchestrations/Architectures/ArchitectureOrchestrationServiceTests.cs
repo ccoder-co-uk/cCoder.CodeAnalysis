@@ -3,9 +3,10 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Foundations.Architectures;
-using cCoder.CodeAnalysis.Services.Foundations.Projects;
 using cCoder.CodeAnalysis.Services.Orchestrations.Architectures;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
+using cCoder.CodeAnalysis.Services.Processings.Contexts;
+using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Moq;
 
@@ -17,31 +18,47 @@ public sealed class ArchitectureOrchestrationServiceTests
     public void GenerateShouldResolveProjectAndBuildArchitecture()
     {
         string suppliedPath = $"C:\\Projects\\{Guid.NewGuid()}";
-        string projectFilePath = Path.Combine(suppliedPath, "Example.csproj");
         Architecture expectedArchitecture = new Architecture();
-        Mock<IProjectService> projectServiceMock = new Mock<IProjectService>();
-        Mock<IArchitectureService> architectureServiceMock = new Mock<IArchitectureService>();
-        projectServiceMock
-            .Setup((IProjectService projectService) => projectService.ResolveProjectFilePath(suppliedPath))
-            .Returns(projectFilePath);
-        architectureServiceMock
-            .Setup((IArchitectureService architectureService) => architectureService.Build(projectFilePath))
-            .Returns(expectedArchitecture);
+        ArchitectureBuild architectureBuild = new ArchitectureBuild
+        {
+            Architecture = expectedArchitecture,
+        };
+        Mock<IArchitectureProcessingService> architectureProcessingServiceMock =
+            new Mock<IArchitectureProcessingService>();
+        Mock<IEvaluationContextsProcessingService> evaluationContextsProcessingServiceMock =
+            new Mock<IEvaluationContextsProcessingService>();
+        Mock<IRuleEvaluationsProcessingService> ruleEvaluationsProcessingServiceMock =
+            new Mock<IRuleEvaluationsProcessingService>();
+        architectureProcessingServiceMock
+            .Setup(
+                (IArchitectureProcessingService architectureProcessingService) =>
+                    architectureProcessingService.Process(suppliedPath)
+            )
+            .Returns(architectureBuild);
+        evaluationContextsProcessingServiceMock
+            .Setup(
+                (IEvaluationContextsProcessingService service) =>
+                    service.Process(architectureBuild)
+            )
+            .Returns([]);
+        ruleEvaluationsProcessingServiceMock
+            .Setup(
+                (IRuleEvaluationsProcessingService service) =>
+                    service.Process(It.IsAny<IEnumerable<EvaluationContext>>())
+            )
+            .Returns([]);
         ArchitectureOrchestrationService service = new ArchitectureOrchestrationService(
-            projectServiceMock.Object,
-            architectureServiceMock.Object
+            architectureProcessingServiceMock.Object,
+            evaluationContextsProcessingServiceMock.Object,
+            ruleEvaluationsProcessingServiceMock.Object
         );
         Architecture actualArchitecture = service.Generate(suppliedPath);
         ((object)actualArchitecture).Should().BeSameAs(expectedArchitecture, "");
-        projectServiceMock.Verify(
-            (IProjectService projectService) => projectService.ResolveProjectFilePath(suppliedPath),
+        architectureProcessingServiceMock.Verify(
+            (IArchitectureProcessingService architectureProcessingService) =>
+                architectureProcessingService.Process(suppliedPath),
             Times.Once
         );
-        architectureServiceMock.Verify(
-            (IArchitectureService architectureService) => architectureService.Build(projectFilePath),
-            Times.Once
-        );
-        projectServiceMock.VerifyNoOtherCalls();
-        architectureServiceMock.VerifyNoOtherCalls();
+        architectureProcessingServiceMock.VerifyNoOtherCalls();
     }
 }

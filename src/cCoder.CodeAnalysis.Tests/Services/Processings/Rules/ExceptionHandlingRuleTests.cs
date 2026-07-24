@@ -36,9 +36,9 @@ public sealed class ExceptionHandlingRuleTests
     private static AnalysisItem[] Evaluate(string catchClauses)
     {
         EvaluationContext context = CreateEvaluationContext(catchClauses);
-        FoundationServiceCodeAnalysisRulesProcessingService service =
-            new FoundationServiceCodeAnalysisRulesProcessingService();
-        return service.Evaluate(context);
+        STXEXRulesProcessingService service =
+            new STXEXRulesProcessingService();
+        return service.Evaluate(context).ToArray();
     }
 
     [Theory]

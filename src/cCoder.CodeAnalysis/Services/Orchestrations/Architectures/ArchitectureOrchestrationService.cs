@@ -1,25 +1,39 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Foundations.Architectures;
-using cCoder.CodeAnalysis.Services.Foundations.Projects;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
+using cCoder.CodeAnalysis.Services.Processings.Contexts;
+using cCoder.CodeAnalysis.Services.Processings.Rules;
+using Microsoft.CodeAnalysis.CSharp;
 
 namespace cCoder.CodeAnalysis.Services.Orchestrations.Architectures;
 
 internal sealed class ArchitectureOrchestrationService(
-    IProjectService projectService,
-    IArchitectureService architectureService)
-        : IArchitectureOrchestrationService
+    IArchitectureProcessingService architectureProcessingService,
+    IEvaluationContextsProcessingService evaluationContextsProcessingService,
+    IRuleEvaluationsProcessingService ruleEvaluationsProcessingService
+) : IArchitectureOrchestrationService
 {
-    private readonly IProjectService projectService = projectService;
-
-    private readonly IArchitectureService architectureService = architectureService;
-
     public Architecture Generate(string path)
     {
-        string projectFilePath = projectService.ResolveProjectFilePath(path);
-        return architectureService.Build(projectFilePath);
+        return Complete(architectureBuild: architectureProcessingService.Process(path: path));
+    }
+
+    public Architecture Generate(CSharpCompilation compilation) =>
+
+        Complete(architectureBuild: architectureProcessingService.Process(compilation: compilation));
+
+    private Architecture Complete(ArchitectureBuild architectureBuild)
+    {
+        IEnumerable<EvaluationContext> evaluationContexts = evaluationContextsProcessingService.Process(
+            architectureBuild: architectureBuild
+        );
+
+        architectureBuild.Architecture.AnalysisItems = ruleEvaluationsProcessingService
+            .Process(contexts: evaluationContexts)
+            .ToList();
+
+        return architectureBuild.Architecture;
     }
 }

@@ -17,7 +17,7 @@ public sealed class GenericProcessingServiceTests
 
         // when
         string typeName =
-            ProcessingServiceCodeAnalysisRulesProcessingService.RemoveGenericTypeArguments(
+            STXPRulesProcessingService.RemoveGenericTypeArguments(
                 typeName: genericTypeName);
 
         // then

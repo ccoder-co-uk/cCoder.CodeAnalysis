@@ -1,9 +1,8 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Foundations.Architectures;
+using cCoder.CodeAnalysis.Services.Orchestrations.Architectures;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -15,11 +14,11 @@ public static class ArchitectureAnalysis
     {
         ServiceCollection services = new ServiceCollection();
         services.AddCodeAnalysis();
-
         using ServiceProvider serviceProvider = services.BuildServiceProvider();
-        ArchitectureService architectureService =
-            (ArchitectureService)serviceProvider.GetRequiredService<IArchitectureService>();
 
-        return architectureService.Build(compilation);
+        IArchitectureOrchestrationService architectureOrchestrationService =
+            serviceProvider.GetRequiredService<IArchitectureOrchestrationService>();
+
+        return architectureOrchestrationService.Generate(compilation: compilation);
     }
 }

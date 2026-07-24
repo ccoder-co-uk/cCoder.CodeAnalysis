@@ -1,550 +1,180 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
+using cCoder.CodeAnalysis.Brokers.Files;
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Coordinations.Rules;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Foundations.Architectures;
 
-internal sealed class ArchitectureService(IRuleEvaluationCoordinationService ruleEvaluationCoordinationService)
-    : IArchitectureService
+internal sealed class ArchitectureService(IFileBroker fileBroker) : IArchitectureService
 {
-    private static readonly SymbolDisplayFormat FullyQualifiedTypeFormat = new SymbolDisplayFormat(
-        SymbolDisplayGlobalNamespaceStyle.Omitted,
-        SymbolDisplayTypeQualificationStyle.NameAndContainingTypesAndNamespaces,
-        SymbolDisplayGenericsOptions.IncludeTypeParameters,
-        SymbolDisplayMemberOptions.None,
-        SymbolDisplayDelegateStyle.NameOnly,
-        SymbolDisplayExtensionMethodStyle.Default,
-        SymbolDisplayParameterOptions.None,
-        SymbolDisplayPropertyStyle.NameOnly,
-        SymbolDisplayLocalOptions.None,
-        SymbolDisplayKindOptions.None,
-        SymbolDisplayMiscellaneousOptions.IncludeNullableReferenceTypeModifier
-    );
-
-    public Architecture Build(string projectFilePath)
+    public ArchitectureBuild Build(string suppliedPath)
     {
+        string projectFilePath = ResolveProjectFilePath(path: suppliedPath);
+
         string projectDirectory =
-            Path.GetDirectoryName(projectFilePath)
-            ?? throw new InvalidOperationException("The project path has no containing directory.");
-        SyntaxTree[] projectSyntaxTrees = (
-            from path in (
-                from path in Directory.GetFiles(projectDirectory, "*.cs", SearchOption.AllDirectories)
-                where !IsBuildOutput(path, projectDirectory)
-                select path
-            ).OrderBy((string path) => path, StringComparer.OrdinalIgnoreCase)
-            select CSharpSyntaxTree.ParseText(File.ReadAllText(path), null, path)
-        ).ToArray();
-        SyntaxTree syntaxTree = CreateImplicitUsingsSyntaxTree();
-        SyntaxTree[] array = projectSyntaxTrees;
-        int num = 0;
-        SyntaxTree[] array2 = new SyntaxTree[1 + array.Length];
-        array2[num] = syntaxTree;
-        num++;
-        ReadOnlySpan<SyntaxTree> readOnlySpan = new ReadOnlySpan<SyntaxTree>(array);
-        readOnlySpan.CopyTo(new Span<SyntaxTree>(array2).Slice(num, readOnlySpan.Length));
-        num += readOnlySpan.Length;
-        SyntaxTree[] compilationSyntaxTrees = array2;
-        CSharpCompilation compilation = CSharpCompilation.Create(
-            Path.GetFileNameWithoutExtension(projectFilePath),
-            compilationSyntaxTrees,
-            GetMetadataReferences(projectFilePath),
-            new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        );
-        return Build(compilation, projectSyntaxTrees);
-    }
+            Path.GetDirectoryName(path: projectFilePath)
+            ?? throw new InvalidOperationException(message: "The project path has no containing directory.");
 
-    internal Architecture Build(CSharpCompilation compilation)
-    {
-        return Build(
-            compilation,
-            compilation.SyntaxTrees.Where((SyntaxTree syntaxTree) => syntaxTree.FilePath.Length > 0).ToArray()
-        );
-    }
-
-    private Architecture Build(CSharpCompilation compilation, SyntaxTree[] projectSyntaxTrees)
-    {
-        INamedTypeSymbol[] declaredTypes = projectSyntaxTrees
-            .SelectMany((SyntaxTree tree) => GetDeclaredTypes(compilation, tree))
+        SyntaxTree[] projectSyntaxTrees = Directory
+            .GetFiles(path: projectDirectory, searchPattern: "*.cs", searchOption: SearchOption.AllDirectories)
             .Where(
-                delegate(INamedTypeSymbol type)
-                {
-                    string name = type.Name;
-                    return !(name == "ValidationRule") && !(name == "ValidationRulesEngine");
-                }
+                predicate: (string sourcePath) => !IsBuildOutput(path: sourcePath, projectDirectory: projectDirectory)
             )
-            .GroupBy(GetTypeName, StringComparer.Ordinal)
-            .Select((IGrouping<string, INamedTypeSymbol> types) => types.First())
-            .ToArray();
-        Architecture architecture = new Architecture();
-        architecture.Classes = declaredTypes
-            .Where((INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
-            .Select(CreateClass)
-            .OrderBy<Class, string>((Class item) => item.Name, StringComparer.Ordinal)
-            .ToList();
-        Architecture architecture2 = architecture;
-        architecture2.Links = declaredTypes
-            .Where((INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
-            .SelectMany((INamedTypeSymbol type) => CreateLinks(type, declaredTypes))
-            .GroupBy((Link link) => (FromType: link.FromType, ToType: link.ToType))
-            .Select((IGrouping<(string FromType, string ToType), Link> links) => links.First())
-            .OrderBy<Link, string>((Link link) => link.FromType, StringComparer.Ordinal)
-            .ThenBy<Link, string>((Link link) => link.ToType, StringComparer.Ordinal)
-            .ToList();
-        architecture2.AnalysisItems = ruleEvaluationCoordinationService
-            .Evaluate(
-                from type in declaredTypes
-                where type.TypeKind == TypeKind.Class
-                select CreateEvaluationContext(type, declaredTypes, compilation)
-            )
-            .ToList();
-        return architecture2;
-    }
-
-    private static EvaluationContext CreateEvaluationContext(
-        INamedTypeSymbol type,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes,
-        CSharpCompilation compilation
-    )
-    {
-        TypeDeclarationSyntax? declaration = type
-            .DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.GetSyntax())
-            .OfType<TypeDeclarationSyntax>()
-            .FirstOrDefault();
-        EvaluationContext evaluationContext = new EvaluationContext();
-        evaluationContext.TypeName = GetTypeName(type);
-        evaluationContext.ProjectName = type.ContainingAssembly.Name;
-        evaluationContext.StandardElementType = Classify(type);
-        evaluationContext.LineNumber = (
-            (declaration != null) ? (declaration.GetLocation().GetLineSpan().StartLinePosition.Line + 1) : 0
-        );
-        evaluationContext.IsPublic = type.DeclaredAccessibility == Accessibility.Public;
-        evaluationContext.IsApiController = type
-            .ContainingNamespace.ToDisplayString()
-            .Contains(".Controllers", StringComparison.Ordinal);
-        evaluationContext.HasBaseClass =
-            type.BaseType != null
-            && type.BaseType.SpecialType != SpecialType.System_Object;
-        evaluationContext.Declarations = type
-            .DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.GetSyntax())
-            .OfType<TypeDeclarationSyntax>()
-            .ToArray();
-        SyntaxTree? sourceTree = declaration?.SyntaxTree
-            ?? (
-                type.Name == "Program"
-                    ? compilation.SyntaxTrees.FirstOrDefault(
-                        (SyntaxTree tree) => tree.FilePath.EndsWith("Program.cs", StringComparison.Ordinal)
+            .OrderBy(keySelector: (string sourcePath) => sourcePath, comparer: StringComparer.OrdinalIgnoreCase)
+            .Select(
+                selector: (string sourcePath) =>
+                    CSharpSyntaxTree.ParseText(
+                        text: File.ReadAllText(path: sourcePath),
+                        options: null,
+                        path: sourcePath
                     )
-                    : null
-            );
-        evaluationContext.FilePath = sourceTree?.FilePath ?? string.Empty;
-        evaluationContext.SourceCode = sourceTree?.GetText().ToString() ?? string.Empty;
-        evaluationContext.UsingNamespaces = sourceTree
-            ?.GetRoot()
-            .DescendantNodes()
-            .OfType<UsingDirectiveSyntax>()
-            .Select((UsingDirectiveSyntax item) => item.Name?.ToString() ?? string.Empty)
-            .Where((string item) => item.Length != 0)
-            .ToArray()
-            ?? Array.Empty<string>();
-        evaluationContext.Dependencies = (
-            from parameter in type.InstanceConstructors.SelectMany(
-                (IMethodSymbol constructor) => constructor.Parameters
             )
-            select CreateTypeDependency(parameter.Type, declaredTypes)
-        )
-            .GroupBy((TypeDependency dependency) => dependency.TypeName, StringComparer.Ordinal)
-            .Select((IGrouping<string, TypeDependency> dependencies) => dependencies.First())
             .ToArray();
-        evaluationContext.ImplementedInterfaces = type.AllInterfaces.Select(GetTypeName).ToArray();
-        evaluationContext.PublicMethodNames = (
-            from method in type.GetMembers().OfType<IMethodSymbol>()
-            where method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public
-            select method.Name
-        )
-            .Distinct<string>(StringComparer.Ordinal)
-            .ToArray();
-        evaluationContext.ContractMethodNames = (
-            from method in type
-                .AllInterfaces.SelectMany((INamedTypeSymbol contract) => contract.GetMembers())
-                .OfType<IMethodSymbol>()
-            select method.Name
-        )
-            .Distinct<string>(StringComparer.Ordinal)
-            .ToArray();
-        evaluationContext.PublicMethodCallLineNumbers = GetPublicMethodCallLineNumbers(type, compilation);
-        evaluationContext.PublicApiModelTypes = GetPublicApiModelTypes(type);
-        return evaluationContext;
-    }
 
-    private static string[] GetPublicApiModelTypes(INamedTypeSymbol type)
-    {
-        return (
-            from modelType in (
-                from method in type.GetMembers().OfType<IMethodSymbol>()
-                where method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public
-                select method
-            )
-                .SelectMany(
-                    (IMethodSymbol method) =>
-                        method
-                            .Parameters.Select((IParameterSymbol parameter) => parameter.Type)
-                            .Append(method.ReturnType)
-                )
-                .SelectMany(GetContainedNamedTypes)
-            where Classify(modelType) == StandardElementType.Model
-            select GetTypeName(modelType).TrimEnd('?')
-        )
-            .Distinct<string>(StringComparer.Ordinal)
-            .ToArray();
-    }
+        SyntaxTree[] compilationSyntaxTrees = [CreateImplicitUsingsSyntaxTree(), .. projectSyntaxTrees];
 
-    private static IEnumerable<INamedTypeSymbol> GetContainedNamedTypes(ITypeSymbol type)
-    {
-        if (type is IArrayTypeSymbol arrayType)
-        {
-            return GetContainedNamedTypes(arrayType.ElementType);
-        }
-        if (!(type is INamedTypeSymbol namedType))
-        {
-            return Array.Empty<INamedTypeSymbol>();
-        }
-        return namedType.TypeArguments.SelectMany(GetContainedNamedTypes).Prepend(namedType);
-    }
-
-    private static int[] GetPublicMethodCallLineNumbers(INamedTypeSymbol type, CSharpCompilation compilation)
-    {
-        return (
-            from invocation in type
-                .DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.GetSyntax())
-                .OfType<TypeDeclarationSyntax>()
-                .SelectMany((TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
-                .OfType<InvocationExpressionSyntax>()
-            where IsPublicMethodCallOnSameType(invocation, type, compilation)
-            select invocation.GetLocation().GetLineSpan().StartLinePosition.Line + 1
-        ).ToArray();
-    }
-
-    private static bool IsPublicMethodCallOnSameType(
-        InvocationExpressionSyntax invocation,
-        INamedTypeSymbol type,
-        CSharpCompilation compilation
-    )
-    {
-        SemanticModel semanticModel = compilation.GetSemanticModel(invocation.SyntaxTree);
-        MethodDeclarationSyntax? containingMethod = invocation.FirstAncestorOrSelf<MethodDeclarationSyntax>();
-        IMethodSymbol? caller = containingMethod is null ? null : semanticModel.GetDeclaredSymbol(containingMethod);
-        return caller != null
-            && caller.DeclaredAccessibility == Accessibility.Public
-            && semanticModel.GetSymbolInfo(invocation).Symbol is IMethodSymbol calledMethod
-            && calledMethod.DeclaredAccessibility == Accessibility.Public
-            && SymbolEqualityComparer.Default.Equals(calledMethod.ContainingType, type);
-    }
-
-    private static TypeDependency CreateTypeDependency(
-        ITypeSymbol dependency,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes
-    )
-    {
-        INamedTypeSymbol? concreteType = ResolveConcreteType(dependency, declaredTypes);
-        return (concreteType == null)
-            ? CreateReferencedTypeDependency(dependency)
-            : new TypeDependency { TypeName = GetTypeName(concreteType), StandardElementType = Classify(concreteType) };
-    }
-
-    private static TypeDependency CreateReferencedTypeDependency(ITypeSymbol dependency)
-    {
-        StandardElementType elementType = (
-            (dependency is INamedTypeSymbol namedType) ? Classify(namedType) : StandardElementType.Unknown
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: Path.GetFileNameWithoutExtension(path: projectFilePath),
+            syntaxTrees: compilationSyntaxTrees,
+            references: GetMetadataReferences(projectFilePath: projectFilePath),
+            options: new CSharpCompilationOptions(outputKind: OutputKind.DynamicallyLinkedLibrary)
         );
-        return new TypeDependency
+
+        return CreateArchitectureBuild(compilation: compilation);
+    }
+
+    public ArchitectureBuild Build(CSharpCompilation compilation) =>
+        CreateArchitectureBuild(compilation: compilation);
+
+    private static ArchitectureBuild CreateArchitectureBuild(CSharpCompilation compilation) =>
+
+        new ArchitectureBuild { Compilation = compilation };
+
+    internal string ResolveProjectFilePath(string path)
+    {
+        if (string.IsNullOrWhiteSpace(value: path))
         {
-            TypeName = GetTypeName(dependency),
-            StandardElementType = (
-                (elementType == StandardElementType.Unknown) ? StandardElementType.Dependency : elementType
+            throw new ArgumentException(message: "The project path is required.", paramName: nameof(path));
+        }
+
+        if (fileBroker.FileExists(path: path))
+        {
+            if (
+                !string.Equals(
+                    a: Path.GetExtension(path: path),
+                    b: ".csproj",
+                    comparisonType: StringComparison.OrdinalIgnoreCase
+                )
+            )
+            {
+                throw new ArgumentException(
+                    message: "The supplied file is not a .NET project file.",
+                    paramName: nameof(path)
+                );
+            }
+
+            return path;
+        }
+
+        if (!fileBroker.DirectoryExists(path: path))
+        {
+            throw new DirectoryNotFoundException(message: "The project path '" + path + "' does not exist.");
+        }
+
+        IReadOnlyList<string> projectFiles = fileBroker.GetProjectFiles(directoryPath: path);
+
+        return projectFiles.Count switch
+        {
+            0 => throw new FileNotFoundException(
+                message: "The supplied directory does not contain a .NET project file.",
+                fileName: path
+            ),
+            1 => projectFiles[index: 0],
+            _ => throw new InvalidOperationException(
+                message: "The supplied directory contains more than one .NET project file."
             ),
         };
-    }
-
-    private static IEnumerable<INamedTypeSymbol> GetDeclaredTypes(CSharpCompilation compilation, SyntaxTree syntaxTree)
-    {
-        SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree);
-        return (
-            from declaration in syntaxTree.GetRoot().DescendantNodes().OfType<TypeDeclarationSyntax>()
-            select semanticModel.GetDeclaredSymbol(declaration)
-        ).OfType<INamedTypeSymbol>();
-    }
-
-    private static Class CreateClass(INamedTypeSymbol type)
-    {
-        return new Class
-        {
-            Name = GetTypeName(type),
-            StandardElementType = Classify(type),
-            Properties = (
-                from property in type.GetMembers().OfType<IPropertySymbol>()
-                where property.DeclaredAccessibility == Accessibility.Public
-                select new Property { Name = property.Name, Type = GetTypeName(property.Type) }
-            )
-                .OrderBy<Property, string>((Property property) => property.Name, StringComparer.Ordinal)
-                .ToList(),
-            Methods = (
-                from method in type.GetMembers().OfType<IMethodSymbol>()
-                where method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public
-                select new Method
-                {
-                    Name = method.Name,
-                    ReturnType = GetTypeName(method.ReturnType),
-                    Inputs = method
-                        .Parameters.Select(
-                            (IParameterSymbol parameter) =>
-                                new Input { Name = parameter.Name, Type = GetTypeName(parameter.Type) }
-                        )
-                        .ToList(),
-                }
-            )
-                .OrderBy<Method, string>((Method method) => method.Name, StringComparer.Ordinal)
-                .ToList(),
-        };
-    }
-
-    private static IEnumerable<Link> CreateLinks(
-        INamedTypeSymbol type,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes
-    )
-    {
-        IEnumerable<ITypeSymbol> dependencies =
-            from parameter in type.InstanceConstructors.SelectMany(
-                (IMethodSymbol constructor) => constructor.Parameters
-            )
-            select parameter.Type;
-        foreach (ITypeSymbol dependency in dependencies)
-        {
-            INamedTypeSymbol? target = ResolveConcreteType(dependency, declaredTypes);
-            if (target != null)
-            {
-                yield return new Link { FromType = GetTypeName(type), ToType = GetTypeName(target) };
-            }
-        }
-    }
-
-    private static INamedTypeSymbol? ResolveConcreteType(
-        ITypeSymbol dependency,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes
-    )
-    {
-        if (dependency.TypeKind == TypeKind.Class && declaredTypes.Contains(dependency, SymbolEqualityComparer.Default))
-        {
-            return (INamedTypeSymbol)dependency;
-        }
-        INamedTypeSymbol[] implementations = declaredTypes
-            .Where(
-                (INamedTypeSymbol type) =>
-                    type.TypeKind == TypeKind.Class
-                    && type.AllInterfaces.Contains(dependency, SymbolEqualityComparer.Default)
-            )
-            .Take(2)
-            .ToArray();
-
-        return implementations.Length == 1
-            ? implementations[0]
-            : null;
-    }
-
-    private static StandardElementType Classify(INamedTypeSymbol type)
-    {
-        string containingNamespace = type.ContainingNamespace.ToDisplayString();
-        if (
-            type.ContainingAssembly.Name.EndsWith("Tests", StringComparison.Ordinal)
-            || containingNamespace.Contains(".Tests", StringComparison.Ordinal)
-        )
-        {
-            return StandardElementType.Test;
-        }
-        if (type.Name == "Program")
-        {
-            return StandardElementType.App;
-        }
-        if (containingNamespace.Contains(".Controllers", StringComparison.Ordinal))
-        {
-            return StandardElementType.Exposure;
-        }
-        if (containingNamespace.Contains(".Dependencies", StringComparison.Ordinal))
-        {
-            return StandardElementType.Dependency;
-        }
-        if (containingNamespace.Contains(".Migrations", StringComparison.Ordinal))
-        {
-            return StandardElementType.Dependency;
-        }
-        if (InheritsFromExternalType(type))
-        {
-            return StandardElementType.Dependency;
-        }
-        if (type.Name == "IServiceCollectionExtensions")
-        {
-            return StandardElementType.App;
-        }
-        if (
-            type.Name.EndsWith("EventHub", StringComparison.Ordinal)
-        )
-        {
-            return StandardElementType.Exposure;
-        }
-        if (
-            type.Name == "EventProvider"
-            || type.Name == "BulkEventProvider"
-            || type.IsStatic
-            || containingNamespace.Contains(".Extensions", StringComparison.Ordinal)
-        )
-        {
-            return StandardElementType.Dependency;
-        }
-        if (containingNamespace.Contains(".Exposures", StringComparison.Ordinal))
-        {
-            return StandardElementType.Exposure;
-        }
-        if (containingNamespace.Contains(".Services.Foundations", StringComparison.Ordinal))
-        {
-            return StandardElementType.FoundationService;
-        }
-        if (containingNamespace.Contains(".Services.Processings", StringComparison.Ordinal))
-        {
-            return StandardElementType.ProcessingService;
-        }
-        if (containingNamespace.Contains(".Services.Orchestrations", StringComparison.Ordinal))
-        {
-            return StandardElementType.OrchestrationService;
-        }
-        if (containingNamespace.Contains(".Services.Coordinations", StringComparison.Ordinal))
-        {
-            return StandardElementType.CoordinationService;
-        }
-        if (containingNamespace.Contains(".Services.Managements", StringComparison.Ordinal))
-        {
-            return StandardElementType.ManagementService;
-        }
-        if (containingNamespace.Contains(".Services.Aggregations", StringComparison.Ordinal))
-        {
-            return StandardElementType.AggregationService;
-        }
-        if (containingNamespace.Contains(".Models", StringComparison.Ordinal))
-        {
-            return StandardElementType.Model;
-        }
-        if (containingNamespace.Contains(".Brokers", StringComparison.Ordinal))
-        {
-            return StandardElementType.Broker;
-        }
-        if (type.Name == "WebApplicationExtensions")
-        {
-            return StandardElementType.App;
-        }
-        if (ImplementsExternalInterface(type))
-        {
-            return StandardElementType.Dependency;
-        }
-        if (IsDataOnlyType(type))
-        {
-            return StandardElementType.Model;
-        }
-        return StandardElementType.Unknown;
-    }
-
-    private static bool IsDataOnlyType(INamedTypeSymbol type)
-    {
-        bool hasProperties = type
-            .GetMembers()
-            .OfType<IPropertySymbol>()
-            .Any();
-
-        bool hasMethods = type
-            .GetMembers()
-            .OfType<IMethodSymbol>()
-            .Any(
-                (IMethodSymbol method) =>
-                    method.MethodKind == MethodKind.Ordinary
-                    && !method.IsOverride);
-
-        return type.TypeKind == TypeKind.Class
-            && hasProperties
-            && !hasMethods;
-    }
-
-    private static bool InheritsFromExternalType(INamedTypeSymbol type)
-    {
-        INamedTypeSymbol? baseType = type.BaseType;
-        return baseType != null
-            && baseType.SpecialType != SpecialType.System_Object
-            && !baseType.Locations.Any((Location location) => location.IsInSource);
-    }
-
-    private static bool ImplementsExternalInterface(INamedTypeSymbol type) =>
-        type.Interfaces.Any(
-            (INamedTypeSymbol contract) =>
-                !contract.Locations.Any((Location location) => location.IsInSource));
-
-    private static string GetTypeName(ITypeSymbol type)
-    {
-        return type.ToDisplayString(FullyQualifiedTypeFormat);
     }
 
     private static IEnumerable<MetadataReference> GetMetadataReferences(string projectFilePath)
     {
         string trustedAssemblies =
-            (AppContext.GetData("TRUSTED_PLATFORM_ASSEMBLIES") as string)
-            ?? throw new InvalidOperationException("Platform assemblies could not be resolved.");
-        IEnumerable<string> platformAssemblies = trustedAssemblies.Split(Path.PathSeparator).AsEnumerable();
-        IEnumerable<string> buildAssemblies = GetBuildAssemblies(projectFilePath);
-        return from path in platformAssemblies
-                .Concat(buildAssemblies)
-                .Distinct<string>(StringComparer.OrdinalIgnoreCase)
-            select MetadataReference.CreateFromFile(path);
+            AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES") as string
+            ?? throw new InvalidOperationException(message: "Platform assemblies could not be resolved.");
+
+        IEnumerable<string> platformAssemblies = trustedAssemblies.Split(separator: Path.PathSeparator);
+        IEnumerable<string> buildAssemblies = GetBuildAssemblies(projectFilePath: projectFilePath);
+
+        return platformAssemblies
+            .Concat(second: buildAssemblies)
+            .Distinct(comparer: StringComparer.OrdinalIgnoreCase)
+            .Select(selector: (string assemblyPath) => MetadataReference.CreateFromFile(path: assemblyPath));
     }
 
     private static string[] GetBuildAssemblies(string projectFilePath)
     {
         string projectDirectory =
-            Path.GetDirectoryName(projectFilePath)
-            ?? throw new InvalidOperationException("The project path has no containing directory.");
-        string projectName = Path.GetFileNameWithoutExtension(projectFilePath);
-        string buildDirectory = Path.Combine(projectDirectory, "bin");
-        if (!Directory.Exists(buildDirectory))
+            Path.GetDirectoryName(path: projectFilePath)
+            ?? throw new InvalidOperationException(message: "The project path has no containing directory.");
+
+        string projectName = Path.GetFileNameWithoutExtension(path: projectFilePath);
+        string buildDirectory = Path.Combine(path1: projectDirectory, path2: "bin");
+
+        if (!Directory.Exists(path: buildDirectory))
         {
-            return Array.Empty<string>();
+            return [];
         }
+
         string? projectAssembly = Directory
-            .GetFiles(buildDirectory, projectName + ".dll", SearchOption.AllDirectories)
-            .OrderByDescending(File.GetLastWriteTimeUtc)
+            .GetFiles(
+                path: buildDirectory,
+                searchPattern: projectName + ".dll",
+                searchOption: SearchOption.AllDirectories
+            )
+            .OrderByDescending(keySelector: File.GetLastWriteTimeUtc)
             .FirstOrDefault();
-        return projectAssembly == null
-            ? Array.Empty<string>()
-            : Directory.GetFiles(Path.GetDirectoryName(projectAssembly)!, "*.dll", SearchOption.TopDirectoryOnly);
+
+        return projectAssembly is null
+            ? []
+            : Directory.GetFiles(
+                path: Path.GetDirectoryName(path: projectAssembly)!,
+                searchPattern: "*.dll",
+                searchOption: SearchOption.TopDirectoryOnly
+            );
     }
 
-    private static SyntaxTree CreateImplicitUsingsSyntaxTree()
-    {
-        return CSharpSyntaxTree.ParseText(
-            "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;"
+    private static SyntaxTree CreateImplicitUsingsSyntaxTree() =>
+
+        CSharpSyntaxTree.ParseText(
+            text: "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;"
         );
-    }
 
     private static bool IsBuildOutput(string path, string projectDirectory)
     {
-        string projectDirectoryPrefix = Path
-            .GetFullPath(projectDirectory)
-            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) + Path.DirectorySeparatorChar;
-        string fullPath = Path.GetFullPath(path);
-        string relativePath = fullPath.StartsWith(projectDirectoryPrefix, StringComparison.OrdinalIgnoreCase)
-            ? fullPath.Substring(projectDirectoryPrefix.Length)
-            : fullPath;
-        return relativePath.StartsWith($"bin{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase)
-            || relativePath.StartsWith($"obj{Path.DirectorySeparatorChar}", StringComparison.OrdinalIgnoreCase);
-    }
+        string projectDirectoryPrefix =
+            Path.GetFullPath(path: projectDirectory)
+            .TrimEnd(trimChars: [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar])
+            + Path.DirectorySeparatorChar;
 
+        string fullPath = Path.GetFullPath(path: path);
+
+        string relativePath = fullPath.StartsWith(
+            value: projectDirectoryPrefix,
+            comparisonType: StringComparison.OrdinalIgnoreCase
+        )
+            ? fullPath.Substring(startIndex: projectDirectoryPrefix.Length)
+            : fullPath;
+
+        return relativePath.StartsWith(
+                value: $"bin{Path.DirectorySeparatorChar}",
+                comparisonType: StringComparison.OrdinalIgnoreCase
+            )
+            || relativePath.StartsWith(
+                value: $"obj{Path.DirectorySeparatorChar}",
+                comparisonType: StringComparison.OrdinalIgnoreCase
+            );
+    }
 }

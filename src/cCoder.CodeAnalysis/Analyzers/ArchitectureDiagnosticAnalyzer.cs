@@ -1,7 +1,6 @@
 // ---------------------------------------------------------------
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
-
 using System.Collections.Immutable;
 using cCoder.CodeAnalysis.Models;
 using Microsoft.CodeAnalysis;
@@ -14,7 +13,7 @@ namespace cCoder.CodeAnalysis.Analyzers;
 [DiagnosticAnalyzer("C#", new string[] { })]
 public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
 {
-    private static readonly string[] RuleCodes = new string[84]
+    private static readonly string[] RuleCodes = new string[85]
     {
         "STX0001",
         "STX0002",
@@ -83,6 +82,7 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STXFORMAT010",
         "STXFORMAT011",
         "STXFORMAT012",
+        "STXFORMAT013",
         "STXMG001",
         "STXMG002",
         "STXM001",
@@ -101,36 +101,35 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         "STXTEST005",
         "STXTEST006",
     };
-
     private static readonly ImmutableDictionary<string, DiagnosticDescriptor> Descriptors =
         RuleCodes.ToImmutableDictionary<string, string, DiagnosticDescriptor>(
-            (string code) => code,
-            (string code) =>
+            keySelector: (string code) => code,
+            elementSelector: (string code) =>
                 new DiagnosticDescriptor(
-                    code,
-                    "cCoder architecture rule",
-                    "{0}",
-                    "cCoder.CodeAnalysis",
-                    DiagnosticSeverity.Warning,
-                    true,
-                    null,
-                    $"https://ccoder.co.uk/Documentation/CodeAnalysis/{GetRulePrefix(code)}/{code}"
+                    id: code,
+                    title: "cCoder architecture rule",
+                    messageFormat: "{0}",
+                    category: "cCoder.CodeAnalysis",
+                    defaultSeverity: DiagnosticSeverity.Warning,
+                    isEnabledByDefault: true,
+                    description: null,
+                    helpLinkUri: $"https://ccoder.co.uk/Documentation/CodeAnalysis/{GetRulePrefix(code: code)}/{code}"
                 ),
-            StringComparer.Ordinal
+            keyComparer: StringComparer.Ordinal
         );
-
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => Descriptors.Values.ToImmutableArray();
 
     private static string GetRulePrefix(string code)
     {
-        return new string(code.TakeWhile(char.IsLetter).ToArray());
+        return new string(value: code.TakeWhile(predicate: char.IsLetter)
+            .ToArray());
     }
 
     public override void Initialize(AnalysisContext context)
     {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
+        context.ConfigureGeneratedCodeAnalysis(analysisMode: GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-        context.RegisterCompilationAction(AnalyzeCompilation);
+        context.RegisterCompilationAction(action: AnalyzeCompilation);
     }
 
     private static void AnalyzeCompilation(CompilationAnalysisContext context)
@@ -139,31 +138,45 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         {
             return;
         }
-        Architecture architecture = ArchitectureAnalysis.Generate(compilation);
+
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+
         foreach (AnalysisItem analysisItem in architecture.AnalysisItems)
         {
-            if (Descriptors.TryGetValue(analysisItem.Code, out DiagnosticDescriptor? descriptor))
+            if (Descriptors.TryGetValue(key: analysisItem.Code, value: out DiagnosticDescriptor? descriptor))
             {
-                Location location = FindLocation(compilation, analysisItem);
-                context.ReportDiagnostic(Diagnostic.Create(descriptor, location, analysisItem.Description));
+                Location location = FindLocation(compilation: compilation, analysisItem: analysisItem);
+
+                context.ReportDiagnostic(
+                    diagnostic: Diagnostic.Create(descriptor: descriptor, location: location, analysisItem.Description)
+                );
             }
         }
     }
 
     private static Location FindLocation(CSharpCompilation compilation, AnalysisItem analysisItem)
     {
-        INamedTypeSymbol? type = compilation.GetTypeByMetadataName(analysisItem.Type);
+        INamedTypeSymbol? type = compilation.GetTypeByMetadataName(fullyQualifiedMetadataName: analysisItem.Type);
+
         SyntaxTree? syntaxTree =
-            type?.DeclaringSyntaxReferences.Select((SyntaxReference reference) => reference.SyntaxTree)
-                .FirstOrDefault((SyntaxTree candidate) => candidate.GetText().Lines.Count >= analysisItem.LineNumber)
+            type?.DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.SyntaxTree)
+            .FirstOrDefault(
+                    predicate: (SyntaxTree candidate) => candidate.GetText().Lines.Count >= analysisItem.LineNumber
+                )
             ?? type?.DeclaringSyntaxReferences.FirstOrDefault()?.SyntaxTree;
+
         if (syntaxTree == null || analysisItem.LineNumber <= 0)
         {
             return Location.None;
         }
+
         SourceText sourceText = syntaxTree.GetText();
-        int lineIndex = Math.Min(analysisItem.LineNumber - 1, sourceText.Lines.Count - 1);
-        TextLine line = sourceText.Lines[lineIndex];
-        return Location.Create(syntaxTree, new TextSpan(line.Start, line.Span.Length));
+        int lineIndex = Math.Min(val1: analysisItem.LineNumber - 1, val2: sourceText.Lines.Count - 1);
+        TextLine line = sourceText.Lines[index: lineIndex];
+
+        return Location.Create(
+            syntaxTree: syntaxTree,
+            textSpan: new TextSpan(start: line.Start, length: line.Span.Length)
+        );
     }
 }
