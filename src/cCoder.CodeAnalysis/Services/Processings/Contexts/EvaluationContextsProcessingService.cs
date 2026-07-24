@@ -82,9 +82,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .GetLineSpan().StartLinePosition.Line + 1,
             IsPublic = type.DeclaredAccessibility == Accessibility.Public,
             IsConsoleApplication = compilation.Options.OutputKind == OutputKind.ConsoleApplication,
-            IsApiController = type
-                .ContainingNamespace.ToDisplayString()
-            .Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal),
+            IsApiController = IsApiController(type: type),
             HasBaseClass = type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object,
             HasExternalBaseType = InheritsFromExternalType(type: type),
             ImplementsExternalInterface = ImplementsExternalInterface(type: type),
@@ -374,6 +372,42 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         }
 
         return StandardElementType.Unknown;
+    }
+
+    private static bool IsApiController(INamedTypeSymbol type)
+    {
+        string containingNamespace = type.ContainingNamespace.ToDisplayString();
+
+        if (containingNamespace.Contains(
+            value: ".Controllers.Api",
+            comparisonType: StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        for (INamedTypeSymbol? baseType = type.BaseType;
+            baseType is not null;
+            baseType = baseType.BaseType)
+        {
+            string baseTypeName = baseType.ToDisplayString();
+
+            if (baseTypeName == "Microsoft.AspNetCore.Mvc.Controller")
+            {
+                return false;
+            }
+
+            if (baseTypeName == "Microsoft.AspNetCore.Mvc.ControllerBase")
+            {
+                return true;
+            }
+        }
+
+        return type.GetAttributes()
+            .Any(predicate: attribute =>
+                attribute.AttributeClass?.Name == "ApiControllerAttribute")
+            || containingNamespace.Contains(
+                value: ".Controllers",
+                comparisonType: StringComparison.Ordinal);
     }
 
     private static bool IsDataOnlyType(INamedTypeSymbol type) =>
