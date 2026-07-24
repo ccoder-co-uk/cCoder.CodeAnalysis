@@ -385,13 +385,6 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return true;
         }
 
-        if (type.GetAttributes()
-            .Any(predicate: attribute =>
-                attribute.AttributeClass?.Name == "ApiControllerAttribute"))
-        {
-            return true;
-        }
-
         for (INamedTypeSymbol? baseType = type.BaseType;
             baseType is not null;
             baseType = baseType.BaseType)
@@ -409,7 +402,12 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             }
         }
 
-        return false;
+        return type.GetAttributes()
+            .Any(predicate: attribute =>
+                attribute.AttributeClass?.Name == "ApiControllerAttribute")
+            || containingNamespace.Contains(
+                value: ".Controllers",
+                comparisonType: StringComparison.Ordinal);
     }
 
     private static bool IsDataOnlyType(INamedTypeSymbol type) =>

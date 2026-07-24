@@ -121,4 +121,31 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         context.IsApiController.Should()
             .BeTrue();
     }
+
+    [Fact]
+    public void ProcessShouldClassifyControllerNamespaceTypeAsApiController()
+    {
+        // Given
+        const string source =
+            """
+            namespace Example.Controllers
+            {
+                public sealed class StudentsController
+                {
+                }
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.IsApiController.Should()
+            .BeTrue();
+    }
 }
