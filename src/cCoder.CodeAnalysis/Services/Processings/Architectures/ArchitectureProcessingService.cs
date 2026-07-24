@@ -196,7 +196,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Test;
         }
 
-        if (type.Name is "Program" or "IServiceCollectionExtensions" or "IHostExtensions")
+        if (
+            type.Name
+                is "Program"
+                or "IServiceCollectionExtensions"
+                or "IHostExtensions"
+                or "WebApplicationExtensions"
+        )
         {
             return StandardElementType.App;
         }
@@ -258,11 +264,6 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         if (containingNamespace.Contains(value: ".Brokers", comparisonType: StringComparison.Ordinal))
         {
             return StandardElementType.Broker;
-        }
-
-        if (type.Name == "WebApplicationExtensions")
-        {
-            return StandardElementType.App;
         }
 
         if (ImplementsExternalInterface(type: type))
