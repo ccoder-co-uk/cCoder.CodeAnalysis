@@ -157,7 +157,12 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .Append(element: method.ReturnType)
             )
             .SelectMany(selector: GetContainedNamedTypes)
-            .Where(predicate: (INamedTypeSymbol modelType) => Classify(type: modelType) == StandardElementType.Model)
+            .Where(
+                predicate: (INamedTypeSymbol modelType) =>
+                    modelType.TypeKind != TypeKind.Error
+                    && modelType.ContainingAssembly is not null
+                    && Classify(type: modelType) == StandardElementType.Model
+            )
             .Select(selector: (INamedTypeSymbol modelType) => GetTypeName(type: modelType)
             .TrimEnd(trimChars: ['?']))
             .Distinct(comparer: StringComparer.Ordinal)
@@ -273,7 +278,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
     {
         if (type.TypeKind == TypeKind.Error || type.ContainingAssembly is null)
         {
-            return StandardElementType.Dependency;
+            return StandardElementType.Unknown;
         }
 
         string containingNamespace = type.ContainingNamespace.ToDisplayString();
