@@ -19,7 +19,7 @@ public sealed class ArchitectureServiceTests
         const string source = """
             namespace Sample.Exposures;
 
-            public sealed class SampleController
+            public sealed class SampleController(MissingDependency missingDependency)
             {
                 public MissingModel GetMissingModel() => default;
             }

@@ -237,7 +237,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
     private static TypeDependency CreateReferencedTypeDependency(ITypeSymbol dependency)
     {
-        StandardElementType elementType = dependency is INamedTypeSymbol namedType
+        StandardElementType elementType =
+            dependency is INamedTypeSymbol namedType
+            && namedType.ContainingAssembly is not null
             ? Classify(type: namedType)
             : StandardElementType.Unknown;
 
