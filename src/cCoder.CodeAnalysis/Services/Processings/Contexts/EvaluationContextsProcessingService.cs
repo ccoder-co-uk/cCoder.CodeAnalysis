@@ -81,6 +81,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             LineNumber = declaration is null ? 0 : declaration.GetLocation()
             .GetLineSpan().StartLinePosition.Line + 1,
             IsPublic = type.DeclaredAccessibility == Accessibility.Public,
+            IsConsoleApplication = compilation.Options.OutputKind == OutputKind.ConsoleApplication,
             IsApiController = type
                 .ContainingNamespace.ToDisplayString()
             .Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal),
@@ -134,6 +135,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 .ToArray(),
             PublicMethodCallLineNumbers = GetPublicMethodCallLineNumbers(type: type, compilation: compilation),
             PublicApiModelTypes = GetPublicApiModelTypes(type: type),
+            ProjectTypeNames = declaredTypes.Select(selector: GetTypeName).ToArray(),
         };
     }
 
@@ -276,7 +278,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Test;
         }
 
-        if (type.Name is "Program" or "IServiceCollectionExtensions")
+        if (type.Name is "Program" or "IServiceCollectionExtensions" or "IHostExtensions")
         {
             return StandardElementType.App;
         }

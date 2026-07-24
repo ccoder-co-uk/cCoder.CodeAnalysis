@@ -196,7 +196,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Test;
         }
 
-        if (type.Name is "Program" or "IServiceCollectionExtensions")
+        if (type.Name is "Program" or "IServiceCollectionExtensions" or "IHostExtensions")
         {
             return StandardElementType.App;
         }

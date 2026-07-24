@@ -19,11 +19,29 @@ public static class IServiceCollectionExtensions
 {
     public static IServiceCollection AddCodeAnalysis(this IServiceCollection services)
     {
+        AddCodeAnalysisBrokers(services: services);
+        AddCodeAnalysisFoundations(services: services);
+        AddCodeAnalysisProcessings(services: services);
+        AddCodeAnalysisOrchestrations(services: services);
+        AddCodeAnalysisExposures(services: services);
+        return services;
+    }
+
+    private static void AddCodeAnalysisBrokers(IServiceCollection services)
+    {
         services.AddScoped<IFileBroker, FileBroker>();
-        services.AddScoped<IArchitectureService, ArchitectureService>();
-        services.AddScoped<IArchitectureProcessingService, ArchitectureProcessingService>();
-        services.AddScoped<IArchitectureOrchestrationService, ArchitectureOrchestrationService>();
         services.AddSingleton<IServiceProviderBroker, ServiceProviderBroker>();
+    }
+
+    private static void AddCodeAnalysisFoundations(IServiceCollection services)
+    {
+        services.AddScoped<IArchitectureService, ArchitectureService>();
+        services.AddSingleton<IRuleEvaluationService, RuleEvaluationService>();
+    }
+
+    private static void AddCodeAnalysisProcessings(IServiceCollection services)
+    {
+        services.AddScoped<IArchitectureProcessingService, ArchitectureProcessingService>();
         services.AddSingleton<IEvaluationContextsProcessingService, EvaluationContextsProcessingService>();
         services.AddSingleton<ISTXRulesProcessingService, STXRulesProcessingService>();
         services.AddSingleton<ISTXAPPRulesProcessingService, STXAPPRulesProcessingService>();
@@ -60,10 +78,17 @@ public static class IServiceCollectionExtensions
         AddRule<ISTXSTRUCTRulesProcessingService>(services: services, "STXSTRUCT");
         AddRule<ISTXTESTRulesProcessingService>(services: services, "STXTEST");
         AddRuleHandlingServices(services: services);
-        services.AddSingleton<IRuleEvaluationService, RuleEvaluationService>();
         services.AddSingleton<IRuleEvaluationsProcessingService, RuleEvaluationsProcessingService>();
+    }
+
+    private static void AddCodeAnalysisOrchestrations(IServiceCollection services)
+    {
+        services.AddScoped<IArchitectureOrchestrationService, ArchitectureOrchestrationService>();
+    }
+
+    private static void AddCodeAnalysisExposures(IServiceCollection services)
+    {
         services.AddScoped<IArchitectureBuilder, ArchitectureBuilder>();
-        return services;
     }
 
     private static void AddRule<TRule>(IServiceCollection services, params string[] prefixes)
