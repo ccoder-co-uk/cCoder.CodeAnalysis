@@ -172,6 +172,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return (INamedTypeSymbol)dependency;
         }
 
+        if (!dependency.Locations.Any(predicate: (Location location) => location.IsInSource))
+        {
+            return null;
+        }
+
         INamedTypeSymbol[] implementations = declaredTypes
             .Where(
                 predicate: (INamedTypeSymbol type) =>
