@@ -45,4 +45,80 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         dependency.StandardElementType.Should()
             .Be(expected: StandardElementType.Dependency);
     }
+
+    [Fact]
+    public void ProcessShouldNotClassifyMvcViewControllerAsApiController()
+    {
+        // Given
+        const string source =
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class Controller
+                {
+                }
+            }
+
+            namespace Example.Controllers
+            {
+                public sealed class HomeController
+                    : Microsoft.AspNetCore.Mvc.Controller
+                {
+                }
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single(predicate: context =>
+                context.TypeName.EndsWith(
+                    value: ".HomeController",
+                    comparisonType: StringComparison.Ordinal));
+
+        // Then
+        context.IsApiController.Should()
+            .BeFalse();
+    }
+
+    [Fact]
+    public void ProcessShouldClassifyApiNamespaceControllerAsApiController()
+    {
+        // Given
+        const string source =
+            """
+            namespace Microsoft.AspNetCore.Mvc
+            {
+                public class Controller
+                {
+                }
+            }
+
+            namespace Example.Controllers.Api
+            {
+                public sealed class StudentsController
+                    : Microsoft.AspNetCore.Mvc.Controller
+                {
+                }
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single(predicate: context =>
+                context.TypeName.EndsWith(
+                    value: ".StudentsController",
+                    comparisonType: StringComparison.Ordinal));
+
+        // Then
+        context.IsApiController.Should()
+            .BeTrue();
+    }
 }
