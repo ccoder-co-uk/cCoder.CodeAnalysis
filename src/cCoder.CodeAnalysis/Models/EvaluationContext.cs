@@ -13,6 +13,7 @@ public sealed class EvaluationContext
     public int LineNumber { get; set; }
     public bool IsPublic { get; set; }
     public bool IsApiController { get; set; }
+    public bool IsConsoleApplication { get; set; }
     public bool HasBaseClass { get; set; }
     public IReadOnlyList<TypeDeclarationSyntax> Declarations { get; set; }
     public IReadOnlyList<TypeDependency> Dependencies { get; set; }
@@ -22,6 +23,7 @@ public sealed class EvaluationContext
     public IReadOnlyList<string> ContractMethodNames { get; set; }
     public IReadOnlyList<int> PublicMethodCallLineNumbers { get; set; }
     public IReadOnlyList<string> PublicApiModelTypes { get; set; }
+    public IReadOnlyCollection<string> ProjectTypeNames { get; set; }
     public string FilePath { get; set; }
     public IReadOnlyList<string> UsingNamespaces { get; set; }
     public string ProjectName { get; set; }

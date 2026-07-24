@@ -34,6 +34,26 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         {
             yield return item;
         }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP006(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP007(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP008(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP009(context: context))
+        {
+            yield return item;
+        }
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -74,7 +94,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     code: "STXAPP001",
-                    description: "Program.cs, IServiceCollectionExtensions.cs, and WebApplicationExtensions.cs must live at the project root.",
+                    description: "Program.cs, IServiceCollectionExtensions.cs, IHostExtensions.cs, and WebApplicationExtensions.cs must live at the project root.",
                     context: context
                 ),
             ];
@@ -223,6 +243,262 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                 ),
             ];
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP006(EvaluationContext context)
+    {
+        if (
+            GetTypeName(context: context) != "Program"
+            || !context.IsConsoleApplication
+            || !IsCommandApplication(context: context)
+        )
+        {
+            return [];
+        }
+
+        bool hasHostExtensions = context.ProjectTypeNames.Any(
+            predicate: (string typeName) =>
+                typeName.EndsWith(value: ".IHostExtensions", comparisonType: StringComparison.Ordinal)
+        );
+
+        return hasHostExtensions
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXAPP006",
+                    description: "Console command applications must declare a root IHostExtensions composition class.",
+                    context: context
+                ),
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP007(EvaluationContext context)
+    {
+        if (GetTypeName(context: context) != "IHostExtensions")
+        {
+            return [];
+        }
+
+        bool routesCommandsThroughProvider = GetMethods(context: context)
+            .Any(predicate: RoutesCommandThroughProvider);
+
+        return routesCommandsThroughProvider
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXAPP007",
+                    description: "IHostExtensions must route requested command details to a handling service resolved from the service provider.",
+                    context: context
+                ),
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP008(EvaluationContext context)
+    {
+        if (GetTypeName(context: context) != "IServiceCollectionExtensions")
+        {
+            return [];
+        }
+
+        InvocationExpressionSyntax? chainedRegistration = GetMethods(context: context)
+            .SelectMany(selector: (MethodDeclarationSyntax method) => method.DescendantNodes())
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(predicate: IsChainedServiceCollectionRegistration);
+
+        return chainedRegistration is null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXAPP008",
+                    description: "IServiceCollection registrations must be declared as individual statements rather than fluent chains.",
+                    context: context,
+                    location: chainedRegistration.GetLocation()
+                ),
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP009(EvaluationContext context)
+    {
+        if (GetTypeName(context: context) != "IServiceCollectionExtensions")
+        {
+            return [];
+        }
+
+        MethodDeclarationSyntax[] methods = GetMethods(context: context).ToArray();
+
+        MethodDeclarationSyntax[] domainRegistrationMethods = methods
+            .Where(predicate: IsDomainRegistrationMethod)
+            .Where(
+                predicate: (MethodDeclarationSyntax method) =>
+                    method.DescendantNodes()
+                        .OfType<InvocationExpressionSyntax>()
+                        .Any()
+            )
+            .ToArray();
+
+        MethodDeclarationSyntax? invalidMethod = domainRegistrationMethods.FirstOrDefault(
+            predicate: (MethodDeclarationSyntax method) =>
+                !DelegatesRegistrationByLayer(method: method, methods: methods)
+        );
+
+        return invalidMethod is null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXAPP009",
+                    description: "Add{Domain} must delegate service registration to Add{Domain}{Layer} initializers.",
+                    context: context,
+                    location: invalidMethod.GetLocation()
+                ),
+            ];
+    }
+
+    private static bool IsCommandApplication(EvaluationContext context) =>
+
+        context.SourceCode.Contains(value: "RootCommand", comparisonType: StringComparison.Ordinal)
+        || context.SourceCode.Contains(value: "System.CommandLine", comparisonType: StringComparison.Ordinal)
+        || context.SourceCode.Contains(value: ".InvokeAsync(args", comparisonType: StringComparison.Ordinal)
+        || context.SourceCode.Contains(value: ".RunAsync(args", comparisonType: StringComparison.Ordinal);
+
+    private static bool RoutesCommandThroughProvider(MethodDeclarationSyntax method)
+    {
+        ParameterSyntax? commandParameter = method.ParameterList.Parameters.FirstOrDefault(
+            predicate: (ParameterSyntax parameter) =>
+                parameter.Type?.ToString() is "string" or "string[]" or "IReadOnlyList<string>"
+        );
+
+        if (commandParameter is null)
+        {
+            return false;
+        }
+
+        InvocationExpressionSyntax[] invocations = method
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .ToArray();
+
+        bool resolvesHandlingService = invocations.Any(
+            predicate: (InvocationExpressionSyntax invocation) =>
+                invocation.Expression.ToString()
+                    .Contains(value: "GetRequiredService", comparisonType: StringComparison.Ordinal)
+                || invocation.Expression.ToString()
+                    .Contains(value: "GetService", comparisonType: StringComparison.Ordinal)
+        );
+
+        bool passesCommandDetails = invocations.Any(
+            predicate: (InvocationExpressionSyntax invocation) =>
+                invocation.ArgumentList.Arguments.Any(
+                    predicate: (ArgumentSyntax argument) =>
+                        argument.Expression.ToString() == commandParameter.Identifier.Text
+                )
+        );
+
+        return resolvesHandlingService && passesCommandDetails;
+    }
+
+    private static bool IsChainedServiceCollectionRegistration(InvocationExpressionSyntax invocation)
+    {
+        if (
+            invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || memberAccess.Expression is not InvocationExpressionSyntax previousInvocation
+        )
+        {
+            return false;
+        }
+
+        return GetInvocationRoot(previousInvocation: previousInvocation) is IdentifierNameSyntax identifier
+            && identifier.Identifier.Text == "services"
+            && memberAccess.Name.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal);
+    }
+
+    private static ExpressionSyntax GetInvocationRoot(InvocationExpressionSyntax previousInvocation)
+    {
+        ExpressionSyntax expression = previousInvocation.Expression;
+
+        while (expression is MemberAccessExpressionSyntax memberAccess)
+        {
+            expression = memberAccess.Expression is InvocationExpressionSyntax nestedInvocation
+                ? nestedInvocation.Expression
+                : memberAccess.Expression;
+        }
+
+        return expression;
+    }
+
+    private static bool IsDomainRegistrationMethod(MethodDeclarationSyntax method) =>
+
+        method.Modifiers.Any(
+            predicate: (Microsoft.CodeAnalysis.SyntaxToken modifier) =>
+                modifier.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword
+        )
+        && method.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal)
+        && !method.Identifier.Text.EndsWith(value: "HostedServices", comparisonType: StringComparison.Ordinal)
+        && method.ParameterList.Parameters.Any(
+            predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
+        );
+
+    private static bool DelegatesRegistrationByLayer(
+        MethodDeclarationSyntax method,
+        IReadOnlyCollection<MethodDeclarationSyntax> methods
+    )
+    {
+        string[] layerNames =
+        [
+            "Dependencies",
+            "Brokers",
+            "Foundations",
+            "Processings",
+            "Orchestrations",
+            "Coordinations",
+            "Managements",
+            "Aggregations",
+            "Exposures",
+        ];
+
+        string[] layerInitializers = methods
+            .Select(selector: (MethodDeclarationSyntax candidate) => candidate.Identifier.Text)
+            .Where(
+                predicate: (string methodName) =>
+                    methodName.StartsWith(value: method.Identifier.Text, comparisonType: StringComparison.Ordinal)
+                    && layerNames.Any(
+                        predicate: (string layerName) =>
+                            methodName.EndsWith(value: layerName, comparisonType: StringComparison.Ordinal)
+                    )
+            )
+            .ToArray();
+
+        if (layerInitializers.Length == 0)
+        {
+            return false;
+        }
+
+        HashSet<string> invokedMethods = new HashSet<string>(
+            collection: method
+                .DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Select(selector: (InvocationExpressionSyntax invocation) => invocation.Expression)
+                .Select(
+                    selector: (ExpressionSyntax expression) =>
+                        expression switch
+                        {
+                            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+                            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+                            _ => string.Empty,
+                        }
+                ),
+            comparer: StringComparer.Ordinal
+        );
+
+        return layerInitializers.All(predicate: invokedMethods.Contains);
+    }
+
+    private static string GetTypeName(EvaluationContext context) =>
+
+        context.TypeName.Split(separator: ['.'])
+            .Last();
 
     private static IEnumerable<MethodDeclarationSyntax> GetMethods(EvaluationContext context) =>
 
