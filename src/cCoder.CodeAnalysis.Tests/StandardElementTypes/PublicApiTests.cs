@@ -17,16 +17,16 @@ public sealed class PublicApiTests
     public void SampleShouldOnlyExposeModelsExposuresAndRegistration()
     {
         Assembly sampleAssembly = typeof(Student).Assembly;
-        Type[] unexpectedTypes = (
-            from type in sampleAssembly.GetExportedTypes()
-            where
+        Type[] unexpectedTypes = sampleAssembly.GetExportedTypes()
+            .Where(
+                (Type type) =>
                 !type.Namespace!.Contains(".Models", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".Exposures", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".Controllers", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".RuleViolations", StringComparison.Ordinal)
                 && type.Name != "IServiceCollectionExtensions"
-            select type
-        ).ToArray();
+            )
+            .ToArray();
         ((IEnumerable<Type>)unexpectedTypes).Should().BeEmpty("");
         ((IEnumerable<Type>)sampleAssembly.GetExportedTypes())
             .Should()
@@ -47,15 +47,15 @@ public sealed class PublicApiTests
     public void CodeAnalysisShouldOnlyExposeModelsExposuresAndRegistration()
     {
         Assembly codeAnalysisAssembly = typeof(ArchitectureBuilder).Assembly;
-        Type[] unexpectedTypes = (
-            from type in codeAnalysisAssembly.GetExportedTypes()
-            where
+        Type[] unexpectedTypes = codeAnalysisAssembly.GetExportedTypes()
+            .Where(
+                (Type type) =>
                 !type.Namespace!.Contains(".Models", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".Exposures", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".Analyzers", StringComparison.Ordinal)
                 && type.Name != "IServiceCollectionExtensions"
-            select type
-        ).ToArray();
+            )
+            .ToArray();
         ((IEnumerable<Type>)unexpectedTypes).Should().BeEmpty("");
         ((IEnumerable<Type>)codeAnalysisAssembly.GetExportedTypes())
             .Should()
@@ -81,21 +81,27 @@ public sealed class PublicApiTests
         services.AddCodeAnalysis();
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        provider.GetServices<IRuleProcessingService>().Should().HaveCount(11, "");
+        provider.GetServices<IRuleProcessingService>().Should().HaveCount(17, "");
     }
 
     [Theory]
-    [InlineData("STXA", typeof(IAggregationServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXB", typeof(IBrokerCodeAnalysisRulesProcessingService))]
-    [InlineData("STXC", typeof(ICoordinationServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXD", typeof(IDependencyCodeAnalysisRulesProcessingService))]
-    [InlineData("STXE", typeof(IExposureCodeAnalysisRulesProcessingService))]
-    [InlineData("STXF", typeof(IFoundationServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXM", typeof(IModelCodeAnalysisRulesProcessingService))]
-    [InlineData("STXMG", typeof(IManagementServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXO", typeof(IOrchestrationServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXP", typeof(IProcessingServiceCodeAnalysisRulesProcessingService))]
-    [InlineData("STXTEST", typeof(ITestCodeAnalysisRulesProcessingService))]
+    [InlineData("STX", typeof(ISTXRulesProcessingService))]
+    [InlineData("STXAPP", typeof(ISTXAPPRulesProcessingService))]
+    [InlineData("STXAPI", typeof(ISTXAPIRulesProcessingService))]
+    [InlineData("STXA", typeof(ISTXARulesProcessingService))]
+    [InlineData("STXB", typeof(ISTXBRulesProcessingService))]
+    [InlineData("STXC", typeof(ISTXCRulesProcessingService))]
+    [InlineData("STXD", typeof(ISTXDRulesProcessingService))]
+    [InlineData("STXE", typeof(ISTXERulesProcessingService))]
+    [InlineData("STXEX", typeof(ISTXEXRulesProcessingService))]
+    [InlineData("STXF", typeof(ISTXFRulesProcessingService))]
+    [InlineData("STXFORMAT", typeof(ISTXFORMATRulesProcessingService))]
+    [InlineData("STXM", typeof(ISTXMRulesProcessingService))]
+    [InlineData("STXMG", typeof(ISTXMGRulesProcessingService))]
+    [InlineData("STXO", typeof(ISTXORulesProcessingService))]
+    [InlineData("STXP", typeof(ISTXPRulesProcessingService))]
+    [InlineData("STXSTRUCT", typeof(ISTXSTRUCTRulesProcessingService))]
+    [InlineData("STXTEST", typeof(ISTXTESTRulesProcessingService))]
     public void AddCodeAnalysisShouldRegisterRulesByPrefix(string prefix, Type expectedServiceType)
     {
         ServiceCollection services = new ServiceCollection();

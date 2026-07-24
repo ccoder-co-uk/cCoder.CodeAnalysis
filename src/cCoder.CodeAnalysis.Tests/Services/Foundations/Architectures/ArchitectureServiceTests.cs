@@ -2,12 +2,11 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Analyzers;
 using cCoder.CodeAnalysis.Models;
-using cCoder.CodeAnalysis.Services.Foundations.Architectures;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Foundations.Architectures;
 
@@ -48,19 +47,64 @@ public sealed class ArchitectureServiceTests
             assemblyName: "Sample",
             syntaxTrees: [syntaxTree],
             references: [runtimeReference]);
-        ServiceCollection services = new ServiceCollection();
-        services.AddCodeAnalysis();
-        using ServiceProvider serviceProvider = services.BuildServiceProvider();
-        ArchitectureService architectureService =
-            (ArchitectureService)serviceProvider.GetRequiredService<IArchitectureService>();
 
         // When
-        Architecture architecture = architectureService.Build(
+        Architecture architecture = ArchitectureAnalysis.Generate(
             compilation: compilation);
 
         // Then
         architecture.Links
             .Should()
             .BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("\n", "\n", false)]
+    [InlineData("\r", "\r", false)]
+    [InlineData("\r\n", "\r\n", false)]
+    [InlineData("\n", "\r\n", true)]
+    [InlineData("\r\n", "\n", true)]
+    public void BuildShouldEvaluateLineEndings(
+        string firstLineEnding,
+        string secondLineEnding,
+        bool shouldReportViolation)
+    {
+        // Given
+        string firstSource = string.Join(
+            firstLineEnding,
+            "namespace Sample.Services.Processings;",
+            string.Empty,
+            "internal sealed class StudentProcessingService",
+            "{",
+            "}");
+        string secondSource = string.Join(
+            secondLineEnding,
+            "namespace Sample.Services.Processings;",
+            string.Empty,
+            "internal sealed class CourseProcessingService",
+            "{",
+            "}");
+        SyntaxTree firstSyntaxTree = CSharpSyntaxTree.ParseText(
+            text: firstSource,
+            path: "Services/Processings/StudentProcessingService.cs");
+        SyntaxTree secondSyntaxTree = CSharpSyntaxTree.ParseText(
+            text: secondSource,
+            path: "Services/Processings/CourseProcessingService.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [firstSyntaxTree, secondSyntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(
+            compilation: compilation);
+
+        // Then
+        architecture.AnalysisItems
+            .Any((AnalysisItem item) => item.Code == "STXFORMAT013")
+            .Should()
+            .Be(shouldReportViolation);
     }
 }

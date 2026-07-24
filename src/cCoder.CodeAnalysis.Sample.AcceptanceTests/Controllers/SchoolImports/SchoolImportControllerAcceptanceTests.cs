@@ -132,11 +132,13 @@ public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
             IDbContextFactory<SchoolContext>
         >();
         await using SchoolContext context = await contextFactory.CreateDbContextAsync();
-        importedSchoolId = await (
-            from storedSchool in context.Schools
-            where storedSchool.Name == school.Name
-            select storedSchool.Id
-        ).SingleOrDefaultAsync();
+        importedSchoolId = await context.Schools
+            .Where(
+                (School storedSchool) =>
+                    storedSchool.Name == school.Name
+            )
+            .Select((School storedSchool) => storedSchool.Id)
+            .SingleOrDefaultAsync();
         EnumAssertionsExtensions.Should(response.StatusCode).Be(HttpStatusCode.InternalServerError, "");
     }
 

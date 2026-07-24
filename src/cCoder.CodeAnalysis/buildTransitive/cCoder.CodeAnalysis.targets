@@ -1,31 +1,25 @@
 <Project>
   <PropertyGroup>
-    <cCoderCodeAnalysisBuildTaskDirectory
-      Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
-    >$([System.IO.Path]::GetTempPath())cCoder.CodeAnalysis.BuildTasks\$([System.Guid]::NewGuid())\</cCoderCodeAnalysisBuildTaskDirectory>
-    <cCoderCodeAnalysisBuildTaskAssembly
-      Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
-    >$(cCoderCodeAnalysisBuildTaskDirectory)cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
-    <cCoderCodeAnalysisBuildTaskAssembly
-      Condition="'$(cCoderCodeAnalysisBuildTaskAssembly)' == ''"
-    >$(MSBuildThisFileDirectory)..\tools\net10.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
+    <cCoderCodeAnalysisBuildTaskDirectory Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
+      >$([System.IO.Path]::GetTempPath())cCoder.CodeAnalysis.BuildTasks\$([System.Guid]::NewGuid())\</cCoderCodeAnalysisBuildTaskDirectory>
+    <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
+      >$(cCoderCodeAnalysisBuildTaskDirectory)cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
+    <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskAssembly)' == ''"
+      >$(MSBuildThisFileDirectory)..\tools\net10.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
   </PropertyGroup>
   <UsingTask
     TaskName="cCoder.CodeAnalysis.BuildTasks.GenerateArchitectureTask"
     AssemblyFile="$(cCoderCodeAnalysisBuildTaskAssembly)"
   />
   <PropertyGroup>
-    <cCoderCodeAnalysisGenerateArchitecture Condition="'$(cCoderCodeAnalysisGenerateArchitecture)' == ''">true</cCoderCodeAnalysisGenerateArchitecture>
-    <cCoderCodeAnalysisArchitecturePath Condition="'$(cCoderCodeAnalysisArchitecturePath)' == ''">$(MSBuildProjectDirectory)\project.stxjson</cCoderCodeAnalysisArchitecturePath>
+    <cCoderCodeAnalysisGenerateArchitecture Condition="'$(cCoderCodeAnalysisGenerateArchitecture)' == ''"
+      >true</cCoderCodeAnalysisGenerateArchitecture>
+    <cCoderCodeAnalysisArchitecturePath Condition="'$(cCoderCodeAnalysisArchitecturePath)' == ''"
+      >$(MSBuildProjectDirectory)\project.stxjson</cCoderCodeAnalysisArchitecturePath>
   </PropertyGroup>
-  <Target
-    Name="cCoderPrepareArchitectureBuildTask"
-    Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
-  >
+  <Target Name="cCoderPrepareArchitectureBuildTask" Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''">
     <ItemGroup>
-      <cCoderCodeAnalysisBuildTaskFile
-        Include="$(cCoderCodeAnalysisBuildTaskSourceDirectory)*"
-      />
+      <cCoderCodeAnalysisBuildTaskFile Include="$(cCoderCodeAnalysisBuildTaskSourceDirectory)*" />
     </ItemGroup>
     <MakeDir Directories="$(cCoderCodeAnalysisBuildTaskDirectory)" />
     <Copy

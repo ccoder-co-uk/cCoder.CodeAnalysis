@@ -3,13 +3,13 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Brokers.Files;
-using cCoder.CodeAnalysis.Services.Foundations.Projects;
+using cCoder.CodeAnalysis.Services.Foundations.Architectures;
 using FluentAssertions;
 using Moq;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Foundations.Projects;
 
-public sealed class ProjectServiceTests
+public sealed class ArchitectureServiceProjectPathTests
 {
     private readonly Mock<IFileBroker> fileBrokerMock = new Mock<IFileBroker>();
 
@@ -18,7 +18,7 @@ public sealed class ProjectServiceTests
     {
         string projectFilePath = $"C:\\Projects\\{Guid.NewGuid()}.csproj";
         fileBrokerMock.Setup((IFileBroker broker) => broker.FileExists(projectFilePath)).Returns(value: true);
-        ProjectService service = new ProjectService(fileBrokerMock.Object);
+        ArchitectureService service = new ArchitectureService(fileBrokerMock.Object);
         string actualPath = service.ResolveProjectFilePath(projectFilePath);
         actualPath.Should().Be(projectFilePath, "");
         fileBrokerMock.Verify((IFileBroker broker) => broker.FileExists(projectFilePath), Times.Once);
@@ -33,7 +33,7 @@ public sealed class ProjectServiceTests
         fileBrokerMock.Setup((IFileBroker broker) => broker.FileExists(directoryPath)).Returns(value: false);
         fileBrokerMock.Setup((IFileBroker broker) => broker.DirectoryExists(directoryPath)).Returns(value: true);
         fileBrokerMock.Setup((IFileBroker broker) => broker.GetProjectFiles(directoryPath)).Returns([projectFilePath]);
-        ProjectService service = new ProjectService(fileBrokerMock.Object);
+        ArchitectureService service = new ArchitectureService(fileBrokerMock.Object);
         string actualPath = service.ResolveProjectFilePath(directoryPath);
         actualPath.Should().Be(projectFilePath, "");
         fileBrokerMock.Verify((IFileBroker broker) => broker.FileExists(directoryPath), Times.Once);
@@ -51,7 +51,7 @@ public sealed class ProjectServiceTests
         fileBrokerMock
             .Setup((IFileBroker broker) => broker.GetProjectFiles(directoryPath))
             .Returns([Path.Combine(directoryPath, "One.csproj"), Path.Combine(directoryPath, "Two.csproj")]);
-        ProjectService service = new ProjectService(fileBrokerMock.Object);
+        ArchitectureService service = new ArchitectureService(fileBrokerMock.Object);
         Action resolve = delegate
         {
             service.ResolveProjectFilePath(directoryPath);
