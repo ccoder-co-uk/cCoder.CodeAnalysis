@@ -86,6 +86,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 .ContainingNamespace.ToDisplayString()
             .Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal),
             HasBaseClass = type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object,
+            HasExternalBaseType = InheritsFromExternalType(type: type),
+            ImplementsExternalInterface = ImplementsExternalInterface(type: type),
+            DeclaresDependencyIntent = DeclaresDependencyIntent(type: type),
             Declarations = type
                 .DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
@@ -287,18 +290,16 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             containingNamespace.Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal)
             || containingNamespace.Contains(value: ".Exposures", comparisonType: StringComparison.Ordinal)
             || type.Name.EndsWith(value: "EventHub", comparisonType: StringComparison.Ordinal)
+            || type.Name is "EventProvider" or "BulkEventProvider"
+            || IsStaticExtensionContainer(type: type)
         )
         {
             return StandardElementType.Exposure;
         }
 
         if (
-            containingNamespace.Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
-            || containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
+            containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
             || InheritsFromExternalType(type: type)
-            || type.Name is "EventProvider" or "BulkEventProvider"
-            || type.IsStatic
-            || containingNamespace.Contains(value: ".Extensions", comparisonType: StringComparison.Ordinal)
         )
         {
             return StandardElementType.Dependency;
@@ -385,6 +386,21 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         type.Interfaces.Any(
             predicate: (INamedTypeSymbol contract) =>
                 !contract.Locations.Any(predicate: (Location location) => location.IsInSource)
+        );
+
+    private static bool DeclaresDependencyIntent(INamedTypeSymbol type) =>
+
+        type.ContainingNamespace.ToDisplayString()
+            .Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
+        || type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal);
+
+    private static bool IsStaticExtensionContainer(INamedTypeSymbol type) =>
+
+        type.IsStatic
+        && (
+            type.ContainingNamespace.ToDisplayString()
+                .Contains(value: ".Extensions", comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(value: "Extensions", comparisonType: StringComparison.Ordinal)
         );
 
     private static string GetTypeName(ITypeSymbol type) =>

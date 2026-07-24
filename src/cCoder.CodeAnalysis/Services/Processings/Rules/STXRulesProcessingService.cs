@@ -17,7 +17,10 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             yield break;
         }
 
-        if (context.StandardElementType == StandardElementType.Unknown)
+        if (
+            context.StandardElementType == StandardElementType.Unknown
+            && !context.DeclaresDependencyIntent
+        )
         {
             yield return CreateAnalysisItem(
                 code: "STX0001",
@@ -730,7 +733,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     {
         string[] parameters = method
             .ParameterList.Parameters.Where(
-                predicate: delegate(ParameterSyntax parameter)
+                predicate: delegate (ParameterSyntax parameter)
                 {
                     EqualsValueClauseSyntax? equalsValueClauseSyntax = parameter.Default;
 

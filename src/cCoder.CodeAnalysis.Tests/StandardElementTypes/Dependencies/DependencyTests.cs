@@ -33,13 +33,30 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     {
         ((IEnumerable<AnalysisItem>)Architecture.AnalysisItems)
             .Should()
-            .NotContain((AnalysisItem item) => item.Type.Contains(".Dependencies.", StringComparison.Ordinal), "");
+            .NotContain(
+                (AnalysisItem item) =>
+                    item.Type == "cCoder.CodeAnalysis.Sample.ExternalFrameworkDependency"
+                    || item.Type == "cCoder.CodeAnalysis.Sample.ExternalContractDependency",
+                ""
+            );
+    }
+
+    [Fact]
+    public void RuleSTXD002EvaluatesAsExpected()
+    {
+        Architecture.AnalysisItems
+            .Where((AnalysisItem item) => item.Code == "STXD002")
+            .Select((AnalysisItem item) => item.Type)
+            .Should()
+            .ContainSingle("")
+            .Which.Should()
+            .Be("cCoder.CodeAnalysis.Sample.Dependencies.CompatibilityDependency", "");
     }
 
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(9, "");
+        Count(StandardElementType.Dependency).Should().Be(6, "");
     }
 
     [Fact]
@@ -51,12 +68,15 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
-    public void ShouldClassifyDependencyNamespaceAsDependency()
+    public void ShouldRejectDependencyNamespaceWithoutExternalContract()
     {
         Class element = GetElement("cCoder.CodeAnalysis.Sample.Dependencies.CompatibilityDependency");
 
-        element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
-        Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
+        element.StandardElementType.Should().Be(StandardElementType.Unknown, "");
+        Architecture.AnalysisItems.Should().ContainSingle(
+            item => item.Code == "STXD002" && item.Type == element.Name,
+            ""
+        );
     }
 
     [Fact]
@@ -69,11 +89,11 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
-    public void ShouldClassifyExtensionContainerAsDependency()
+    public void ShouldClassifyExtensionContainerAsExposure()
     {
-        Class element = GetElement("cCoder.CodeAnalysis.Sample.Extensions.LegacyExtensions");
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.Exposures.LegacyExtensions");
 
-        element.StandardElementType.Should().Be(StandardElementType.Dependency, "");
+        element.StandardElementType.Should().Be(StandardElementType.Exposure, "");
         Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
     }
 
