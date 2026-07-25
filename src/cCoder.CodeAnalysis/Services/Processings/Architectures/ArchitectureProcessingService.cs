@@ -207,6 +207,10 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 or "IServiceCollectionExtensions"
                 or "IHostExtensions"
                 or "WebApplicationExtensions"
+            || type.Name.EndsWith(
+                value: "BuilderOptions",
+                comparisonType: StringComparison.Ordinal)
+            || IsConfigurationCompositionHelper(type: type)
         )
         {
             return StandardElementType.App;
@@ -283,6 +287,20 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         return StandardElementType.Unknown;
     }
+
+    private static bool IsConfigurationCompositionHelper(
+        INamedTypeSymbol type) =>
+        type.IsStatic
+        && type.ContainingNamespace.ToDisplayString()
+            == type.ContainingAssembly.Name
+        && (
+            type.Name.EndsWith(
+                value: "ConfigurationMapper",
+                comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(
+                value: "UrlResolver",
+                comparisonType: StringComparison.Ordinal)
+        );
 
     private static bool IsDataOnlyType(INamedTypeSymbol type) =>
 
