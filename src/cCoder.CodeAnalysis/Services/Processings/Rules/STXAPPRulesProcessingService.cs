@@ -84,8 +84,17 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         string fileName = filePathParts.LastOrDefault() ?? string.Empty;
         string parentFolder = filePathParts.Length > 1 ? filePathParts[filePathParts.Length - 2] : string.Empty;
 
-        bool livesAtProjectRoot =
+        bool hasConventionalFileName =
             fileName == $"{typeName}.cs"
+            || fileName.StartsWith(
+                value: $"{typeName}.",
+                comparisonType: StringComparison.Ordinal)
+                && fileName.EndsWith(
+                    value: ".cs",
+                    comparisonType: StringComparison.Ordinal);
+
+        bool livesAtProjectRoot =
+            hasConventionalFileName
             && parentFolder.Equals(value: context.ProjectName, comparisonType: StringComparison.Ordinal);
 
         return livesAtProjectRoot
@@ -94,7 +103,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     code: "STXAPP001",
-                    description: "Program.cs, IServiceCollectionExtensions.cs, IHostExtensions.cs, and WebApplicationExtensions.cs must live at the project root.",
+                    description: "Application composition helpers must live at the project root.",
                     context: context
                 ),
             ];

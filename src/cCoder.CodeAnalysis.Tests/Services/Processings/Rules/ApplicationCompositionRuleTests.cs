@@ -172,16 +172,36 @@ public sealed class ApplicationCompositionRuleTests
         items.Should().ContainSingle(item => item.Code == "STXAPP009", "");
     }
 
+    [Fact]
+    public void RootBuilderOptionsPartialEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.CoreApiBuilderOptions",
+            sourceCode:
+                """
+                public partial class CoreApiBuilderOptions
+                {
+                }
+                """,
+            filePath: "School.Cli/CoreApiBuilderOptions.Configuration.cs"
+        );
+
+        AnalysisItem[] items = service.Evaluate(context: context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXAPP001", "");
+    }
+
     private static EvaluationContext CreateContext(
         string typeName,
         string sourceCode,
         bool isConsoleApplication = false,
-        IReadOnlyCollection<string>? projectTypeNames = null
+        IReadOnlyCollection<string>? projectTypeNames = null,
+        string? filePath = null
     )
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
             text: sourceCode,
-            path: $"{typeName.Split(separator: ['.']).Last()}.cs"
+            path: filePath ?? $"{typeName.Split(separator: ['.']).Last()}.cs"
         );
 
         return new EvaluationContext
