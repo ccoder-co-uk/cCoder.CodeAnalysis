@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
@@ -64,6 +65,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                     predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
                         node is IfStatementSyntax or SwitchStatementSyntax or ConditionalExpressionSyntax
                 )
+                .Where(
+                    predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
+                        !IsMvcActionResponseNode(node: node))
                 .Select(
                     selector: (Microsoft.CodeAnalysis.SyntaxNode node) =>
                         CreateAnalysisItem(
@@ -146,6 +150,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 .Where(
                     predicate: (MethodDeclarationSyntax method) =>
                         method.Body is not null
+                        && !IsMvcActionResponseMethod(method: method)
                         && method.Body.Statements.Count(
                             predicate: (StatementSyntax statement) =>
                                 statement.DescendantNodesAndSelf()
@@ -163,4 +168,27 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                         )
                 );
     }
+
+    private static bool IsMvcActionResponseNode(
+        Microsoft.CodeAnalysis.SyntaxNode node)
+    {
+        MethodDeclarationSyntax? method = node
+            .Ancestors()
+            .OfType<MethodDeclarationSyntax>()
+            .FirstOrDefault();
+
+        return method is not null
+            && IsMvcActionResponseMethod(method: method);
+    }
+
+    private static bool IsMvcActionResponseMethod(
+        MethodDeclarationSyntax method) =>
+        method.Modifiers.Any(
+            predicate: modifier =>
+                modifier.RawKind == (int)SyntaxKind.PublicKeyword)
+        && method.ReturnType
+            .ToString()
+            .Contains(
+                value: "IActionResult",
+                comparisonType: StringComparison.Ordinal);
 }
