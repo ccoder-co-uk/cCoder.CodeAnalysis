@@ -13,17 +13,21 @@ public sealed partial class EvaluationContextsProcessingServiceTests
 {
     private readonly EvaluationContextsProcessingService service = new();
 
-    private static ArchitectureBuild CreateArchitectureBuild(string source)
+    private static ArchitectureBuild CreateArchitectureBuild(
+        string source,
+        params MetadataReference[] additionalReferences)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
             text: source,
             path: "ExternalService.cs");
 
         MetadataReference[] references =
-            ((string)AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES")!)
+        [
+            .. ((string)AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES")!)
                 .Split(separator: Path.PathSeparator)
-                .Select(selector: path => MetadataReference.CreateFromFile(path: path))
-                .ToArray();
+                .Select(selector: path => MetadataReference.CreateFromFile(path: path)),
+            .. additionalReferences,
+        ];
 
         CSharpCompilation compilation = CSharpCompilation.Create(
             assemblyName: "ExternalServiceTests",
@@ -46,5 +50,29 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             DeclaredTypes = declaredTypes,
             ProjectLineEnding = Environment.NewLine,
         };
+    }
+
+    private static MetadataReference CreateMetadataReference(string source)
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(text: source);
+
+        MetadataReference[] references =
+            ((string)AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES")!)
+                .Split(separator: Path.PathSeparator)
+                .Select(selector: path => MetadataReference.CreateFromFile(path: path))
+                .ToArray();
+
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "ReferencedServices",
+            syntaxTrees: [syntaxTree],
+            references: references,
+            options: new CSharpCompilationOptions(
+                outputKind: OutputKind.DynamicallyLinkedLibrary));
+
+        using MemoryStream assemblyStream = new();
+        compilation.Emit(peStream: assemblyStream);
+
+        return MetadataReference.CreateFromImage(
+            peImage: assemblyStream.ToArray());
     }
 }

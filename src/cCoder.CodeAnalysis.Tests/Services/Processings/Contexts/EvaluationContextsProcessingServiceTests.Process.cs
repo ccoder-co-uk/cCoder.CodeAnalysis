@@ -47,6 +47,52 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyReferencedServiceInterfaceAsExposure()
+    {
+        // Given
+        const string referencedSource =
+            """
+            namespace Referenced.Services.Aggregations;
+
+            public interface IStudentAggregationService
+            {
+                string GetStudent();
+            }
+            """;
+
+        const string source =
+            """
+            namespace Example.Services.Aggregations;
+
+            internal sealed class LocalAggregationService(
+                Referenced.Services.Aggregations.IStudentAggregationService studentService)
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild = CreateArchitectureBuild(
+            source: source,
+            additionalReferences:
+            [
+                CreateMetadataReference(source: referencedSource),
+            ]);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        TypeDependency dependency = context.Dependencies
+            .Should()
+            .ContainSingle()
+            .Which;
+
+        dependency.StandardElementType.Should()
+            .Be(expected: StandardElementType.Exposure);
+    }
+
+    [Fact]
     public void ProcessShouldNotClassifyMvcViewControllerAsApiController()
     {
         // Given
