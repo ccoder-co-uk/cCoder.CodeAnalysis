@@ -93,6 +93,84 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyBuilderOptionsAsApp()
+    {
+        // Given
+        const string source =
+            """
+            namespace ExternalServiceTarget;
+
+            public sealed class CoreBuilderOptions
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.StandardElementType.Should()
+            .Be(expected: StandardElementType.App);
+    }
+
+    [Fact]
+    public void ProcessShouldClassifyRootConfigurationMapperAsApp()
+    {
+        // Given
+        const string source =
+            """
+            namespace ExternalServiceTarget;
+
+            internal static class CoreConfigurationMapper
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.StandardElementType.Should()
+            .Be(expected: StandardElementType.App);
+    }
+
+    [Fact]
+    public void ProcessShouldClassifyRootUrlResolverAsApp()
+    {
+        // Given
+        const string source =
+            """
+            namespace ExternalServiceTarget;
+
+            public static class HttpEventHubUrlResolver
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.StandardElementType.Should()
+            .Be(expected: StandardElementType.App);
+    }
+
+    [Fact]
     public void ProcessShouldNotClassifyMvcViewControllerAsApiController()
     {
         // Given

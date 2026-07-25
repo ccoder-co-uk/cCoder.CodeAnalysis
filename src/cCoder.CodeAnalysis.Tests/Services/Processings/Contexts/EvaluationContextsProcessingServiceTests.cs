@@ -30,7 +30,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         ];
 
         CSharpCompilation compilation = CSharpCompilation.Create(
-            assemblyName: "ExternalServiceTests",
+            assemblyName: "ExternalServiceTarget",
             syntaxTrees: [syntaxTree],
             references: references);
 
