@@ -238,7 +238,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         StandardElementType elementType =
             dependency is INamedTypeSymbol namedType
             && namedType.ContainingAssembly is not null
-            ? Classify(type: namedType)
+            ? ClassifyReferencedType(type: namedType)
             : StandardElementType.Unknown;
 
         return new TypeDependency
@@ -248,6 +248,12 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 elementType == StandardElementType.Unknown ? StandardElementType.Dependency : elementType,
         };
     }
+
+    private static StandardElementType ClassifyReferencedType(INamedTypeSymbol type) =>
+        type.TypeKind == TypeKind.Interface
+        && type.Name.EndsWith(value: "Service", comparisonType: StringComparison.Ordinal)
+            ? StandardElementType.Exposure
+            : Classify(type: type);
 
     private static INamedTypeSymbol? ResolveConcreteType(
         ITypeSymbol dependency,
