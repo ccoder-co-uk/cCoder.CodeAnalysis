@@ -4,4 +4,5 @@
 using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("cCoder.CodeAnalysis.Tests")]
+[assembly: InternalsVisibleTo("cCoder.CodeAnalysis.Analyzers")]
 [assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
