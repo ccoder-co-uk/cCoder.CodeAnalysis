@@ -86,6 +86,8 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             HasBaseClass = type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object,
             HasExternalBaseType = InheritsFromExternalType(type: type),
             ImplementsExternalInterface = ImplementsExternalInterface(type: type),
+            ImplementsContract = type.AllInterfaces.Any(),
+            HasExternalStateDependency = HasExternalStateDependency(type: type),
             DeclaresDependencyIntent = DeclaresDependencyIntent(type: type),
             Declarations = type
                 .DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.GetSyntax())
@@ -454,10 +456,21 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
     private static bool ImplementsExternalInterface(INamedTypeSymbol type) =>
 
-        type.Interfaces.Any(
+        type.AllInterfaces.Any(
             predicate: (INamedTypeSymbol contract) =>
                 !contract.Locations.Any(predicate: (Location location) => location.IsInSource)
         );
+
+    private static bool HasExternalStateDependency(INamedTypeSymbol type) =>
+
+        type.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Any(
+                predicate: (IFieldSymbol field) =>
+                    field.Type.SpecialType == SpecialType.None
+                    && !field.Type.Locations.Any(
+                        predicate: (Location location) => location.IsInSource)
+            );
 
     private static bool DeclaresDependencyIntent(INamedTypeSymbol type) =>
 
