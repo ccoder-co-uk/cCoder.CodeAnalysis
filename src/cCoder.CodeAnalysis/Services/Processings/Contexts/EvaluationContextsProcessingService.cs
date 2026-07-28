@@ -342,6 +342,13 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         if (
             containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
             || InheritsFromExternalType(type: type)
+            || (
+                DeclaresDependencyIntent(type: type)
+                && (
+                    ImplementsExternalInterface(type: type)
+                    || HasExternalStateDependency(type: type)
+                )
+            )
         )
         {
             return StandardElementType.Dependency;
