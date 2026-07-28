@@ -167,7 +167,9 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                             || method.Identifier.Text.EndsWith(
                                 "HostedServices",
                                 StringComparison.Ordinal))
-                    : IsApplicationEntryPoint(method)));
+                    : IsApplicationEntryPoint(
+                        method: method,
+                        projectName: context.ProjectName)));
 
         return exposesDomainRegistration
             ? []
@@ -421,7 +423,9 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                 method.Modifiers.Any(modifier =>
                     modifier.RawKind == (int)
                         Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                && IsApplicationEntryPoint(method));
+                && IsApplicationEntryPoint(
+                    method: method,
+                    projectName: context.ProjectName));
 
         return publicEntryPoint is not null
             ? []
@@ -685,7 +689,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         );
 
     private static bool IsApplicationEntryPoint(
-        MethodDeclarationSyntax method)
+        MethodDeclarationSyntax method,
+        string projectName)
     {
         GenericNameSyntax? configurationCallback = method.ParameterList
             .Parameters
@@ -718,6 +723,17 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         string configurationPrefix = configurationType.Substring(
             startIndex: 0,
             length: configurationType.Length - "Configuration".Length);
+        string applicationSuffix = projectName
+            .Split(separator: ['.'])
+            .Last();
+
+        if (!configurationPrefix.EndsWith(
+            applicationSuffix,
+            StringComparison.OrdinalIgnoreCase))
+        {
+            configurationPrefix += applicationSuffix;
+        }
+
         string expectedMethodName = $"Add{configurationPrefix}";
 
         return method.Identifier.Text == expectedMethodName

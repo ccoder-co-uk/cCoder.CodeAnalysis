@@ -312,6 +312,46 @@ public sealed class ApplicationCompositionRuleTests
             || item.Code == "STXAPP012");
     }
 
+    [Theory]
+    [InlineData("Core.Web", "AddCoreWeb")]
+    [InlineData("Core.HostedServices", "AddCoreHostedServices")]
+    public void SharedRootConfigurationAppEntryPointEvaluatesAsExpected(
+        string projectName,
+        string methodName)
+    {
+        EvaluationContext context = CreateContext(
+            typeName: $"{projectName}.IServiceCollectionExtensions",
+            projectName: projectName,
+            sourceCode:
+                $$"""
+                public static class IServiceCollectionExtensions
+                {
+                    public static void {{methodName}}(
+                        this IServiceCollection services,
+                        IConfiguration applicationConfiguration,
+                        Action<CoreConfiguration> configure)
+                    {
+                        CoreConfiguration configuration = new();
+                        applicationConfiguration.Bind(configuration);
+                        configure(configuration);
+                        services.AddExposures();
+                    }
+
+                    private static void AddExposures(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item =>
+            item.Code == "STXAPP002"
+            || item.Code == "STXAPP011"
+            || item.Code == "STXAPP012");
+    }
+
     [Fact]
     public void AppEntryPointWithoutConfigurationCallbackEvaluatesAsExpected()
     {
