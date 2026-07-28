@@ -98,11 +98,6 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{ServicesPage}#204-class-visibility-and-exposure-control"
         ),
         new(
-            diagnosticCode: "STXAPP005",
-            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
-            secondStandardPageUri: $"{ServicesPage}#204-class-visibility-and-exposure-control"
-        ),
-        new(
             diagnosticCode: "STXAPP006",
             firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
             secondStandardPageUri: $"{ExposersPage}#3011-user-interfaces"
@@ -121,6 +116,31 @@ internal static class DiagnosticCodeStandardPageIndex
             diagnosticCode: "STXAPP009",
             firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
             secondStandardPageUri: $"{ServicesPage}#201-services-types"
+        ),
+        new(
+            diagnosticCode: "STXAPP010",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{ServicesPage}#204-class-visibility-and-exposure-control"
+        ),
+        new(
+            diagnosticCode: "STXAPP011",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
+        ),
+        new(
+            diagnosticCode: "STXAPP012",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
+        ),
+        new(
+            diagnosticCode: "STXAPP013",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{ServicesPage}#204-class-visibility-and-exposure-control"
+        ),
+        new(
+            diagnosticCode: "STXAPP014",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
         ),
         new(
             diagnosticCode: "STXA001",

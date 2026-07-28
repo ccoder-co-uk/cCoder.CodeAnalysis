@@ -2,13 +2,11 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Sample;
+using cCoder.CodeAnalysis.SampleWeb;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddCodeAnalysisSample(
-    connectionString: builder.Configuration.GetConnectionString(name: "Students") ?? string.Empty
-);
+builder.Services.AddSampleWeb(builder.Configuration);
 
 WebApplication application = builder.Build();
 

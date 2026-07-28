@@ -125,16 +125,18 @@ public sealed class ApplicationCompositionRuleTests
                 {
                     public static void AddSchool(this IServiceCollection services)
                     {
-                        AddSchoolBrokers(services);
-                        AddSchoolFoundations(services);
+                        services.AddBrokers();
+                        services.AddFoundations();
                     }
 
-                    private static void AddSchoolBrokers(IServiceCollection services)
+                    private static void AddBrokers(
+                        this IServiceCollection services)
                     {
                         services.AddSingleton<IStudentBroker, StudentBroker>();
                     }
 
-                    private static void AddSchoolFoundations(IServiceCollection services)
+                    private static void AddFoundations(
+                        this IServiceCollection services)
                     {
                         services.AddSingleton<IStudentService, StudentService>();
                     }
@@ -148,6 +150,41 @@ public sealed class ApplicationCompositionRuleTests
             item => item.Code == "STXAPP008" || item.Code == "STXAPP009",
             ""
         );
+    }
+
+    [Theory]
+    [InlineData("cCoder.Data", "AddData")]
+    [InlineData("cCoder.Security.Data", "AddSecurityData")]
+    public void SupportingDataRegistrationEvaluatesAsExpected(
+        string projectName,
+        string methodName)
+    {
+        EvaluationContext context = CreateContext(
+            typeName: $"{projectName}.IServiceCollectionExtensions",
+            sourceCode:
+                $$"""
+                public static class IServiceCollectionExtensions
+                {
+                    public static void {{methodName}}(
+                        this IServiceCollection services,
+                        DataConfiguration configuration)
+                    {
+                        services.AddDependencies();
+                    }
+
+                    private static void AddDependencies(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """,
+            projectName: projectName);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item =>
+            item.Code == "STXAPP002"
+            || item.Code == "STXAPP009");
     }
 
     [Fact]
@@ -170,6 +207,142 @@ public sealed class ApplicationCompositionRuleTests
         AnalysisItem[] items = service.Evaluate(context: context).ToArray();
 
         items.Should().ContainSingle(item => item.Code == "STXAPP009", "");
+    }
+
+    [Fact]
+    public void NonServiceCollectionMethodEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddCli(
+                        this IServiceCollection services,
+                        Action<CliConfiguration> configure)
+                    {
+                        services.AddBrokers();
+                    }
+
+                    private static void AddBrokers(
+                        this IServiceCollection services)
+                    {
+                    }
+
+                    public static WebApplication MapApp(
+                        this WebApplication app) => app;
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP010", "");
+    }
+
+    [Fact]
+    public void ConventionalAppEntryPointEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddCli(
+                        this IServiceCollection services,
+                        IConfiguration applicationConfiguration,
+                        Action<CliConfiguration> configure)
+                    {
+                        CliConfiguration configuration = new();
+                        applicationConfiguration.Bind(configuration);
+                        configure(configuration);
+                        services.AddBrokers();
+                    }
+
+                    private static void AddBrokers(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item =>
+            item.Code == "STXAPP009"
+            || item.Code == "STXAPP010"
+            || item.Code == "STXAPP011"
+            || item.Code == "STXAPP012");
+    }
+
+    [Fact]
+    public void AppEntryPointWithoutConfigurationCallbackEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddCli(
+                        this IServiceCollection services,
+                        IConfiguration applicationConfiguration)
+                    {
+                        services.AddBrokers();
+                    }
+
+                    private static void AddBrokers(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP012", "");
+    }
+
+    [Fact]
+    public void DictionaryConfigurationPropertyEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.Models.CliConfiguration",
+            sourceCode:
+                """
+                public sealed class CliConfiguration
+                {
+                    public Dictionary<string, string> Services { get; set; }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP013", "");
+    }
+
+    [Fact]
+    public void ProgramOwnedConfigurationBindingEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.Program",
+            sourceCode:
+                """
+                public sealed class Program
+                {
+                    public static void Main()
+                    {
+                        CliConfiguration configuration = new();
+                        builder.Configuration.Bind(configuration);
+                        builder.Services.AddCli(configuration);
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP014", "");
     }
 
     [Fact]
@@ -196,7 +369,8 @@ public sealed class ApplicationCompositionRuleTests
         string sourceCode,
         bool isConsoleApplication = false,
         IReadOnlyCollection<string>? projectTypeNames = null,
-        string? filePath = null
+        string? filePath = null,
+        string projectName = "School.Cli"
     )
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
@@ -208,7 +382,7 @@ public sealed class ApplicationCompositionRuleTests
         {
             TypeName = typeName,
             StandardElementType = StandardElementType.App,
-            ProjectName = "School.Cli",
+            ProjectName = projectName,
             FilePath = syntaxTree.FilePath,
             SourceCode = sourceCode,
             IsConsoleApplication = isConsoleApplication,

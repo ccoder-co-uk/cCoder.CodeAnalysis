@@ -3,29 +3,25 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Services.Processings.ServiceCollections;
-using cCoder.CodeAnalysis.Sample.Models.Schools;
 using cCoder.CodeAnalysis.Sample.Controllers;
+using cCoder.CodeAnalysis.Sample.Models;
 
 namespace cCoder.CodeAnalysis.Sample;
 
 public static class IServiceCollectionExtensions
 {
-    public static IServiceCollection AddSchool(
+    public static IServiceCollection AddCodeAnalysisSampleWeb(
         this IServiceCollection services,
-        School school) =>
-        services;
-
-    public static IServiceCollection AddCodeAnalysisSample(this IServiceCollection services, string connectionString)
+        CodeAnalysisSampleConfiguration configuration)
     {
-        AddCodeAnalysisSampleExposures(services: services);
+        services.AddExposures();
+        services.AddProcessings(configuration);
 
-        return AddCodeAnalysisSampleProcessings(
-            services: services,
-            connectionString: connectionString
-        );
+        return services;
     }
 
-    private static void AddCodeAnalysisSampleExposures(IServiceCollection services)
+    private static void AddExposures(
+        this IServiceCollection services)
     {
         IMvcBuilder controllers = services.AddControllersWithViews(
             configure: options =>
@@ -35,13 +31,11 @@ public static class IServiceCollectionExtensions
         controllers.AddApplicationPart(assembly: typeof(StudentsController).Assembly);
     }
 
-    private static IServiceCollection AddCodeAnalysisSampleProcessings(
-        IServiceCollection services,
-        string connectionString
-    ) =>
-
-        new ServiceCollectionProcessingService().AddCodeAnalysisSample(
+    private static void AddProcessings(
+        this IServiceCollection services,
+        CodeAnalysisSampleConfiguration configuration) =>
+        new ServiceCollectionProcessingService()
+            .AddCodeAnalysisSample(
             services: services,
-            connectionString: connectionString
-        );
+            connectionString: configuration.ConnectionString);
 }
