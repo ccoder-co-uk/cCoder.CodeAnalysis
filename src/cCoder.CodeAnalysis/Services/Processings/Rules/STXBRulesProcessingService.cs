@@ -152,7 +152,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
                     StandardElementType standardElementType = dependency.StandardElementType;
 
                     return standardElementType != StandardElementType.Dependency
-                        && standardElementType != StandardElementType.Exposure;
+                        && standardElementType != StandardElementType.Exposure
+                        && !IsConfigurationDependency(dependency: dependency);
                 }
             )
         )
@@ -166,6 +167,12 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
                 ),
             };
     }
+
+    private static bool IsConfigurationDependency(TypeDependency dependency) =>
+        dependency.StandardElementType == StandardElementType.Model
+        && dependency.TypeName.EndsWith(
+            value: "Configuration",
+            comparisonType: StringComparison.Ordinal);
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB007(EvaluationContext context)
     {
