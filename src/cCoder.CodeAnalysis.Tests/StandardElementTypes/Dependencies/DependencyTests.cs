@@ -106,6 +106,26 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
         Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");
     }
 
+    [Fact]
+    public void ShouldAcceptDependencyThatImplementsLocalContract()
+    {
+        Architecture.AnalysisItems.Should().NotContain(
+            item =>
+                item.Code == "STXD002"
+                && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.LocalContractDependency",
+            "");
+    }
+
+    [Fact]
+    public void ShouldAcceptDependencyThatWrapsExternalState()
+    {
+        Architecture.AnalysisItems.Should().NotContain(
+            item =>
+                item.Code == "STXD002"
+                && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.ExternalStateDependency",
+            "");
+    }
+
     private Class GetElement(string name)
     {
         return Architecture.Classes.Single((Class element) => element.Name == name);

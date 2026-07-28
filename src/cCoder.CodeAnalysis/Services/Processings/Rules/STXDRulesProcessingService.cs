@@ -47,6 +47,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             context.DeclaresDependencyIntent
             && !context.HasExternalBaseType
             && !context.ImplementsExternalInterface
+            && !context.ImplementsContract
+            && !context.HasExternalStateDependency
         )
         {
             yield return new AnalysisItem
