@@ -470,16 +470,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             entryPoint.ParameterList.Parameters.Any(parameter =>
                 parameter.Type?.ToString() == "IConfiguration");
 
-        bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
-            .Any(parameter =>
-                parameter.Type is GenericNameSyntax genericName
-                && genericName.Identifier.Text == "Action"
-                && genericName.TypeArgumentList.Arguments.Count == 1
-                && genericName.TypeArgumentList.Arguments[0]
-                    .ToString()
-                    .EndsWith(
-                        "Configuration",
-                        StringComparison.Ordinal));
+          bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
+              .Any(predicate: IsConfigurationCallback);
 
         return acceptsApplicationConfiguration
             && exposesConfigurationCallback
@@ -491,7 +483,29 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                     "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.",
                     context,
                     entryPoint.GetLocation())
-            ];
+              ];
+      }
+
+    private static bool IsConfigurationCallback(ParameterSyntax parameter)
+    {
+        GenericNameSyntax? genericName = parameter.Type switch
+        {
+            GenericNameSyntax actionType => actionType,
+            NullableTypeSyntax
+            {
+                ElementType: GenericNameSyntax actionType
+            } => actionType,
+            _ => null
+        };
+
+        return genericName is not null
+            && genericName.Identifier.Text == "Action"
+            && genericName.TypeArgumentList.Arguments.Count == 1
+            && genericName.TypeArgumentList.Arguments[0]
+                .ToString()
+                .EndsWith(
+                    "Configuration",
+                    StringComparison.Ordinal);
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(
