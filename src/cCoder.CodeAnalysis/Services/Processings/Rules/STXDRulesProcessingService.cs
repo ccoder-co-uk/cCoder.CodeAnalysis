@@ -28,12 +28,18 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
                 && context.LocalDependencyTypeNames.Contains(value: dependency.TypeName)
         );
 
-        if (context.StandardElementType != StandardElementType.Broker && consumesDependency)
+        bool mayConsumeDependency =
+            context.StandardElementType == StandardElementType.Broker
+            || context.StandardElementType ==
+                StandardElementType.Dependency;
+
+        if (!mayConsumeDependency && consumesDependency)
         {
             yield return new AnalysisItem
             {
                 Code = "STXD001",
-                Description = "Dependency elements may only be consumed by brokers.",
+                Description =
+                    "Dependency elements may only be consumed by brokers or other dependencies.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
                 LineNumber = context.LineNumber,

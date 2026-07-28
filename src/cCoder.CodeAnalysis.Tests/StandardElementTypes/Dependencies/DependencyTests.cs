@@ -42,6 +42,24 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXD001_ShouldAllowDependencyComposition()
+    {
+        // Given
+        const string composedDependency =
+            "cCoder.CodeAnalysis.Sample.Dependencies.ComposedDependency";
+
+        // When
+        IEnumerable<AnalysisItem> dependencyConsumptionItems =
+            Architecture.AnalysisItems.Where(
+                predicate: item => item.Code == "STXD001");
+
+        // Then
+        dependencyConsumptionItems.Should()
+            .NotContain(
+                predicate: item => item.Type == composedDependency);
+    }
+
+    [Fact]
     public void RuleSTXD002EvaluatesAsExpected()
     {
         Architecture.AnalysisItems
@@ -56,7 +74,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(6, "");
+        Count(StandardElementType.Dependency).Should().Be(expected: 7);
     }
 
     [Fact]
