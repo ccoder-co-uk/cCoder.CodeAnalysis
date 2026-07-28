@@ -30,11 +30,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             yield return item;
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP005(context: context))
-        {
-            yield return item;
-        }
-
         foreach (AnalysisItem item in EvaluateSTXAPP006(context: context))
         {
             yield return item;
@@ -51,6 +46,31 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         }
 
         foreach (AnalysisItem item in EvaluateSTXAPP009(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP010(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP011(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP012(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP013(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP014(context: context))
         {
             yield return item;
         }
@@ -117,18 +137,33 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             return [];
         }
 
-        bool exposesDomainRegistration = GetMethods(context: context)
-            .Any(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal)
-                    && !method.Identifier.Text.EndsWith(
-                        value: "HostedServices",
-                        comparisonType: StringComparison.Ordinal
-                    )
-                    && method.ParameterList.Parameters.Any(
-                        predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
-                    )
-            );
+        string projectName = context.ProjectName.Split(['.', '-']).Last();
+        bool isDomainLibrary = context.ProjectName.StartsWith(
+            "cCoder.",
+            StringComparison.OrdinalIgnoreCase);
+        string supportingDataRegistration =
+            GetSupportingDataRegistrationName(context.ProjectName);
+
+        bool exposesDomainRegistration = GetMethods(context)
+            .Any(method =>
+                method.Modifiers.Any(modifier =>
+                    modifier.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
+                && method.ParameterList.Parameters.Any(parameter =>
+                    parameter.Type?.ToString() == "IServiceCollection")
+                && (!string.IsNullOrWhiteSpace(supportingDataRegistration)
+                    ? method.Identifier.Text == supportingDataRegistration
+                    : isDomainLibrary
+                    ? method.Identifier.Text.StartsWith(
+                        "Add",
+                        StringComparison.Ordinal)
+                        && (method.Identifier.Text.EndsWith(
+                            "Web",
+                            StringComparison.Ordinal)
+                            || method.Identifier.Text.EndsWith(
+                                "HostedServices",
+                                StringComparison.Ordinal))
+                    : method.Identifier.Text == $"Add{projectName}"));
 
         return exposesDomainRegistration
             ? []
@@ -136,7 +171,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     code: "STXAPP002",
-                    description: "IServiceCollectionExtensions must expose an Add{Domain} IServiceCollection extension.",
+                    description: "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.",
                     context: context
                 ),
             ];
@@ -216,38 +251,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                 CreateAnalysisItem(
                     code: "STXAPP004",
                     description: "WebApplicationExtensions must consume the service provider to start application services.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP005(EvaluationContext context)
-    {
-        if (context.TypeName.Split(separator: ['.'])
-            .Last() != "Program")
-        {
-            return [];
-        }
-
-        int applicationNamespaceCount = context.UsingNamespaces.Count(
-            predicate: (string item) =>
-                !item.Equals(value: "System", comparisonType: StringComparison.Ordinal)
-                && !item.StartsWith(value: "System.", comparisonType: StringComparison.Ordinal)
-                && !item.Equals(value: "Microsoft", comparisonType: StringComparison.Ordinal)
-                && !item.StartsWith(value: "Microsoft.", comparisonType: StringComparison.Ordinal)
-        );
-
-        bool usesServiceCollection =
-            context.SourceCode.Contains(value: ".Services", comparisonType: StringComparison.Ordinal)
-            && context.SourceCode.Contains(value: ".Add", comparisonType: StringComparison.Ordinal);
-
-        return applicationNamespaceCount <= 1 && usesServiceCollection
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP005",
-                    description: "Program.cs must compose the app through IServiceCollection using SDK namespaces and one local composition namespace only.",
                     context: context
                 ),
             ];
@@ -358,10 +361,203 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     code: "STXAPP009",
-                    description: "Add{Domain} must delegate service registration to Add{Domain}{Layer} initializers.",
+                    description: "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.",
                     context: context,
                     location: invalidMethod.GetLocation()
                 ),
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP010(
+        EvaluationContext context)
+    {
+        if (GetTypeName(context) != "IServiceCollectionExtensions")
+        {
+            return [];
+        }
+
+        MethodDeclarationSyntax? invalidMethod = GetMethods(context)
+            .FirstOrDefault(method =>
+                method.ParameterList.Parameters.FirstOrDefault()
+                    is not ParameterSyntax parameter
+                || parameter.Type?.ToString() != "IServiceCollection"
+                || !parameter.Modifiers.Any(modifier =>
+                    modifier.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.ThisKeyword));
+
+        return invalidMethod is null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP010",
+                    "IServiceCollectionExtensions may contain only IServiceCollection extension methods.",
+                    context,
+                    invalidMethod.GetLocation())
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP011(
+        EvaluationContext context)
+    {
+        if (GetTypeName(context) != "IServiceCollectionExtensions")
+        {
+            return [];
+        }
+
+        if (context.ProjectName.StartsWith(
+            "cCoder.",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        string appName = context.ProjectName.Split(['.', '-'])
+            .Last();
+
+        MethodDeclarationSyntax? publicEntryPoint = GetMethods(context)
+            .FirstOrDefault(method =>
+                method.Modifiers.Any(modifier =>
+                    modifier.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
+                && method.Identifier.Text == $"Add{appName}");
+
+        return publicEntryPoint is not null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP011",
+                    "Application IServiceCollectionExtensions must expose Add{AppName}.",
+                    context)
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP012(
+        EvaluationContext context)
+    {
+        if (GetTypeName(context) != "IServiceCollectionExtensions")
+        {
+            return [];
+        }
+
+        if (context.ProjectName.StartsWith(
+            "cCoder.",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return [];
+        }
+
+        string appName = context.ProjectName.Split(['.', '-'])
+            .Last();
+
+        MethodDeclarationSyntax? entryPoint = GetMethods(context)
+            .FirstOrDefault(method =>
+                method.Identifier.Text == $"Add{appName}");
+
+        if (entryPoint is null)
+        {
+            return [];
+        }
+
+        bool acceptsApplicationConfiguration =
+            entryPoint.ParameterList.Parameters.Any(parameter =>
+                parameter.Type?.ToString() == "IConfiguration");
+
+        bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
+            .Any(parameter =>
+                parameter.Type is GenericNameSyntax genericName
+                && genericName.Identifier.Text == "Action"
+                && genericName.TypeArgumentList.Arguments.Count == 1
+                && genericName.TypeArgumentList.Arguments[0]
+                    .ToString()
+                    .EndsWith(
+                        "Configuration",
+                        StringComparison.Ordinal));
+
+        return acceptsApplicationConfiguration
+            && exposesConfigurationCallback
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP012",
+                    "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.",
+                    context,
+                    entryPoint.GetLocation())
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(
+        EvaluationContext context)
+    {
+        if (!GetTypeName(context).EndsWith(
+            "Configuration",
+            StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        PropertyDeclarationSyntax? invalidProperty = context.Declarations
+            .SelectMany(declaration => declaration.Members)
+            .OfType<PropertyDeclarationSyntax>()
+            .FirstOrDefault(property =>
+                !property.Modifiers.Any(modifier =>
+                    modifier.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
+                || property.AccessorList is null
+                || !property.AccessorList.Accessors.Any(accessor =>
+                    accessor.Keyword.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.GetKeyword)
+                || !property.AccessorList.Accessors.Any(accessor =>
+                    accessor.Keyword.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.SetKeyword)
+                || property.Type.ToString() == "dynamic"
+                || property.Type.ToString().Contains(
+                    "Dictionary",
+                    StringComparison.Ordinal));
+
+        return invalidProperty is null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP013",
+                    "Configuration properties must be public, strongly typed, and bindable with get and set accessors.",
+                    context,
+                    invalidProperty.GetLocation())
+            ];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP014(
+        EvaluationContext context)
+    {
+        if (GetTypeName(context) != "Program"
+            || context.IsConsoleApplication)
+        {
+            return [];
+        }
+
+        bool bindsConfigurationInProgram = context.SourceCode.Contains(
+            ".Bind",
+            StringComparison.Ordinal);
+
+        bool passesApplicationConfiguration = context.SourceCode.Contains(
+            ".Configuration",
+            StringComparison.Ordinal)
+            && context.SourceCode.Contains(
+                ".Services.Add",
+                StringComparison.Ordinal);
+
+        return !bindsConfigurationInProgram
+            && passesApplicationConfiguration
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP014",
+                    "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.",
+                    context)
             ];
     }
 
@@ -444,7 +640,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                 modifier.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword
         )
         && method.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal)
-        && !method.Identifier.Text.EndsWith(value: "HostedServices", comparisonType: StringComparison.Ordinal)
         && method.ParameterList.Parameters.Any(
             predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
         );
@@ -467,21 +662,52 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             "Exposures",
         ];
 
-        string[] layerInitializers = methods
-            .Select(selector: (MethodDeclarationSyntax candidate) => candidate.Identifier.Text)
+        MethodDeclarationSyntax[] layerInitializers = methods
             .Where(
-                predicate: (string methodName) =>
-                    methodName.StartsWith(value: method.Identifier.Text, comparisonType: StringComparison.Ordinal)
+                predicate: (MethodDeclarationSyntax candidate) =>
+                    candidate.Modifiers.Any(modifier =>
+                        modifier.RawKind == (int)
+                            Microsoft.CodeAnalysis.CSharp.SyntaxKind.PrivateKeyword)
                     && layerNames.Any(
                         predicate: (string layerName) =>
-                            methodName.EndsWith(value: layerName, comparisonType: StringComparison.Ordinal)
-                    )
+                            candidate.Identifier.Text == $"Add{layerName}")
+                    && candidate.ParameterList.Parameters.FirstOrDefault()
+                        is ParameterSyntax parameter
+                    && parameter.Type?.ToString() == "IServiceCollection"
+                    && parameter.Modifiers.Any(modifier =>
+                        modifier.RawKind == (int)
+                            Microsoft.CodeAnalysis.CSharp.SyntaxKind.ThisKeyword)
             )
             .ToArray();
 
         if (layerInitializers.Length == 0)
         {
-            return false;
+            return method.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Select(invocation => invocation.Expression)
+                .OfType<MemberAccessExpressionSyntax>()
+                .Select(memberAccess => memberAccess.Name.Identifier.Text)
+                .Any(methodName =>
+                    methodName.EndsWith(
+                        "Web",
+                        StringComparison.Ordinal)
+                    || methodName.EndsWith(
+                        "HostedServices",
+                        StringComparison.Ordinal));
+        }
+
+        bool delegatesToRegistrationOverload = method
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Select(invocation => invocation.Expression)
+            .OfType<MemberAccessExpressionSyntax>()
+            .Any(memberAccess =>
+                memberAccess.Name.Identifier.Text ==
+                    method.Identifier.Text);
+
+        if (delegatesToRegistrationOverload)
+        {
+            return true;
         }
 
         HashSet<string> invokedMethods = new HashSet<string>(
@@ -501,13 +727,35 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             comparer: StringComparer.Ordinal
         );
 
-        return layerInitializers.All(predicate: invokedMethods.Contains);
+        return layerInitializers.All(initializer =>
+            invokedMethods.Contains(initializer.Identifier.Text));
     }
 
     private static string GetTypeName(EvaluationContext context) =>
 
         context.TypeName.Split(separator: ['.'])
             .Last();
+
+    private static string GetSupportingDataRegistrationName(
+        string projectName)
+    {
+        string[] segments = projectName.Split(
+            separator: ['.', '-'],
+            options: StringSplitOptions.RemoveEmptyEntries);
+
+        if (segments.Length < 2
+            || !string.Equals(
+                segments[segments.Length - 1],
+                "Data",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return string.Empty;
+        }
+
+        return segments.Length == 2
+            ? "AddData"
+            : $"Add{segments[segments.Length - 2]}Data";
+    }
 
     private static IEnumerable<MethodDeclarationSyntax> GetMethods(EvaluationContext context) =>
 
