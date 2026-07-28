@@ -150,7 +150,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfLinks()
     {
-        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(69, "");
+        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(70, "");
     }
 
     [Fact]
