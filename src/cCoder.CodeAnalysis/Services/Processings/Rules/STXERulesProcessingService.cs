@@ -11,9 +11,16 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        if (context.TypeName.EndsWith(
-            "ConfigurationExtensions",
-            StringComparison.Ordinal))
+        string typeName = context.TypeName
+            .Split(separator: ['.'])
+            .Last();
+
+        if (typeName.Contains(
+            "Configuration",
+            StringComparison.Ordinal)
+            && typeName.EndsWith(
+                "Extensions",
+                StringComparison.Ordinal))
         {
             yield break;
         }

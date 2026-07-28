@@ -12,12 +12,15 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
 public sealed class STXERulesProcessingServiceTests
 {
-    [Fact]
-    public void EvaluateShouldIgnoreConfigurationExtensions()
+    [Theory]
+    [InlineData("AIConfigurationExtensions")]
+    [InlineData("AIConfigurationProviderExtensions")]
+    public void EvaluateShouldIgnoreConfigurationExtensions(
+        string typeName)
     {
         TypeDeclarationSyntax declaration = ParseDeclaration(
             """
-            public static class AIConfigurationExtensions
+            public static class ConfigurationExtensions
             {
                 public static void Configure()
                 {
@@ -33,7 +36,7 @@ public sealed class STXERulesProcessingServiceTests
 
         EvaluationContext context = CreateContext(
             declaration,
-            "Example.Models.AIConfigurationExtensions");
+            $"Example.Models.{typeName}");
         STXERulesProcessingService service = new();
 
         AnalysisItem[] results = service
