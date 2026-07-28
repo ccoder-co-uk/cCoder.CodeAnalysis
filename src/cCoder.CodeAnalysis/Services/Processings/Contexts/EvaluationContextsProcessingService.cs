@@ -82,9 +82,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .GetLineSpan().StartLinePosition.Line + 1,
             IsPublic = type.DeclaredAccessibility == Accessibility.Public,
             IsConsoleApplication = compilation.Options.OutputKind == OutputKind.ConsoleApplication,
-            IsApiController = type
-                .ContainingNamespace.ToDisplayString()
-            .Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal),
+            IsApiController = IsApiController(type: type),
             HasBaseClass = type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object,
             HasExternalBaseType = InheritsFromExternalType(type: type),
             ImplementsExternalInterface = ImplementsExternalInterface(type: type),
@@ -157,7 +155,12 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .Append(element: method.ReturnType)
             )
             .SelectMany(selector: GetContainedNamedTypes)
-            .Where(predicate: (INamedTypeSymbol modelType) => Classify(type: modelType) == StandardElementType.Model)
+            .Where(
+                predicate: (INamedTypeSymbol modelType) =>
+                    modelType.TypeKind != TypeKind.Error
+                    && modelType.ContainingAssembly is not null
+                    && Classify(type: modelType) == StandardElementType.Model
+            )
             .Select(selector: (INamedTypeSymbol modelType) => GetTypeName(type: modelType)
             .TrimEnd(trimChars: ['?']))
             .Distinct(comparer: StringComparer.Ordinal)
@@ -232,8 +235,10 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
     private static TypeDependency CreateReferencedTypeDependency(ITypeSymbol dependency)
     {
-        StandardElementType elementType = dependency is INamedTypeSymbol namedType
-            ? Classify(type: namedType)
+        StandardElementType elementType =
+            dependency is INamedTypeSymbol namedType
+            && namedType.ContainingAssembly is not null
+            ? ClassifyReferencedType(type: namedType)
             : StandardElementType.Unknown;
 
         return new TypeDependency
@@ -243,6 +248,12 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 elementType == StandardElementType.Unknown ? StandardElementType.Dependency : elementType,
         };
     }
+
+    private static StandardElementType ClassifyReferencedType(INamedTypeSymbol type) =>
+        type.TypeKind == TypeKind.Interface
+        && type.Name.EndsWith(value: "Service", comparisonType: StringComparison.Ordinal)
+            ? StandardElementType.Exposure
+            : Classify(type: type);
 
     private static INamedTypeSymbol? ResolveConcreteType(
         ITypeSymbol dependency,
@@ -255,6 +266,11 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         )
         {
             return (INamedTypeSymbol)dependency;
+        }
+
+        if (!dependency.Locations.Any(predicate: (Location location) => location.IsInSource))
+        {
+            return null;
         }
 
         INamedTypeSymbol[] implementations = declaredTypes
@@ -281,7 +297,17 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Test;
         }
 
-        if (type.Name is "Program" or "IServiceCollectionExtensions" or "IHostExtensions")
+        if (
+            type.Name
+                is "Program"
+                or "IServiceCollectionExtensions"
+                or "IHostExtensions"
+                or "WebApplicationExtensions"
+            || type.Name.EndsWith(
+                value: "BuilderOptions",
+                comparisonType: StringComparison.Ordinal)
+            || IsConfigurationCompositionHelper(type: type)
+        )
         {
             return StandardElementType.App;
         }
@@ -345,11 +371,6 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Broker;
         }
 
-        if (type.Name == "WebApplicationExtensions")
-        {
-            return StandardElementType.App;
-        }
-
         if (ImplementsExternalInterface(type: type))
         {
             return StandardElementType.Dependency;
@@ -361,6 +382,56 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         }
 
         return StandardElementType.Unknown;
+    }
+
+    private static bool IsConfigurationCompositionHelper(
+        INamedTypeSymbol type) =>
+        type.IsStatic
+        && type.ContainingNamespace.ToDisplayString()
+            == type.ContainingAssembly.Name
+        && (
+            type.Name.EndsWith(
+                value: "ConfigurationMapper",
+                comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(
+                value: "UrlResolver",
+                comparisonType: StringComparison.Ordinal)
+        );
+
+    private static bool IsApiController(INamedTypeSymbol type)
+    {
+        string containingNamespace = type.ContainingNamespace.ToDisplayString();
+
+        if (containingNamespace.Contains(
+            value: ".Controllers.Api",
+            comparisonType: StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        for (INamedTypeSymbol? baseType = type.BaseType;
+            baseType is not null;
+            baseType = baseType.BaseType)
+        {
+            string baseTypeName = baseType.ToDisplayString();
+
+            if (baseTypeName == "Microsoft.AspNetCore.Mvc.Controller")
+            {
+                return false;
+            }
+
+            if (baseTypeName == "Microsoft.AspNetCore.Mvc.ControllerBase")
+            {
+                return true;
+            }
+        }
+
+        return type.GetAttributes()
+            .Any(predicate: attribute =>
+                attribute.AttributeClass?.Name == "ApiControllerAttribute")
+            || containingNamespace.Contains(
+                value: ".Controllers",
+                comparisonType: StringComparison.Ordinal);
     }
 
     private static bool IsDataOnlyType(INamedTypeSymbol type) =>

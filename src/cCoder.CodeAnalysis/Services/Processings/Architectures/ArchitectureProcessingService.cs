@@ -172,6 +172,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return (INamedTypeSymbol)dependency;
         }
 
+        if (!dependency.Locations.Any(predicate: (Location location) => location.IsInSource))
+        {
+            return null;
+        }
+
         INamedTypeSymbol[] implementations = declaredTypes
             .Where(
                 predicate: (INamedTypeSymbol type) =>
@@ -196,7 +201,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Test;
         }
 
-        if (type.Name is "Program" or "IServiceCollectionExtensions" or "IHostExtensions")
+        if (
+            type.Name
+                is "Program"
+                or "IServiceCollectionExtensions"
+                or "IHostExtensions"
+                or "WebApplicationExtensions"
+            || type.Name.EndsWith(
+                value: "BuilderOptions",
+                comparisonType: StringComparison.Ordinal)
+            || IsConfigurationCompositionHelper(type: type)
+        )
         {
             return StandardElementType.App;
         }
@@ -260,11 +275,6 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Broker;
         }
 
-        if (type.Name == "WebApplicationExtensions")
-        {
-            return StandardElementType.App;
-        }
-
         if (ImplementsExternalInterface(type: type))
         {
             return StandardElementType.Dependency;
@@ -277,6 +287,20 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         return StandardElementType.Unknown;
     }
+
+    private static bool IsConfigurationCompositionHelper(
+        INamedTypeSymbol type) =>
+        type.IsStatic
+        && type.ContainingNamespace.ToDisplayString()
+            == type.ContainingAssembly.Name
+        && (
+            type.Name.EndsWith(
+                value: "ConfigurationMapper",
+                comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(
+                value: "UrlResolver",
+                comparisonType: StringComparison.Ordinal)
+        );
 
     private static bool IsDataOnlyType(INamedTypeSymbol type) =>
 

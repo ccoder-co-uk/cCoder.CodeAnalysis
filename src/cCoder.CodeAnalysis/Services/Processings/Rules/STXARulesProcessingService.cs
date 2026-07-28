@@ -41,8 +41,13 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
     {
         bool hasSingleDependencyVariation =
             context
-                .Dependencies.Select(selector: (TypeDependency dependency) => dependency.StandardElementType)
-            .Distinct()
+                .Dependencies
+                .Where(predicate: (TypeDependency dependency) =>
+                    IsServiceVariation(
+                        standardElementType: dependency.StandardElementType))
+                .Select(selector: (TypeDependency dependency) =>
+                    dependency.StandardElementType)
+                .Distinct()
                 .Count() <= 1;
 
         return hasSingleDependencyVariation
@@ -56,6 +61,16 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
                 ),
             };
     }
+
+    private static bool IsServiceVariation(
+        StandardElementType standardElementType) =>
+        standardElementType is
+            StandardElementType.FoundationService or
+            StandardElementType.ProcessingService or
+            StandardElementType.OrchestrationService or
+            StandardElementType.CoordinationService or
+            StandardElementType.ManagementService or
+            StandardElementType.AggregationService;
 
     private static IEnumerable<AnalysisItem> EvaluateSTXA002(EvaluationContext context)
     {

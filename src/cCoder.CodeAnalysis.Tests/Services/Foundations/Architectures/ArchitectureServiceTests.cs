@@ -13,6 +13,79 @@ namespace cCoder.CodeAnalysis.Tests.Services.Foundations.Architectures;
 public sealed class ArchitectureServiceTests
 {
     [Fact]
+    public void BuildShouldClassifyWebApplicationExtensionsAsApp()
+    {
+        // Given
+        const string source = """
+            namespace Sample;
+
+            public sealed class WebApplication
+            {
+            }
+
+            public static class WebApplicationExtensions
+            {
+                public static WebApplication Start(this WebApplication application) =>
+                    application;
+            }
+            """;
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: source,
+            path: "WebApplicationExtensions.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [syntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(
+            compilation: compilation);
+
+        // Then
+        Class webApplicationExtensions = architecture.Classes
+            .Single(predicate: element => element.Name == "Sample.WebApplicationExtensions");
+
+        webApplicationExtensions.StandardElementType
+            .Should()
+            .Be(expected: StandardElementType.App);
+    }
+
+    [Fact]
+    public void BuildShouldHandleUnresolvedPublicApiModelTypes()
+    {
+        // Given
+        const string source = """
+            namespace Sample.Exposures;
+
+            public sealed class SampleController(MissingDependency missingDependency)
+            {
+                public MissingModel GetMissingModel() => default;
+            }
+            """;
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: source,
+            path: "SampleController.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [syntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Action buildArchitecture = () =>
+            ArchitectureAnalysis.Generate(
+                compilation: compilation);
+
+        // Then
+        buildArchitecture
+            .Should()
+            .NotThrow();
+    }
+
+    [Fact]
     public void BuildShouldHandleMultipleImplementationsOfAnInterface()
     {
         // Given
