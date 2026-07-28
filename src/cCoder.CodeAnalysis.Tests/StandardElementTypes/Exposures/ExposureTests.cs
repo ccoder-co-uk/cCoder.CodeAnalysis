@@ -88,6 +88,16 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTX0024EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STX0024",
+            "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
+            11
+        );
+    }
+
+    [Fact]
     public void ShouldGenerateExpectedNumberOfExposures()
     {
         Count(StandardElementType.Exposure).Should().Be(16, "");

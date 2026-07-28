@@ -37,5 +37,11 @@ internal sealed class InvalidExposure(IStudentService studentService, ITeacherSe
 	{
 		studentService.GetStudents();
 		teacherService.GetTeachers();
+		AllowAnyOrigin();
+		AllowCredentials();
 	}
+
+	private static void AllowAnyOrigin() { }
+
+	private static void AllowCredentials() { }
 }

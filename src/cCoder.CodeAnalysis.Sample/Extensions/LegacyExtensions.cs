@@ -7,5 +7,7 @@ namespace cCoder.CodeAnalysis.Sample.Exposures;
 internal static class LegacyExtensions
 {
     internal static string Preserve(this string value) =>
-        value;
+        value.Length == 0
+            ? string.Empty
+            : value;
 }

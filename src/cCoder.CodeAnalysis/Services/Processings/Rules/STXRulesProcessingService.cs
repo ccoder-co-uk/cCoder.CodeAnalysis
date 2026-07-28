@@ -12,6 +12,12 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
+        foreach (AnalysisItem item in EvaluateSTX0024(
+            context: context))
+        {
+            yield return item;
+        }
+
         if (ImplementsInfrastructureService(context: context))
         {
             yield break;
@@ -82,6 +88,93 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             }
         }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0024(
+        EvaluationContext context)
+    {
+        InvocationExpressionSyntax[] invocations = context
+            .Declarations
+            .SelectMany(
+                selector: declaration =>
+                    declaration.DescendantNodes())
+            .OfType<InvocationExpressionSyntax>()
+            .ToArray();
+
+        bool allowsCredentials = invocations.Any(
+            predicate: invocation =>
+                GetInvokedMethodName(invocation: invocation)
+                    == "AllowCredentials");
+
+        bool allowsEveryOrigin = invocations.Any(
+            predicate: invocation =>
+                GetInvokedMethodName(invocation: invocation)
+                    == "AllowAnyOrigin"
+                || IsAlwaysAllowedOriginInvocation(
+                    invocation: invocation));
+
+        return allowsCredentials && allowsEveryOrigin
+            ?
+            [
+                CreateAnalysisItem(
+                    code: "STX0024",
+                    description:
+                        "Credentialed CORS must not allow every origin.",
+                    context: context)
+            ]
+            : [];
+    }
+
+    private static string GetInvokedMethodName(
+        InvocationExpressionSyntax invocation) =>
+        invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess =>
+                memberAccess.Name.Identifier.Text,
+            IdentifierNameSyntax identifier =>
+                identifier.Identifier.Text,
+            _ => string.Empty,
+        };
+
+    private static bool IsAlwaysAllowedOriginInvocation(
+        InvocationExpressionSyntax invocation)
+    {
+        if (GetInvokedMethodName(invocation: invocation)
+            != "SetIsOriginAllowed")
+        {
+            return false;
+        }
+
+        return invocation.ArgumentList.Arguments.Any(
+            predicate: argument =>
+                argument.Expression switch
+                {
+                    SimpleLambdaExpressionSyntax simpleLambda =>
+                        ReturnsTrue(expression: simpleLambda.Body),
+                    ParenthesizedLambdaExpressionSyntax
+                        parenthesizedLambda =>
+                        ReturnsTrue(
+                            expression:
+                                parenthesizedLambda.Body),
+                    _ => false,
+                });
+    }
+
+    private static bool ReturnsTrue(CSharpSyntaxNode expression) =>
+        expression switch
+        {
+            LiteralExpressionSyntax literal =>
+                literal.IsKind(
+                    kind:
+                        SyntaxKind.TrueLiteralExpression),
+            BlockSyntax block => block.Statements
+                .OfType<ReturnStatementSyntax>()
+                .Any(predicate: statement =>
+                    statement.Expression?.IsKind(
+                        kind:
+                            SyntaxKind.TrueLiteralExpression)
+                    == true),
+            _ => false,
+        };
 
     private static bool ImplementsInfrastructureService(EvaluationContext context) =>
 
