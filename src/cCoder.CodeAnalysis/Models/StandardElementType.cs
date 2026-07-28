@@ -16,6 +16,7 @@ public enum StandardElementType
     Model,
     Broker,
     Dependency,
+    Activity,
     Test,
     App,
 }

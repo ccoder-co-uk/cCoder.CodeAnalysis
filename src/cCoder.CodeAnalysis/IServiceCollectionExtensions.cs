@@ -115,6 +115,11 @@ public static class IServiceCollectionExtensions
             standardElementType: StandardElementType.App
         );
 
+        AddRuleHandlingServices<ISTXFORMATRulesProcessingService>(
+            services: services,
+            standardElementType: StandardElementType.Activity
+        );
+
         AddRuleHandlingServices<ISTXDRulesProcessingService>(
             services: services,
             standardElementType: StandardElementType.Dependency
