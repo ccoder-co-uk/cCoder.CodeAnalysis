@@ -188,8 +188,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         ) == true;
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0002(EvaluationContext context) =>
-
-        context
+        IsEventProviderContract(context: context)
+            ? []
+            : context
             .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<PropertyDeclarationSyntax>()
             .Select(
@@ -201,6 +202,15 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                         location: property.GetLocation()
                     )
             );
+
+    private static bool IsEventProviderContract(EvaluationContext context)
+    {
+        string typeName = context.TypeName.Split(separator: ['.']).Last();
+
+        return typeName is "EventProvider" or "BulkEventProvider"
+            || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
+            || typeName.StartsWith(value: "BulkEventProvider<", comparisonType: StringComparison.Ordinal);
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0003(EvaluationContext context)
     {
