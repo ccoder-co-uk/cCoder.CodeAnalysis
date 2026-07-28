@@ -15,12 +15,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             .Split(separator: ['.'])
             .Last();
 
-        if (typeName.Contains(
-            "Configuration",
-            StringComparison.Ordinal)
-            && typeName.EndsWith(
-                "Extensions",
-                StringComparison.Ordinal))
+        if (typeName.EndsWith(
+            "Extensions",
+            StringComparison.Ordinal))
         {
             yield break;
         }
