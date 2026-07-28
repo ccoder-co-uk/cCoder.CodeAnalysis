@@ -41,4 +41,34 @@ public sealed class STXBRulesProcessingServiceTests
             .Should()
             .BeEquivalentTo("STXB001", "STXB002", "STXB003", "STXB005");
     }
+
+    [Fact]
+    public void EvaluateShouldAllowStronglyTypedConfigurationDependencies()
+    {
+        EvaluationContext context = new()
+        {
+            TypeName = "Example.Brokers.ExternalBroker",
+            StandardElementType = StandardElementType.Broker,
+            ImplementedInterfaces = ["Example.Brokers.IExternalBroker"],
+            Declarations = [],
+            Dependencies =
+            [
+                new TypeDependency
+                {
+                    TypeName = "Example.Models.ExampleConfiguration",
+                    StandardElementType = StandardElementType.Model
+                }
+            ]
+        };
+
+        STXBRulesProcessingService service = new();
+
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        results
+            .Should()
+            .NotContain(predicate: result => result.Code == "STXB006");
+    }
 }
