@@ -136,6 +136,65 @@ public sealed class ArchitectureServiceTests
     }
 
     [Fact]
+    public void BuildShouldPreserveExposureInterfaceClassification()
+    {
+        // Given
+        const string source = """
+            namespace Sample.Exposures
+            {
+                public interface IMetadataCache
+                {
+                    string Get(string key);
+                }
+            }
+
+            namespace Sample.Dependencies
+            {
+                using Sample.Exposures;
+
+                internal sealed class MetadataCacheDependency : IMetadataCache
+                {
+                    public string Get(string key) => string.Empty;
+                }
+            }
+
+            namespace Sample.Brokers
+            {
+                using Sample.Exposures;
+
+                internal interface IMetadataBroker
+                {
+                }
+
+                internal sealed class MetadataBroker(IMetadataCache cache)
+                    : IMetadataBroker
+                {
+                    public string Get(string key) => cache.Get(key);
+                }
+            }
+            """;
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: source,
+            path: "MetadataBroker.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [syntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(
+            compilation: compilation);
+
+        // Then
+        architecture.AnalysisItems.Should().NotContain(
+            predicate: item =>
+                item.Code == "STXB006"
+                && item.Type == "Sample.Brokers.MetadataBroker");
+    }
+
+    [Fact]
     public void BuildShouldHandleMultipleImplementationsOfAnInterface()
     {
         // Given

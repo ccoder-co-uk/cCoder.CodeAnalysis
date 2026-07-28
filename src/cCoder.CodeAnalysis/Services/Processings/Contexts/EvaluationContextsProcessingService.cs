@@ -228,6 +228,16 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         IReadOnlyCollection<INamedTypeSymbol> declaredTypes
     )
     {
+        if (dependency is INamedTypeSymbol declaredType
+            && Classify(type: declaredType) == StandardElementType.Exposure)
+        {
+            return new TypeDependency
+            {
+                TypeName = GetTypeName(type: declaredType),
+                StandardElementType = StandardElementType.Exposure,
+            };
+        }
+
         INamedTypeSymbol? concreteType = ResolveConcreteType(dependency: dependency, declaredTypes: declaredTypes);
 
         return concreteType is null
