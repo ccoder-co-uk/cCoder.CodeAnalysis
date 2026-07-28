@@ -684,6 +684,10 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                 modifier.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword
         )
         && method.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal)
+        && method.TypeParameterList is null
+        && !method.Identifier.Text.EndsWith(
+            value: "Providers",
+            comparisonType: StringComparison.Ordinal)
         && method.ParameterList.Parameters.Any(
             predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
         );

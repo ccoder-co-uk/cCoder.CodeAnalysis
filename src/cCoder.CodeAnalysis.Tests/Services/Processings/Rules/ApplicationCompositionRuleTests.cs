@@ -210,6 +210,29 @@ public sealed class ApplicationCompositionRuleTests
     }
 
     [Fact]
+    public void ProviderRegistrationHelpersAreNotApplicationEntryPoints()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Cli.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddEventProviders(
+                        this IServiceCollection services,
+                        params EventProvider[] eventProviders)
+                    {
+                        services.AddSingleton(eventProviders);
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context: context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXAPP009");
+    }
+
+    [Fact]
     public void NonServiceCollectionMethodEvaluatesAsExpected()
     {
         EvaluationContext context = CreateContext(
