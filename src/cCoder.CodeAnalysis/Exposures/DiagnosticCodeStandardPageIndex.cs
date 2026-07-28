@@ -143,6 +143,11 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
         ),
         new(
+            diagnosticCode: "STXAPP015",
+            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
+            secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
+        ),
+        new(
             diagnosticCode: "STXA001",
             firstStandardPageUri: $"{AggregationsPage}#2420-no-dependency-limitation",
             secondStandardPageUri: $"{AggregationsPage}#2426-pure-dependency-contracts"
