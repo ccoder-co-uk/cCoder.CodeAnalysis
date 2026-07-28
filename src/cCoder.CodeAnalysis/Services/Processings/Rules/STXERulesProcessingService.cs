@@ -67,8 +67,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE001(EvaluationContext context)
     {
-        return context.IsApiController || context.TypeName.Split(separator: ['.'])
-            .Last() == "Program"
+        return context.IsApiController
+            || context.TypeName.Split(separator: ['.']).Last() == "Program"
+            || IsEventProviderContract(context: context)
             ? []
             : context
                 .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
@@ -91,8 +92,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE002(EvaluationContext context) =>
-
-        context
+        IsEventProviderContract(context: context)
+            ? []
+            : context
             .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .Where(
                 predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
@@ -107,6 +109,15 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                         location: node.GetLocation()
                     )
             );
+
+    private static bool IsEventProviderContract(EvaluationContext context)
+    {
+        string typeName = context.TypeName.Split(separator: ['.']).Last();
+
+        return typeName is "EventProvider" or "BulkEventProvider"
+            || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
+            || typeName.StartsWith(value: "BulkEventProvider<", comparisonType: StringComparison.Ordinal);
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
     {
