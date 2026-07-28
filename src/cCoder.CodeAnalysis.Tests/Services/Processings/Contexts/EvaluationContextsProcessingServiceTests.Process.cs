@@ -10,6 +10,38 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Contexts;
 public sealed partial class EvaluationContextsProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldTreatUnresolvedConstructorDependencyAsUnknownDependency()
+    {
+        // Given
+        const string source =
+            """
+            namespace Example.Services.Aggregations;
+
+            internal sealed class LocalAggregationService(
+                Missing.Dependency dependency)
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        TypeDependency dependency = context.Dependencies
+            .Should()
+            .ContainSingle()
+            .Which;
+
+        dependency.StandardElementType.Should()
+            .Be(expected: StandardElementType.Dependency);
+    }
+
+    [Fact]
     public void ProcessShouldClassifyWorkflowActivityAsActivity()
     {
         // Given

@@ -304,9 +304,13 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
     private static StandardElementType Classify(INamedTypeSymbol type)
     {
         string containingNamespace = type.ContainingNamespace.ToDisplayString();
+        string containingAssemblyName =
+            type.ContainingAssembly?.Name ?? string.Empty;
 
         if (
-            type.ContainingAssembly.Name.EndsWith(value: "Tests", comparisonType: StringComparison.Ordinal)
+            containingAssemblyName.EndsWith(
+                value: "Tests",
+                comparisonType: StringComparison.Ordinal)
             || containingNamespace.Contains(value: ".Tests", comparisonType: StringComparison.Ordinal)
         )
         {
