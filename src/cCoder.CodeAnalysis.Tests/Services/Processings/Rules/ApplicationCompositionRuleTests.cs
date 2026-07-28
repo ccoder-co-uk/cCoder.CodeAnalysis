@@ -300,6 +300,38 @@ public sealed class ApplicationCompositionRuleTests
     }
 
     [Fact]
+    public void AggregateConfigurationAppEntryPointEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "Platform.Web.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddWeb(
+                        this IServiceCollection services,
+                        IConfiguration applicationConfiguration,
+                        Action<CoreConfiguration> configure)
+                    {
+                        services.AddBrokers();
+                    }
+
+                    private static void AddBrokers(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """,
+            projectName: "Web");
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item =>
+            item.Code == "STXAPP002"
+            || item.Code == "STXAPP011");
+    }
+
+    [Fact]
     public void NullableConfigurationCallbackEvaluatesAsExpected()
     {
         EvaluationContext context = CreateContext(

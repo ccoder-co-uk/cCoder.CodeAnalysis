@@ -433,7 +433,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     "STXAPP011",
-                    "Application IServiceCollectionExtensions must expose Add{RootConfigurationName}.",
+                    "Application IServiceCollectionExtensions must expose Add{AppName}.",
                     context)
             ];
     }
@@ -732,8 +732,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             .ToString();
 
         if (!configurationType.EndsWith(
-            "Configuration",
-            StringComparison.Ordinal))
+            value: "Configuration",
+            comparisonType: StringComparison.Ordinal))
         {
             return false;
         }
@@ -746,15 +746,27 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             .Last();
 
         if (!configurationPrefix.EndsWith(
-            applicationSuffix,
-            StringComparison.OrdinalIgnoreCase))
+            value: applicationSuffix,
+            comparisonType: StringComparison.OrdinalIgnoreCase))
         {
             configurationPrefix += applicationSuffix;
         }
 
-        string expectedMethodName = $"Add{configurationPrefix}";
+        string configurationEntryPointName =
+            $"Add{configurationPrefix}";
 
-        return method.Identifier.Text == expectedMethodName
+        string applicationEntryPointName =
+            $"Add{applicationSuffix}";
+
+        return method.Identifier.Text is not null
+            && (string.Equals(
+                    a: method.Identifier.Text,
+                    b: configurationEntryPointName,
+                    comparisonType: StringComparison.Ordinal)
+                || string.Equals(
+                    a: method.Identifier.Text,
+                    b: applicationEntryPointName,
+                    comparisonType: StringComparison.Ordinal))
             && method.ParameterList.Parameters.Any(parameter =>
                 parameter.Type?.ToString() == "IConfiguration");
     }
