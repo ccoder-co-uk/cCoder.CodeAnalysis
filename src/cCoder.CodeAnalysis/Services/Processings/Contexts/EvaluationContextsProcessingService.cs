@@ -339,6 +339,13 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Exposure;
         }
 
+        if (containingNamespace.Contains(
+            value: ".Activities.Activities",
+            comparisonType: StringComparison.Ordinal))
+        {
+            return StandardElementType.Activity;
+        }
+
         if (
             containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
             || InheritsFromExternalType(type: type)

@@ -10,6 +10,32 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Contexts;
 public sealed partial class EvaluationContextsProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldClassifyWorkflowActivityAsActivity()
+    {
+        // Given
+        const string source =
+            """
+            namespace Example.Activities.Activities.Api;
+
+            public sealed class SendRequestActivity
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.StandardElementType.Should()
+            .Be(expected: StandardElementType.Activity);
+    }
+
+    [Fact]
     public void ProcessShouldKeepExternalServiceContractAsDependency()
     {
         // Given
