@@ -119,6 +119,37 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyStatefulDependencyAsDependency()
+    {
+        // Given
+        const string source =
+            """
+            namespace Example.Dependencies;
+
+            internal sealed class ScriptDependency
+            {
+                private readonly System.Net.Http.HttpClient httpClient;
+
+                internal ScriptDependency(
+                    System.Net.Http.HttpClient httpClient) =>
+                    this.httpClient = httpClient;
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.StandardElementType.Should()
+            .Be(expected: StandardElementType.Dependency);
+    }
+
+    [Fact]
     public void ProcessShouldClassifyRootConfigurationMapperAsApp()
     {
         // Given
