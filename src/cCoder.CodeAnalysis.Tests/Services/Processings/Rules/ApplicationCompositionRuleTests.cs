@@ -277,6 +277,42 @@ public sealed class ApplicationCompositionRuleTests
     }
 
     [Fact]
+    public void DomainQualifiedAppEntryPointEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "AI.Web.IServiceCollectionExtensions",
+            projectName: "AI.Web",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddAIWeb(
+                        this IServiceCollection services,
+                        IConfiguration applicationConfiguration,
+                        Action<AIWebConfiguration> configure)
+                    {
+                        AIWebConfiguration configuration = new();
+                        applicationConfiguration.Bind(configuration);
+                        configure(configuration);
+                        services.AddExposures();
+                    }
+
+                    private static void AddExposures(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item =>
+            item.Code == "STXAPP002"
+            || item.Code == "STXAPP011"
+            || item.Code == "STXAPP012");
+    }
+
+    [Fact]
     public void AppEntryPointWithoutConfigurationCallbackEvaluatesAsExpected()
     {
         EvaluationContext context = CreateContext(
@@ -320,6 +356,44 @@ public sealed class ApplicationCompositionRuleTests
         AnalysisItem[] items = service.Evaluate(context).ToArray();
 
         items.Should().ContainSingle(item => item.Code == "STXAPP013", "");
+    }
+
+    [Fact]
+    public void ScalarAppRootConfigurationPropertyEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "AI.Web.Models.AIWebConfiguration",
+            projectName: "AI.Web",
+            sourceCode:
+                """
+                public sealed class AIWebConfiguration
+                {
+                    public string ConnectionString { get; set; }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP015", "");
+    }
+
+    [Fact]
+    public void ComplexAppRootConfigurationEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "AI.Web.Models.AIWebConfiguration",
+            projectName: "AI.Web",
+            sourceCode:
+                """
+                public sealed class AIWebConfiguration
+                {
+                    public AIConfiguration AI { get; set; }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXAPP015", "");
     }
 
     [Fact]

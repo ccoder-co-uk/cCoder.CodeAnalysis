@@ -74,6 +74,11 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         {
             yield return item;
         }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP015(context: context))
+        {
+            yield return item;
+        }
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -137,7 +142,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             return [];
         }
 
-        string projectName = context.ProjectName.Split(['.', '-']).Last();
         bool isDomainLibrary = context.ProjectName.StartsWith(
             "cCoder.",
             StringComparison.OrdinalIgnoreCase);
@@ -163,7 +167,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                             || method.Identifier.Text.EndsWith(
                                 "HostedServices",
                                 StringComparison.Ordinal))
-                    : method.Identifier.Text == $"Add{projectName}"));
+                    : IsApplicationEntryPoint(method)));
 
         return exposesDomainRegistration
             ? []
@@ -412,15 +416,12 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             return [];
         }
 
-        string appName = context.ProjectName.Split(['.', '-'])
-            .Last();
-
         MethodDeclarationSyntax? publicEntryPoint = GetMethods(context)
             .FirstOrDefault(method =>
                 method.Modifiers.Any(modifier =>
                     modifier.RawKind == (int)
                         Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                && method.Identifier.Text == $"Add{appName}");
+                && IsApplicationEntryPoint(method));
 
         return publicEntryPoint is not null
             ? []
@@ -428,7 +429,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     "STXAPP011",
-                    "Application IServiceCollectionExtensions must expose Add{AppName}.",
+                    "Application IServiceCollectionExtensions must expose Add{RootConfigurationName}.",
                     context)
             ];
     }
@@ -448,12 +449,13 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             return [];
         }
 
-        string appName = context.ProjectName.Split(['.', '-'])
-            .Last();
-
         MethodDeclarationSyntax? entryPoint = GetMethods(context)
             .FirstOrDefault(method =>
-                method.Identifier.Text == $"Add{appName}");
+                method.Modifiers.Any(modifier =>
+                    modifier.RawKind == (int)
+                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
+                && method.ParameterList.Parameters.Any(parameter =>
+                    parameter.Type?.ToString() == "IConfiguration"));
 
         if (entryPoint is null)
         {
@@ -561,6 +563,44 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             ];
     }
 
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP015(
+        EvaluationContext context)
+    {
+        string configurationName = GetTypeName(context);
+        string projectConfigurationName = string.Concat(
+            context.ProjectName.Split(
+                ['.', '-'],
+                StringSplitOptions.RemoveEmptyEntries))
+            + "Configuration";
+
+        if (!string.Equals(
+            configurationName,
+            projectConfigurationName,
+            StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        PropertyDeclarationSyntax? scalarProperty = context.Declarations
+            .SelectMany(declaration => declaration.Members)
+            .OfType<PropertyDeclarationSyntax>()
+            .FirstOrDefault(property =>
+                !property.Type.ToString().EndsWith(
+                    "Configuration",
+                    StringComparison.Ordinal));
+
+        return scalarProperty is null
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    "STXAPP015",
+                    "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.",
+                    context,
+                    scalarProperty.GetLocation())
+            ];
+    }
+
     private static bool IsCommandApplication(EvaluationContext context) =>
 
         context.SourceCode.Contains(value: "RootCommand", comparisonType: StringComparison.Ordinal)
@@ -643,6 +683,47 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         && method.ParameterList.Parameters.Any(
             predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
         );
+
+    private static bool IsApplicationEntryPoint(
+        MethodDeclarationSyntax method)
+    {
+        GenericNameSyntax? configurationCallback = method.ParameterList
+            .Parameters
+            .Select(parameter => parameter.Type)
+            .OfType<GenericNameSyntax>()
+            .FirstOrDefault(genericName =>
+                genericName.Identifier.Text == "Action"
+                && genericName.TypeArgumentList.Arguments.Count == 1);
+
+        if (configurationCallback is null)
+        {
+            return method.Identifier.Text.StartsWith(
+                "Add",
+                StringComparison.Ordinal)
+                && method.ParameterList.Parameters.Any(parameter =>
+                    parameter.Type?.ToString() == "IConfiguration");
+        }
+
+        string configurationType = configurationCallback
+            .TypeArgumentList.Arguments[0]
+            .ToString();
+
+        if (!configurationType.EndsWith(
+            "Configuration",
+            StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string configurationPrefix = configurationType.Substring(
+            startIndex: 0,
+            length: configurationType.Length - "Configuration".Length);
+        string expectedMethodName = $"Add{configurationPrefix}";
+
+        return method.Identifier.Text == expectedMethodName
+            && method.ParameterList.Parameters.Any(parameter =>
+                parameter.Type?.ToString() == "IConfiguration");
+    }
 
     private static bool DelegatesRegistrationByLayer(
         MethodDeclarationSyntax method,
