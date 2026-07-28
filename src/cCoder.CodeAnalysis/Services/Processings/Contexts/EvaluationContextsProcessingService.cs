@@ -175,10 +175,14 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return GetContainedNamedTypes(type: arrayType.ElementType);
         }
 
-        return type is INamedTypeSymbol namedType
-            ? namedType.TypeArguments.SelectMany(selector: GetContainedNamedTypes)
-            .Prepend(element: namedType)
-            : [];
+        if (type is not INamedTypeSymbol namedType)
+        {
+            return [];
+        }
+
+        return namedType.TypeArguments.Length == 0
+            ? [namedType]
+            : namedType.TypeArguments.SelectMany(selector: GetContainedNamedTypes);
     }
 
     private static int[] GetPublicMethodCallLineNumbers(INamedTypeSymbol type, CSharpCompilation compilation) =>

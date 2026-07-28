@@ -86,6 +86,56 @@ public sealed class ArchitectureServiceTests
     }
 
     [Fact]
+    public void BuildShouldIgnoreGenericResultWrapperAsASeparateModelContract()
+    {
+        // Given
+        const string source = """
+            namespace Sample.Models
+            {
+                public sealed class Student
+                {
+                }
+
+                public sealed class OperationResult<T>
+                {
+                    public T Item { get; set; }
+                }
+            }
+
+            namespace Sample.Services.Foundations
+            {
+                using Sample.Models;
+
+                internal sealed class StudentService
+                {
+                    public Student GetStudent() => default;
+
+                    public OperationResult<Student> GetStudentResult() => default;
+                }
+            }
+            """;
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: source,
+            path: "StudentService.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [syntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(
+            compilation: compilation);
+
+        // Then
+        architecture.AnalysisItems.Should().NotContain(
+            predicate: item =>
+                item.Code == "STX0007"
+                && item.Type == "Sample.Services.Foundations.StudentService");
+    }
+
+    [Fact]
     public void BuildShouldHandleMultipleImplementationsOfAnInterface()
     {
         // Given
