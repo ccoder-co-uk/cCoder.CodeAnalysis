@@ -13,6 +13,37 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class STXERulesProcessingServiceTests
 {
     [Fact]
+    public void EvaluateShouldIgnoreConfigurationExtensions()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            public static class AIConfigurationExtensions
+            {
+                public static void Configure()
+                {
+                    if (IsEnabled())
+                    {
+                        AddProvider();
+                    }
+
+                    AddDefaults();
+                }
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration,
+            "Example.Models.AIConfigurationExtensions");
+        STXERulesProcessingService service = new();
+
+        AnalysisItem[] results = service
+            .Evaluate(context)
+            .ToArray();
+
+        results.Should().BeEmpty("");
+    }
+
+    [Fact]
     public void EvaluateShouldAllowMvcActionResponseFlow()
     {
         // given
@@ -90,10 +121,11 @@ public sealed class STXERulesProcessingServiceTests
     }
 
     private static EvaluationContext CreateContext(
-        TypeDeclarationSyntax declaration) =>
+        TypeDeclarationSyntax declaration,
+        string typeName = "Example.Controllers.HomeController") =>
         new()
         {
-            TypeName = "Example.Controllers.HomeController",
+            TypeName = typeName,
             StandardElementType = StandardElementType.Exposure,
             Declarations = [declaration],
             Dependencies = []

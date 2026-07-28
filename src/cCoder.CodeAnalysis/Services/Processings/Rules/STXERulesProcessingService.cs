@@ -11,6 +11,13 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
+        if (context.TypeName.EndsWith(
+            "ConfigurationExtensions",
+            StringComparison.Ordinal))
+        {
+            yield break;
+        }
+
         foreach (AnalysisItem item in EvaluateSTXE001(context: context))
         {
             yield return item;
