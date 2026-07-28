@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text;
 using cCoder.CodeAnalysis.Sample.Brokers.Storage;
+using cCoder.CodeAnalysis.Sample.AcceptanceTests.Infrastructure;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
@@ -17,7 +18,7 @@ namespace cCoder.CodeAnalysis.Sample.AcceptanceTests.Controllers.Students;
 
 public sealed class StudentsControllerAcceptanceTests : IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> applicationFactory = new WebApplicationFactory<Program>();
+    private readonly AcceptanceWebApplicationFactory applicationFactory = new();
 
     private HttpClient client = null!;
 
@@ -55,6 +56,8 @@ public sealed class StudentsControllerAcceptanceTests : IAsyncLifetime
             context.Schools.Remove(school);
             await context.SaveChangesAsync();
         }
+
+        await context.Database.EnsureDeletedAsync();
         client.Dispose();
         await applicationFactory.DisposeAsync();
     }

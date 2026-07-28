@@ -7,9 +7,9 @@ using System.Net.Http.Json;
 using System.Runtime.InteropServices;
 using System.Text;
 using cCoder.CodeAnalysis.Sample.Brokers.Storage;
+using cCoder.CodeAnalysis.Sample.AcceptanceTests.Infrastructure;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using FluentAssertions;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,7 +17,7 @@ namespace cCoder.CodeAnalysis.Sample.AcceptanceTests.Controllers.SchoolImports;
 
 public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
 {
-    private readonly WebApplicationFactory<Program> applicationFactory = new WebApplicationFactory<Program>();
+    private readonly AcceptanceWebApplicationFactory applicationFactory = new();
 
     private HttpClient client = null!;
 
@@ -56,6 +56,8 @@ public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
             context.Schools.Remove(school);
             await context.SaveChangesAsync();
         }
+
+        await context.Database.EnsureDeletedAsync();
         client.Dispose();
         await applicationFactory.DisposeAsync();
     }
