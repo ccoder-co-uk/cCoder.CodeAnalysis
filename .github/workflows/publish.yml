@@ -44,6 +44,14 @@ jobs:
       - name: Test sample services
         run: dotnet test src/cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj -c Release --no-build -m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false
 
+      - name: Configure sample application test environment
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:ConnectionStrings__Students)) {
+            throw "The self-hosted runner is missing its Students test database connection."
+          }
+
+          "CodeAnalysisSample__ConnectionString=$env:ConnectionStrings__Students" >> $env:GITHUB_ENV
+
       - name: Test sample application
         run: dotnet test src/cCoder.CodeAnalysis.Sample.AcceptanceTests/cCoder.CodeAnalysis.Sample.AcceptanceTests.csproj -c Release --no-build -m:1 /p:BuildInParallel=false /p:UseSharedCompilation=false
 

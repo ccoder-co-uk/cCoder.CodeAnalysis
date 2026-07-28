@@ -83,7 +83,7 @@ public sealed class StudentsControllerAcceptanceTests : IAsyncLifetime
             delegate(IWebHostBuilder builder)
             {
                 builder.UseSetting(
-                    "ConnectionStrings:Students",
+                    "CodeAnalysisSample:ConnectionString",
                     "Server=127.0.0.1,1;Database=Unavailable;User Id=invalid;Password=invalid;TrustServerCertificate=True;Connect Timeout=1"
                 );
             }
