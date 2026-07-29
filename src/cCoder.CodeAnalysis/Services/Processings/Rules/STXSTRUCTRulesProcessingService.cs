@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
 using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
@@ -10,7 +11,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        return EvaluateSTXSTRUCT001(context: context);
+        return EvaluateSTXSTRUCT001(context: context)
+            .Concat(second: EvaluateSTXSTRUCT002(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT001(EvaluationContext context)
@@ -31,9 +33,41 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             )
             .Select(
                 selector: (Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax declaration) =>
-                    CreateAnalysisItem(context: context, location: declaration.GetLocation())
+                    CreateAnalysisItem(
+                        code: "STXSTRUCT001",
+                        description: "The source file must live in the standard folder for its element type.",
+                        context: context,
+                        location: declaration.GetLocation()
+                    )
             );
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
+    {
+        return context.Declarations
+            .OfType<ClassDeclarationSyntax>()
+            .Where(predicate: IsTopLevelClass)
+            .Where(
+                predicate: (ClassDeclarationSyntax declaration) =>
+                    declaration.SyntaxTree
+                        .GetRoot()
+                        .DescendantNodes()
+                        .OfType<ClassDeclarationSyntax>()
+                        .Count(predicate: IsTopLevelClass) > 1
+            )
+            .Select(
+                selector: (ClassDeclarationSyntax declaration) =>
+                    CreateAnalysisItem(
+                        code: "STXSTRUCT002",
+                        description: "A source file must contain only one top-level class.",
+                        context: context,
+                        location: declaration.GetLocation()
+                    )
+            );
+    }
+
+    private static bool IsTopLevelClass(ClassDeclarationSyntax declaration) =>
+        !declaration.Ancestors().OfType<TypeDeclarationSyntax>().Any();
 
     private static bool IsInStandardFolder(string filePath, StandardElementType elementType)
     {
@@ -69,12 +103,16 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             );
     }
 
-    private static AnalysisItem CreateAnalysisItem(EvaluationContext context, Location location)
+    private static AnalysisItem CreateAnalysisItem(
+        string code,
+        string description,
+        EvaluationContext context,
+        Location location)
     {
         return new AnalysisItem
         {
-            Code = "STXSTRUCT001",
-            Description = "The source file must live in the standard folder for its element type.",
+            Code = code,
+            Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = context.TypeName,
             LineNumber = location.GetLineSpan().StartLinePosition.Line + 1,

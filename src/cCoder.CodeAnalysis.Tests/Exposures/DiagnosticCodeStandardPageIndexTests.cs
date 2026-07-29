@@ -17,7 +17,7 @@ public sealed class DiagnosticCodeStandardPageIndexTests
             .GetDiagnosticCodeStandardPages()
             .ToArray();
 
-        pages.Should().HaveCount(100, "");
+        pages.Should().HaveCount(101, "");
         pages.Select((DiagnosticCodeStandardPage page) => page.DiagnosticCode).Should().OnlyHaveUniqueItems("");
     }
 
@@ -66,6 +66,14 @@ public sealed class DiagnosticCodeStandardPageIndexTests
     public void ShouldSupportThreeRelevantStandardPages()
     {
         DiagnosticCodeStandardPage page = GetDiagnosticCodeStandardPage(diagnosticCode: "STXSTRUCT001");
+
+        page.StandardPageUris.Should().HaveCount(3, "");
+    }
+
+    [Fact]
+    public void OneClassPerFileRuleShouldLinkToOrganizationGuidance()
+    {
+        DiagnosticCodeStandardPage page = GetDiagnosticCodeStandardPage(diagnosticCode: "STXSTRUCT002");
 
         page.StandardPageUris.Should().HaveCount(3, "");
     }

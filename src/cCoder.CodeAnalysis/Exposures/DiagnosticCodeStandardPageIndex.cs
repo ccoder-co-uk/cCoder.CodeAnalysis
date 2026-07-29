@@ -294,6 +294,12 @@ internal static class DiagnosticCodeStandardPageIndex
             thirdStandardPageUri: $"{WebApplicationsPage}#321204-organization"
         ),
         new(
+            diagnosticCode: "STXSTRUCT002",
+            firstStandardPageUri: $"{BrokersPage}#13-organization",
+            secondStandardPageUri: $"{RestfulApisPage}#3113-organization",
+            thirdStandardPageUri: $"{WebApplicationsPage}#321204-organization"
+        ),
+        new(
             diagnosticCode: "STXTEST001",
             firstStandardPageUri: $"{PrinciplesPage}#0200-simplicity",
             secondStandardPageUri: $"{RestfulApisPage}#31150-unit-tests"
