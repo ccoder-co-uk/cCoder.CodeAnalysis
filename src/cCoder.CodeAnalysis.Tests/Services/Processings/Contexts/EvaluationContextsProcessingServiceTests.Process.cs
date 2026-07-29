@@ -10,6 +10,45 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Contexts;
 public sealed partial class EvaluationContextsProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldExcludeSecurityRequestConfigurationFromLayerDependencies()
+    {
+        const string source =
+            """
+            namespace cCoder.Security.Models.Configurations
+            {
+                public interface ISSOAuthInfo
+                {
+                    string SSOUserId { get; set; }
+                }
+            }
+
+            namespace Example.Brokers
+            {
+                using cCoder.Security.Models.Configurations;
+
+                internal sealed class EventBroker(
+                    System.IFormatProvider eventHub,
+                    ISSOAuthInfo authInfo)
+                {
+                }
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single(item => item.TypeName == "Example.Brokers.EventBroker");
+
+        context.Dependencies
+            .Should()
+            .ContainSingle()
+            .Which.TypeName.Should()
+            .Be("System.IFormatProvider");
+    }
+
+    [Fact]
     public void ProcessShouldTreatUnresolvedConstructorDependencyAsUnknownDependency()
     {
         // Given

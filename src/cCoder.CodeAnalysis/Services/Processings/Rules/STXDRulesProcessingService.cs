@@ -31,7 +31,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         bool mayConsumeDependency =
             context.StandardElementType == StandardElementType.Broker
             || context.StandardElementType == StandardElementType.Dependency
-            || context.DeclaresDependencyIntent;
+            || context.DeclaresDependencyIntent
+            || IsHostedService(context: context);
 
         if (!mayConsumeDependency && consumesDependency)
         {
@@ -45,6 +46,16 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             };
         }
     }
+
+    private static bool IsHostedService(
+        EvaluationContext context) =>
+        context.ImplementedInterfaces?.Any(
+            predicate: (string interfaceName) =>
+                interfaceName.EndsWith(
+                    value: ".IHostedService",
+                    comparisonType: StringComparison.Ordinal)
+                || interfaceName == "IHostedService")
+            == true;
 
     private static IEnumerable<AnalysisItem> EvaluateSTXD002(EvaluationContext context)
     {

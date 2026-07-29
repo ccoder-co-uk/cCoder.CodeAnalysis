@@ -8,4 +8,5 @@ public sealed class TypeDependency
 {
     public string TypeName { get; set; }
     public StandardElementType StandardElementType { get; set; }
+    public bool IsConfigurationModel { get; set; }
 }
