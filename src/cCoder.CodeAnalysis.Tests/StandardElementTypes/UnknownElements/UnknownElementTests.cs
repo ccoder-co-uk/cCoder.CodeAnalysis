@@ -22,7 +22,7 @@ public sealed class UnknownElementTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfUnknownElements()
     {
-        Count(StandardElementType.Unknown).Should().Be(4, "");
+        Count(StandardElementType.Unknown).Should().Be(5, "");
     }
 
     private int Count(StandardElementType elementType)
