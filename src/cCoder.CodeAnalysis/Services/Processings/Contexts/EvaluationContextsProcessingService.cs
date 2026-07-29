@@ -112,6 +112,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     selector: (IParameterSymbol parameter) =>
                         CreateTypeDependency(dependency: parameter.Type, declaredTypes: declaredTypes)
                 )
+                .Where(
+                    predicate: (TypeDependency dependency) =>
+                        !dependency.IsConfigurationModel)
                 .GroupBy(
                     keySelector: (TypeDependency dependency) => dependency.TypeName,
                     comparer: StringComparer.Ordinal
@@ -235,6 +238,8 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             {
                 TypeName = GetTypeName(type: declaredType),
                 StandardElementType = StandardElementType.Exposure,
+                IsConfigurationModel =
+                    IsConfigurationModel(type: dependency),
             };
         }
 
@@ -246,6 +251,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             {
                 TypeName = GetTypeName(type: concreteType),
                 StandardElementType = Classify(type: concreteType),
+                IsConfigurationModel =
+                    IsConfigurationModel(type: dependency)
+                    || IsConfigurationModel(type: concreteType),
             };
     }
 
@@ -262,7 +270,30 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             TypeName = GetTypeName(type: dependency),
             StandardElementType =
                 elementType == StandardElementType.Unknown ? StandardElementType.Dependency : elementType,
+            IsConfigurationModel =
+                IsConfigurationModel(type: dependency),
         };
+    }
+
+    private static bool IsConfigurationModel(
+        ITypeSymbol type)
+    {
+        string typeName = type.Name;
+        string containingNamespace =
+            type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+
+        return typeName.EndsWith(
+                value: "Configuration",
+                comparisonType: StringComparison.Ordinal)
+            || typeName.EndsWith(
+                value: "ConfigurationModel",
+                comparisonType: StringComparison.Ordinal)
+            || containingNamespace.Contains(
+                value: ".Configurations",
+                comparisonType: StringComparison.Ordinal)
+            || containingNamespace.EndsWith(
+                value: ".Configuration",
+                comparisonType: StringComparison.Ordinal);
     }
 
     private static StandardElementType ClassifyReferencedType(INamedTypeSymbol type) =>

@@ -163,8 +163,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE005(EvaluationContext context)
     {
-        return context.IsApiController || context.TypeName.Split(separator: ['.'])
-            .Last() == "Program"
+        return context.IsApiController
+            || IsHostedService(context: context)
+            || context.TypeName.Split(separator: ['.']).Last() == "Program"
             ? []
             : context
                 .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
@@ -190,6 +191,16 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                         )
                 );
     }
+
+    private static bool IsHostedService(
+        EvaluationContext context) =>
+        context.ImplementedInterfaces?.Any(
+            predicate: (string interfaceName) =>
+                interfaceName.EndsWith(
+                    value: ".IHostedService",
+                    comparisonType: StringComparison.Ordinal)
+                || interfaceName == "IHostedService")
+            == true;
 
     private static bool IsMvcActionResponseNode(
         Microsoft.CodeAnalysis.SyntaxNode node)
