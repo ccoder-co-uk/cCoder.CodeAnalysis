@@ -441,7 +441,7 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => GetSingleInvocation(method: method) != null)
             .Where(
-                predicate: delegate(MethodDeclarationSyntax method)
+                predicate: delegate (MethodDeclarationSyntax method)
                 {
                     InvocationExpressionSyntax singleInvocation = GetSingleInvocation(method: method)!;
 
@@ -525,7 +525,7 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.ExpressionBody != null)
             .Where(
-                predicate: delegate(MethodDeclarationSyntax method)
+                predicate: delegate (MethodDeclarationSyntax method)
                 {
                     LinePosition startLinePosition = method.GetLocation()
                         .GetLineSpan().StartLinePosition;

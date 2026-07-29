@@ -6,5 +6,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal interface IInvalidTeacherProcessingService
 {
-	int CountStudents();
+    int CountStudents();
 }

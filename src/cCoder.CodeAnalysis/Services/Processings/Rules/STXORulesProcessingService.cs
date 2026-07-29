@@ -37,7 +37,7 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
         );
 
         bool containsOnlySupportedDependencies = context.Dependencies.All(
-            predicate: delegate(TypeDependency dependency)
+            predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
                 return (uint)(standardElementType - 2) <= 1u;

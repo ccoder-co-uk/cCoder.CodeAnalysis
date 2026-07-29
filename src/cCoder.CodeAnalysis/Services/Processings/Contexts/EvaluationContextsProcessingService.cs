@@ -88,6 +88,10 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             ImplementsExternalInterface = ImplementsExternalInterface(type: type),
             ImplementsContract = type.AllInterfaces.Any(),
             HasExternalStateDependency = HasExternalStateDependency(type: type),
+            ExposesExternalResource = ExposesExternalResource(type: type),
+            UsesExternalResource = UsesExternalResource(
+                type: type,
+                compilation: compilation),
             DeclaresDependencyIntent = DeclaresDependencyIntent(type: type),
             Declarations = type
                 .DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.GetSyntax())
@@ -534,6 +538,107 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     && !field.Type.Locations.Any(
                         predicate: (Location location) => location.IsInSource)
             );
+
+    private static bool ExposesExternalResource(INamedTypeSymbol type) =>
+
+        type.GetMembers()
+            .Where(predicate: (ISymbol member) => !member.IsImplicitlyDeclared)
+            .Where(
+                predicate: (ISymbol member) =>
+                    member.DeclaredAccessibility
+                        is Accessibility.Public
+                        or Accessibility.Internal
+                        or Accessibility.Protected
+                        or Accessibility.ProtectedOrInternal)
+            .Any(
+                predicate: (ISymbol member) =>
+                    member switch
+                    {
+                        IFieldSymbol field =>
+                            IsExternalResource(type: field.Type),
+                        IPropertySymbol property =>
+                            IsExternalResource(type: property.Type),
+                        IMethodSymbol method =>
+                            IsExternalResource(type: method.ReturnType)
+                            || method.Parameters.Any(
+                                predicate: (IParameterSymbol parameter) =>
+                                    IsExternalResource(type: parameter.Type)),
+                        _ => false,
+                    });
+
+    private static bool UsesExternalResource(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation) =>
+        type.InstanceConstructors
+            .SelectMany(
+                selector: constructor =>
+                    constructor.Parameters)
+            .Any(
+                predicate: parameter =>
+                    IsExternalResource(type: parameter.Type))
+        || type.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Any(
+                predicate: field =>
+                    IsExternalResource(type: field.Type))
+        || type.DeclaringSyntaxReferences
+            .Select(
+                selector: reference =>
+                    reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(
+                selector: declaration =>
+                    declaration.DescendantNodes()
+                        .OfType<ObjectCreationExpressionSyntax>())
+            .Any(
+                predicate: creation =>
+                    IsExternalResource(
+                        type: compilation
+                            .GetSemanticModel(
+                                syntaxTree: creation.SyntaxTree)
+                            .GetTypeInfo(node: creation)
+                            .Type));
+
+    private static bool IsExternalResource(ITypeSymbol? type)
+    {
+        if (type is IArrayTypeSymbol array)
+        {
+            return IsExternalResource(type: array.ElementType);
+        }
+
+        if (type is not INamedTypeSymbol namedType)
+        {
+            return false;
+        }
+
+        string typeName = namedType.ConstructedFrom
+            .ToDisplayString();
+
+        if (typeName is "System.Threading.Tasks.Task"
+            or "System.Threading.Tasks.Task<TResult>"
+            or "System.Threading.Tasks.ValueTask"
+            or "System.Threading.Tasks.ValueTask<TResult>")
+        {
+            return namedType.TypeArguments.Any(
+                predicate: argument =>
+                    IsExternalResource(type: argument));
+        }
+
+        bool isExternal =
+            !namedType.Locations.Any(
+                predicate: (Location location) => location.IsInSource);
+
+        bool ownsDisposableResource =
+            namedType.AllInterfaces.Any(
+                predicate: (INamedTypeSymbol contract) =>
+                    contract.ToDisplayString() == "System.IDisposable"
+                    || contract.ToDisplayString() == "System.IAsyncDisposable");
+
+        return (isExternal && ownsDisposableResource)
+            || namedType.TypeArguments.Any(
+                predicate: (ITypeSymbol argument) =>
+                    IsExternalResource(type: argument));
+    }
 
     private static bool DeclaresDependencyIntent(INamedTypeSymbol type) =>
 

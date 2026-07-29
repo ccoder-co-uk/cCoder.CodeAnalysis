@@ -20,13 +20,13 @@ public sealed partial class SchoolServiceTests
         School expectedSchool = CreateSchool();
 
         schoolBrokerMock
-            .Setup(expression:(ISchoolBroker broker) => broker.SelectAllSchools())
-            .Returns(value:CreateSchools(school:expectedSchool));
+            .Setup(expression: (ISchoolBroker broker) => broker.SelectAllSchools())
+            .Returns(value: CreateSchools(school: expectedSchool));
 
         SchoolService service = CreateSchoolService();
-        School actualSchool = service.GetSchool(schoolId:expectedSchool.Id)!;
+        School actualSchool = service.GetSchool(schoolId: expectedSchool.Id)!;
 
         ((object)actualSchool).Should()
-            .BeSameAs(expected:expectedSchool, because:"");
+            .BeSameAs(expected: expectedSchool, because: "");
     }
 }

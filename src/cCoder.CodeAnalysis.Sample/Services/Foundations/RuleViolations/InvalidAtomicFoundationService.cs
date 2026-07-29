@@ -9,10 +9,12 @@ namespace cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations;
 
 internal sealed partial class InvalidAtomicFoundationService(IStudentBroker studentBroker) : IInvalidAtomicFoundationService
 {
-	public ValueTask<Student> AddStudentAsync(Student newStudent)
+    public ValueTask<Student> AddStudentAsync(Student newStudent)
 =>
-	    TryCatch(operation:() => {
-			Validate(inputs:[newStudent]);
-			_ = newStudent.Id;
-			return studentBroker.InsertStudentAsync(newStudent:newStudent);
-		});}
+        TryCatch(operation: () =>
+        {
+            Validate(inputs: [newStudent]);
+            _ = newStudent.Id;
+            return studentBroker.InsertStudentAsync(newStudent: newStudent);
+        });
+}

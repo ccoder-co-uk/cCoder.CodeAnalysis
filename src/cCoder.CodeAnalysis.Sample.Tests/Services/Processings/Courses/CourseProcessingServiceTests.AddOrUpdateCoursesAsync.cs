@@ -20,16 +20,16 @@ public sealed partial class CourseProcessingServiceTests
         Course[] items = CreateCourses();
 
         courseServiceMock
-            .Setup(expression:(ICourseService courseService) => courseService.AddCourseAsync(newCourse:items[0]))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:items[0]));
+            .Setup(expression: (ICourseService courseService) => courseService.AddCourseAsync(newCourse: items[0]))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: items[0]));
 
         courseServiceMock
-            .Setup(expression:(ICourseService courseService) => courseService.UpdateCourseAsync(updatedCourse:items[1]))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:items[1]));
+            .Setup(expression: (ICourseService courseService) => courseService.UpdateCourseAsync(updatedCourse: items[1]))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: items[1]));
 
         CourseProcessingService service = CreateCourseProcessingService();
-        await service.AddOrUpdateCoursesAsync(courses:items, schoolId:11, teacherId:13);
-        courseServiceMock.Verify(expression:(ICourseService foundation) => foundation.AddCourseAsync(newCourse:items[0]), times:Times.Once);
-        courseServiceMock.Verify(expression:(ICourseService foundation) => foundation.UpdateCourseAsync(updatedCourse:items[1]), times:Times.Once);
+        await service.AddOrUpdateCoursesAsync(courses: items, schoolId: 11, teacherId: 13);
+        courseServiceMock.Verify(expression: (ICourseService foundation) => foundation.AddCourseAsync(newCourse: items[0]), times: Times.Once);
+        courseServiceMock.Verify(expression: (ICourseService foundation) => foundation.UpdateCourseAsync(updatedCourse: items[1]), times: Times.Once);
     }
 }

@@ -50,7 +50,7 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
     {
         int dependencyCount = context.Dependencies.Count(
-            predicate: delegate(TypeDependency dependency)
+            predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
 
@@ -147,7 +147,7 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
     {
         return (
             !context.Dependencies.Any(
-                predicate: delegate(TypeDependency dependency)
+                predicate: delegate (TypeDependency dependency)
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;
 

@@ -27,13 +27,13 @@ public sealed partial class SchoolPeopleImportOrchestrationServiceTests
         School obj = new School { Id = 7 };
         int num = 1;
         List<Student> list = new List<Student>(num);
-        CollectionsMarshal.SetCount(list:list, count:num);
-        CollectionsMarshal.AsSpan(list:list)[0] = new Student { FirstName = studentFirstName, LastName = "Lovelace" };
+        CollectionsMarshal.SetCount(list: list, count: num);
+        CollectionsMarshal.AsSpan(list: list)[0] = new Student { FirstName = studentFirstName, LastName = "Lovelace" };
         obj.Students = list;
         num = 1;
         List<Teacher> list2 = new List<Teacher>(num);
-        CollectionsMarshal.SetCount(list:list2, count:num);
-        CollectionsMarshal.AsSpan(list:list2)[0] = new Teacher { FirstName = "Grace", LastName = "Hopper" };
+        CollectionsMarshal.SetCount(list: list2, count: num);
+        CollectionsMarshal.AsSpan(list: list2)[0] = new Teacher { FirstName = "Grace", LastName = "Hopper" };
         obj.Teachers = list2;
         return obj;
     }

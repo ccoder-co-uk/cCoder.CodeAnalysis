@@ -8,9 +8,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal sealed partial class InvalidVocabularyProcessingService : IInvalidVocabularyProcessingService
 {
-	public Student InsertStudent(Student newStudent)
+    public Student InsertStudent(Student newStudent)
 =>
-	    TryCatch(operation:() => {
-			Validate(inputs:[newStudent]);
-			return newStudent;
-		});}
+        TryCatch(operation: () =>
+        {
+            Validate(inputs: [newStudent]);
+            return newStudent;
+        });
+}

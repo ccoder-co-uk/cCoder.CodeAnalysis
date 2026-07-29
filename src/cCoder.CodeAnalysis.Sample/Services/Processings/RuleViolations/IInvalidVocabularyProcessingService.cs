@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal interface IInvalidVocabularyProcessingService
 {
-	Student InsertStudent(Student newStudent);
+    Student InsertStudent(Student newStudent);
 }

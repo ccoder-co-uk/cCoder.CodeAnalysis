@@ -8,7 +8,8 @@ namespace cCoder.CodeAnalysis.Sample.Brokers.Storage.RuleViolations;
 
 internal sealed class InvalidStorageBroker : IInvalidStorageBroker
 {
-	public IQueryable<Student> GetStudents()
+    public IQueryable<Student> GetStudents()
 =>
-	    Array.Empty<Student>()
-		    .AsQueryable();}
+        Array.Empty<Student>()
+            .AsQueryable();
+}

@@ -22,16 +22,16 @@ public sealed partial class StudentServiceTests
         Student expectedStudent = new Student { Id = 7 };
         IQueryable<Student> students = new Student[1] { expectedStudent }.AsQueryable();
 
-        studentBrokerMock.Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Returns(value:students);
+        studentBrokerMock.Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Returns(value: students);
 
         StudentService studentService = CreateStudentService();
-        Student actualStudent = studentService.GetStudent(studentId:7)!;
+        Student actualStudent = studentService.GetStudent(studentId: 7)!;
 
         ((object)actualStudent).Should()
-            .BeSameAs(expected:expectedStudent, because:"");
+            .BeSameAs(expected: expectedStudent, because: "");
 
-        studentBrokerMock.Verify(expression:(IStudentBroker broker) => broker.SelectAllStudents(), times:Times.Once);
+        studentBrokerMock.Verify(expression: (IStudentBroker broker) => broker.SelectAllStudents(), times: Times.Once);
         studentBrokerMock.VerifyNoOtherCalls();
     }
 
@@ -43,19 +43,19 @@ public sealed partial class StudentServiceTests
         // Then
         InvalidOperationException brokerException = new InvalidOperationException();
 
-        studentBrokerMock.Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Throws(exception:brokerException);
+        studentBrokerMock.Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Throws(exception: brokerException);
 
         StudentService studentService = CreateStudentService();
 
         Action getStudent = delegate
         {
-            studentService.GetStudent(studentId:7);
+            studentService.GetStudent(studentId: 7);
         };
 
         getStudent
             .Should()
-            .Throw<StudentServiceDependencyException>(because:"",becauseArgs:[Array.Empty<object>()])
-            .WithInnerException<InvalidOperationException>(because:"",becauseArgs:[Array.Empty<object>()]);
+            .Throw<StudentServiceDependencyException>(because: "", becauseArgs: [Array.Empty<object>()])
+            .WithInnerException<InvalidOperationException>(because: "", becauseArgs: [Array.Empty<object>()]);
     }
 }

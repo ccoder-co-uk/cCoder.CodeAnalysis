@@ -25,6 +25,6 @@ public sealed partial class StudentProcessingServiceTests
 
     private static Student[] CreateStudents()
     {
-        return new Student[2] { CreateStudent(studentId:0), CreateStudent(studentId:7) };
+        return new Student[2] { CreateStudent(studentId: 0), CreateStudent(studentId: 7) };
     }
 }

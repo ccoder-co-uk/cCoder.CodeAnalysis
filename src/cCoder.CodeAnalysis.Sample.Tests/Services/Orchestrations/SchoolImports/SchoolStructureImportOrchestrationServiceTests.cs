@@ -28,8 +28,8 @@ public sealed partial class SchoolStructureImportOrchestrationServiceTests
         School obj = new School { Name = name };
         int num = 1;
         List<Course> list = new List<Course>(num);
-        CollectionsMarshal.SetCount(list:list, count:num);
-        CollectionsMarshal.AsSpan(list:list)[0] = new Course { Name = "Mathematics" };
+        CollectionsMarshal.SetCount(list: list, count: num);
+        CollectionsMarshal.AsSpan(list: list)[0] = new Course { Name = "Mathematics" };
         obj.Courses = list;
         return obj;
     }

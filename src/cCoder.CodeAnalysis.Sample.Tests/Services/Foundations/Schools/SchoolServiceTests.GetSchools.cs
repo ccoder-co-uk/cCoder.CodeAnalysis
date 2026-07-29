@@ -19,13 +19,13 @@ public sealed partial class SchoolServiceTests
         // Then
         IQueryable<School> expectedSchools = CreateSchools();
 
-        schoolBrokerMock.Setup(expression:(ISchoolBroker broker) => broker.SelectAllSchools())
-            .Returns(value:expectedSchools);
+        schoolBrokerMock.Setup(expression: (ISchoolBroker broker) => broker.SelectAllSchools())
+            .Returns(value: expectedSchools);
 
         SchoolService service = CreateSchoolService();
         IQueryable<School> actualSchools = service.GetSchools();
 
         ((IEnumerable<School>)actualSchools).Should()
-            .BeSameAs(expected:expectedSchools, because:"");
+            .BeSameAs(expected: expectedSchools, because: "");
     }
 }

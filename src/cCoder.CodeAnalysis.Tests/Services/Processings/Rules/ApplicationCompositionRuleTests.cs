@@ -188,6 +188,42 @@ public sealed class ApplicationCompositionRuleTests
     }
 
     [Fact]
+    public void ProviderLibraryRegistrationEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName:
+                "cCoder.Mail.Providers.IServiceCollectionExtensions",
+            sourceCode:
+                """
+                public static class IServiceCollectionExtensions
+                {
+                    public static void AddMailProviders(
+                        this IServiceCollection services,
+                        MailProvidersConfiguration configuration)
+                    {
+                        services.AddExposures();
+                    }
+
+                    private static void AddExposures(
+                        this IServiceCollection services)
+                    {
+                    }
+                }
+                """,
+            projectName: "cCoder.Mail.Providers");
+
+        AnalysisItem[] items =
+            service.Evaluate(context: context).ToArray();
+
+        items.Should().NotContain(
+            item =>
+                item.Code == "STXAPP002"
+                || item.Code == "STXAPP009"
+                || item.Code == "STXAPP010",
+            "");
+    }
+
+    [Fact]
     public void UnlayeredServiceCollectionRegistrationsEvaluateAsExpected()
     {
         EvaluationContext context = CreateContext(

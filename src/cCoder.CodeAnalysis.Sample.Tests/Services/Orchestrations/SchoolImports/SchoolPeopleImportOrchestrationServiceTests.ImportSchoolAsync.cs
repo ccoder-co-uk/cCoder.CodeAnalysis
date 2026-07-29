@@ -20,16 +20,16 @@ public sealed partial class SchoolPeopleImportOrchestrationServiceTests
         // Then
         School school = CreateSchool();
         SchoolPeopleImportOrchestrationService service = CreateSchoolPeopleImportOrchestrationService();
-        await service.ImportSchoolAsync(school:school);
+        await service.ImportSchoolAsync(school: school);
 
         studentServiceMock.Verify(
-expression:            (IStudentProcessingService processing) => processing.AddOrUpdateStudentsAsync(students:school.Students, schoolId:school.Id),
-times:            Times.Once
+expression: (IStudentProcessingService processing) => processing.AddOrUpdateStudentsAsync(students: school.Students, schoolId: school.Id),
+times: Times.Once
         );
 
         teacherServiceMock.Verify(
-expression:            (ITeacherProcessingService processing) => processing.AddOrUpdateTeachersAsync(teachers:school.Teachers, schoolId:school.Id),
-times:            Times.Once
+expression: (ITeacherProcessingService processing) => processing.AddOrUpdateTeachersAsync(teachers: school.Teachers, schoolId: school.Id),
+times: Times.Once
         );
     }
 }

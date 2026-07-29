@@ -41,7 +41,7 @@ internal sealed partial class ServiceCollectionProcessingService : IServiceColle
             services.AddEventing();
 
             services.AddDbContextFactory<SchoolContext>(
-                optionsAction: delegate(DbContextOptionsBuilder options)
+                optionsAction: delegate (DbContextOptionsBuilder options)
                 {
                     options.UseSqlServer(connectionString: connectionString);
                 }

@@ -9,13 +9,14 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal sealed partial class InvalidTeacherProcessingService(IStudentService studentService) : IInvalidTeacherProcessingService
 {
-	public int CountStudents()
-	{
-		IQueryable<Student> students = TryCatch(operation:() => {
-			IQueryable<Student> selectedStudents = studentService.GetStudents();
-			return selectedStudents;
-		});
+    public int CountStudents()
+    {
+        IQueryable<Student> students = TryCatch(operation: () =>
+        {
+            IQueryable<Student> selectedStudents = studentService.GetStudents();
+            return selectedStudents;
+        });
 
-		return students.Count();
-	}
+        return students.Count();
+    }
 }

@@ -20,6 +20,6 @@ public sealed partial class EventHandlerServiceTests
         service.ListenToAllEvents();
 
         ((IEnumerable<IInvocation>)eventHubMock.Invocations).Should()
-            .HaveCount(expected:14, because:"");
+            .HaveCount(expected: 14, because: "");
     }
 }

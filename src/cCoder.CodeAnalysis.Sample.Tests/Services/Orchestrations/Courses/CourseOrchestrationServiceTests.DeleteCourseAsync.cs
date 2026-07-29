@@ -20,23 +20,23 @@ public sealed partial class CourseOrchestrationServiceTests
         // Then
         Course existingCourse = new Course { Id = 7 };
 
-        courseServiceMock.Setup(expression:(ICourseService courseService) => courseService.GetCourse(courseId:7))
-            .Returns(value:existingCourse);
+        courseServiceMock.Setup(expression: (ICourseService courseService) => courseService.GetCourse(courseId: 7))
+            .Returns(value: existingCourse);
 
         courseServiceMock
-            .Setup(expression:(ICourseService courseService) => courseService.DeleteCourseAsync(courseId:7))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (ICourseService courseService) => courseService.DeleteCourseAsync(courseId: 7))
+            .Returns(value: ValueTask.CompletedTask);
 
         eventServiceMock
             .Setup(
-expression:                (IEntityEventService entityEventService) =>
-                    entityEventService.RaiseDeleteEventAsync(entityName:"updatedCourse", entity:existingCourse)
+expression: (IEntityEventService entityEventService) =>
+                    entityEventService.RaiseDeleteEventAsync(entityName: "updatedCourse", entity: existingCourse)
             )
-            .Returns(value:ValueTask.CompletedTask);
+            .Returns(value: ValueTask.CompletedTask);
 
         CourseOrchestrationService service = CreateCourseOrchestrationService();
-        await service.DeleteCourseAsync(courseId:7);
-        courseServiceMock.Verify(expression:(ICourseService foundation) => foundation.DeleteCourseAsync(courseId:7), times:Times.Once);
+        await service.DeleteCourseAsync(courseId: 7);
+        courseServiceMock.Verify(expression: (ICourseService foundation) => foundation.DeleteCourseAsync(courseId: 7), times: Times.Once);
     }
 
     [Fact]
@@ -45,15 +45,15 @@ expression:                (IEntityEventService entityEventService) =>
         // Given
         // When
         // Then
-        courseServiceMock.Setup(expression:(ICourseService courseService) => courseService.GetCourse(courseId:7))
-            .Returns(value:(Course?)null);
+        courseServiceMock.Setup(expression: (ICourseService courseService) => courseService.GetCourse(courseId: 7))
+            .Returns(value: (Course?)null);
 
         CourseOrchestrationService service = CreateCourseOrchestrationService();
-        await service.DeleteCourseAsync(courseId:7);
+        await service.DeleteCourseAsync(courseId: 7);
 
         courseServiceMock.Verify(
-expression:            (ICourseService foundation) => foundation.DeleteCourseAsync(courseId:It.IsAny<int>()),
-times:            Times.Never
+expression: (ICourseService foundation) => foundation.DeleteCourseAsync(courseId: It.IsAny<int>()),
+times: Times.Never
         );
     }
 }

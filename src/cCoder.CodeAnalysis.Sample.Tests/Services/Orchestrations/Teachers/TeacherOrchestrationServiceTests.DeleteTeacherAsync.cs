@@ -21,23 +21,23 @@ public sealed partial class TeacherOrchestrationServiceTests
         Teacher existingTeacher = CreateTeacher();
 
         teacherServiceMock
-            .Setup(expression:(ITeacherService teacherService) => teacherService.GetTeacher(teacherId:7))
-            .Returns(value:existingTeacher);
+            .Setup(expression: (ITeacherService teacherService) => teacherService.GetTeacher(teacherId: 7))
+            .Returns(value: existingTeacher);
 
         teacherServiceMock
-            .Setup(expression:(ITeacherService teacherService) => teacherService.DeleteTeacherAsync(teacherId:7))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (ITeacherService teacherService) => teacherService.DeleteTeacherAsync(teacherId: 7))
+            .Returns(value: ValueTask.CompletedTask);
 
         eventServiceMock
             .Setup(
-expression:                (IEntityEventService entityEventService) =>
-                    entityEventService.RaiseDeleteEventAsync(entityName:"updatedTeacher", entity:existingTeacher)
+expression: (IEntityEventService entityEventService) =>
+                    entityEventService.RaiseDeleteEventAsync(entityName: "updatedTeacher", entity: existingTeacher)
             )
-            .Returns(value:ValueTask.CompletedTask);
+            .Returns(value: ValueTask.CompletedTask);
 
         TeacherOrchestrationService service = CreateTeacherOrchestrationService();
-        await service.DeleteTeacherAsync(teacherId:7);
-        teacherServiceMock.Verify(expression:(ITeacherService foundation) => foundation.DeleteTeacherAsync(teacherId:7), times:Times.Once);
+        await service.DeleteTeacherAsync(teacherId: 7);
+        teacherServiceMock.Verify(expression: (ITeacherService foundation) => foundation.DeleteTeacherAsync(teacherId: 7), times: Times.Once);
     }
 
     [Fact]
@@ -47,15 +47,15 @@ expression:                (IEntityEventService entityEventService) =>
         // When
         // Then
         teacherServiceMock
-            .Setup(expression:(ITeacherService teacherService) => teacherService.GetTeacher(teacherId:7))
-            .Returns(value:(Teacher?)null);
+            .Setup(expression: (ITeacherService teacherService) => teacherService.GetTeacher(teacherId: 7))
+            .Returns(value: (Teacher?)null);
 
         TeacherOrchestrationService service = CreateTeacherOrchestrationService();
-        await service.DeleteTeacherAsync(teacherId:7);
+        await service.DeleteTeacherAsync(teacherId: 7);
 
         teacherServiceMock.Verify(
-expression:            (ITeacherService foundation) => foundation.DeleteTeacherAsync(teacherId:It.IsAny<int>()),
-times:            Times.Never
+expression: (ITeacherService foundation) => foundation.DeleteTeacherAsync(teacherId: It.IsAny<int>()),
+times: Times.Never
         );
     }
 }

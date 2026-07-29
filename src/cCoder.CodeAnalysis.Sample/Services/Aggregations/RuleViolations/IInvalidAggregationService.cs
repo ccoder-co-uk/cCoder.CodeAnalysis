@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
 internal interface IInvalidAggregationService
 {
-	ValueTask ImportSchoolAsync(School school);
+    ValueTask ImportSchoolAsync(School school);
 }

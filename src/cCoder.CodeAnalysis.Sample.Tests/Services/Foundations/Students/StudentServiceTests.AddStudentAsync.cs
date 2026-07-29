@@ -29,23 +29,23 @@ public sealed partial class StudentServiceTests
         Student? persistedStudent = null;
 
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.InsertStudentAsync(newStudent:It.IsAny<Student>()))
+            .Setup(expression: (IStudentBroker broker) => broker.InsertStudentAsync(newStudent: It.IsAny<Student>()))
             .Callback(
-action:                delegate(Student student)
+action: delegate (Student student)
                 {
                     persistedStudent = student;
                 }
             )
-            .Returns(valueFunction:() => ValueTask.FromResult(result:new Student()));
+            .Returns(valueFunction: () => ValueTask.FromResult(result: new Student()));
 
         StudentService studentService = CreateStudentService();
-        Student actualStudent = await studentService.AddStudentAsync(newStudent:newStudent);
+        Student actualStudent = await studentService.AddStudentAsync(newStudent: newStudent);
 
         ((object)actualStudent).Should()
-            .BeSameAs(expected:persistedStudent, because:"").And.NotBeSameAs(unexpected:newStudent, because:"");
+            .BeSameAs(expected: persistedStudent, because: "").And.NotBeSameAs(unexpected: newStudent, because: "");
 
         ((IEnumerable<Course>)actualStudent.Courses).Should()
-            .BeEmpty(because:"");
+            .BeEmpty(because: "");
     }
 
     [Fact]
@@ -58,11 +58,11 @@ action:                delegate(Student student)
 
         Func<Task> addStudent = async delegate
         {
-            await studentService.AddStudentAsync(newStudent:null!);
+            await studentService.AddStudentAsync(newStudent: null!);
         };
 
         await addStudent.Should()
-            .ThrowAsync<StudentServiceValidationException>(because:"",becauseArgs:[Array.Empty<object>()]);
+            .ThrowAsync<StudentServiceValidationException>(because: "", becauseArgs: [Array.Empty<object>()]);
     }
 
     [Fact]
@@ -72,17 +72,17 @@ action:                delegate(Student student)
         // When
         // Then
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.InsertStudentAsync(newStudent:It.IsAny<Student>()))
-            .Throws(exception:new InvalidOperationException());
+            .Setup(expression: (IStudentBroker broker) => broker.InsertStudentAsync(newStudent: It.IsAny<Student>()))
+            .Throws(exception: new InvalidOperationException());
 
         StudentService studentService = CreateStudentService();
 
         Func<Task> addStudent = async delegate
         {
-            await studentService.AddStudentAsync(newStudent:new Student());
+            await studentService.AddStudentAsync(newStudent: new Student());
         };
 
         await addStudent.Should()
-            .ThrowAsync<StudentServiceDependencyException>(because:"",becauseArgs:[Array.Empty<object>()]);
+            .ThrowAsync<StudentServiceDependencyException>(because: "", becauseArgs: [Array.Empty<object>()]);
     }
 }

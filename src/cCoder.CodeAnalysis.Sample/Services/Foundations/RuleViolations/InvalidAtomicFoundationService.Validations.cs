@@ -9,21 +9,21 @@ namespace cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations;
 
 internal sealed partial class InvalidAtomicFoundationService
 {
-private static void Validate(params object?[] inputs)
-{
-		ValidationRulesEngine.Validate(inputs:inputs);
-}
+    private static void Validate(params object?[] inputs)
+    {
+        ValidationRulesEngine.Validate(inputs: inputs);
+    }
 
-private static void ValidateStudentOnCreate(Student newStudent)
-{
-	Validate(inputs:newStudent);
-}
+    private static void ValidateStudentOnCreate(Student newStudent)
+    {
+        Validate(inputs: newStudent);
+    }
 
-private static void ValidateStudentOnAdd(Student newStudent)
-{
-	if (newStudent is null)
-	{
-		throw new ArgumentNullException(nameof(newStudent));
-	}
-}
+    private static void ValidateStudentOnAdd(Student newStudent)
+    {
+        if (newStudent is null)
+        {
+            throw new ArgumentNullException(nameof(newStudent));
+        }
+    }
 }

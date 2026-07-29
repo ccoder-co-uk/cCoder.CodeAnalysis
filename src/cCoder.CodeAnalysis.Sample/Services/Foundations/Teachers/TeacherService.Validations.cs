@@ -24,4 +24,5 @@ internal sealed partial class TeacherService
         Validate(inputs: updatedTeacher);
 
     private static void ValidateTeacherOnDelete(int teacherId) =>
-        Validate(inputs: teacherId);}
+        Validate(inputs: teacherId);
+}

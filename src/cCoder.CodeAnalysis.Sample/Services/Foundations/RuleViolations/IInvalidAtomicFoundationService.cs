@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations;
 
 internal interface IInvalidAtomicFoundationService
 {
-	ValueTask<Student> AddStudentAsync(Student newStudent);
+    ValueTask<Student> AddStudentAsync(Student newStudent);
 }

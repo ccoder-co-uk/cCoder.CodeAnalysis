@@ -9,9 +9,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Orchestrations.RuleViolations;
 
 internal sealed partial class InvalidOrchestrationService(ICourseProcessingService courseProcessingService) : IInvalidOrchestrationService
 {
-	public ValueTask ImportSchoolAsync(School school)
+    public ValueTask ImportSchoolAsync(School school)
 =>
-	    TryCatch(operation:() => {
-			Validate(inputs:[school]);
-			return courseProcessingService.AddOrUpdateCoursesAsync(courses:school.Courses.ToArray(), schoolId:school.Id);
-		});}
+        TryCatch(operation: () =>
+        {
+            Validate(inputs: [school]);
+            return courseProcessingService.AddOrUpdateCoursesAsync(courses: school.Courses.ToArray(), schoolId: school.Id);
+        });
+}

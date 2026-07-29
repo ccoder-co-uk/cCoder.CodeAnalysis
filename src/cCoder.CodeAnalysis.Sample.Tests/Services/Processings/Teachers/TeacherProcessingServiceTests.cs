@@ -25,6 +25,6 @@ public sealed partial class TeacherProcessingServiceTests
 
     private static Teacher[] CreateTeachers()
     {
-        return new Teacher[2] { CreateTeacher(teacherId:0), CreateTeacher(teacherId:7) };
+        return new Teacher[2] { CreateTeacher(teacherId: 0), CreateTeacher(teacherId: 7) };
     }
 }

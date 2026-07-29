@@ -83,7 +83,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
     {
         return (
             !context.Dependencies.Any(
-                predicate: delegate(TypeDependency dependency)
+                predicate: delegate (TypeDependency dependency)
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;
 

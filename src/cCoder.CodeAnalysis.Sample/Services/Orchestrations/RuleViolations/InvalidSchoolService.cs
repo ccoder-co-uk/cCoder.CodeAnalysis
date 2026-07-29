@@ -9,14 +9,16 @@ namespace cCoder.CodeAnalysis.Sample.Services.Orchestrations.RuleViolations;
 
 internal sealed partial class InvalidSchoolService(IStudentService studentService, ITeacherService teacherService) : IInvalidSchoolService
 {
-	public int CountPeople()
+    public int CountPeople()
 =>
-	    TryCatch(operation:() => {
-			int num = studentService.GetStudents()
-			    .Count();
+        TryCatch(operation: () =>
+        {
+            int num = studentService.GetStudents()
+                .Count();
 
-			int num2 = teacherService.GetTeachers()
-			    .Count();
+            int num2 = teacherService.GetTeachers()
+                .Count();
 
-			return num + num2;
-		});}
+            return num + num2;
+        });
+}

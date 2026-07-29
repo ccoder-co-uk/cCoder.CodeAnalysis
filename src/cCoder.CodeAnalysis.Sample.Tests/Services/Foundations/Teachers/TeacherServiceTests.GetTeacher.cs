@@ -20,13 +20,13 @@ public sealed partial class TeacherServiceTests
         Teacher expectedTeacher = CreateTeacher();
 
         teacherBrokerMock
-            .Setup(expression:(ITeacherBroker broker) => broker.SelectAllTeachers())
-            .Returns(value:CreateTeachers(teacher:expectedTeacher));
+            .Setup(expression: (ITeacherBroker broker) => broker.SelectAllTeachers())
+            .Returns(value: CreateTeachers(teacher: expectedTeacher));
 
         TeacherService service = CreateTeacherService();
-        Teacher actualTeacher = service.GetTeacher(teacherId:expectedTeacher.Id)!;
+        Teacher actualTeacher = service.GetTeacher(teacherId: expectedTeacher.Id)!;
 
         ((object)actualTeacher).Should()
-            .BeSameAs(expected:expectedTeacher, because:"");
+            .BeSameAs(expected: expectedTeacher, because: "");
     }
 }

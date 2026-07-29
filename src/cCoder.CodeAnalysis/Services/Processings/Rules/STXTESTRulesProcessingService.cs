@@ -82,7 +82,7 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
                     method
                         .AttributeLists.SelectMany(selector: (AttributeListSyntax attributes) => attributes.Attributes)
             .Any(
-                            predicate: delegate(AttributeSyntax attribute)
+                            predicate: delegate (AttributeSyntax attribute)
                             {
                                 string text = attribute.Name.ToString();
                                 return (text == "Fact" || text == "FactAttribute") ? true : false;
@@ -123,7 +123,7 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
                     method
                         .AttributeLists.SelectMany(selector: (AttributeListSyntax attributes) => attributes.Attributes)
             .Any(
-                            predicate: delegate(AttributeSyntax attribute)
+                            predicate: delegate (AttributeSyntax attribute)
                             {
                                 switch (attribute.Name.ToString())
                                 {

@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Managements.RuleViolations;
 
 internal interface IInvalidManagementService
 {
-	ValueTask ImportSchoolAsync(School school);
+    ValueTask ImportSchoolAsync(School school);
 }

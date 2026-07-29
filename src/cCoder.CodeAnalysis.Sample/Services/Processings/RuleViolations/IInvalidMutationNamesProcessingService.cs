@@ -8,11 +8,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal interface IInvalidMutationNamesProcessingService
 {
-	Student AddAsync(Student newStudent);
+    Student AddAsync(Student newStudent);
 
-	Student AddStudent(Student student);
+    Student AddStudent(Student student);
 
-	Student UpdateStudent(Student student);
+    Student UpdateStudent(Student student);
 
-	Student DeleteStudent(Student student);
+    Student DeleteStudent(Student student);
 }

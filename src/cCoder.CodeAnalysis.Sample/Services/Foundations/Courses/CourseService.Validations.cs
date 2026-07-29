@@ -24,4 +24,5 @@ internal sealed partial class CourseService
         Validate(inputs: updatedCourse);
 
     private static void ValidateCourseOnDelete(int courseId) =>
-        Validate(inputs: courseId);}
+        Validate(inputs: courseId);
+}

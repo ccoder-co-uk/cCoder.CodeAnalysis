@@ -8,24 +8,24 @@ namespace cCoder.CodeAnalysis.Sample.Brokers.RuleViolations;
 
 internal sealed class InvalidBroker(HttpClient httpClient, Random random, IStudentService studentService)
 {
-	internal void Execute(bool shouldExecute)
-	{
-		if (shouldExecute)
-		{
-			studentService.GetStudents();
-		}
+    internal void Execute(bool shouldExecute)
+    {
+        if (shouldExecute)
+        {
+            studentService.GetStudents();
+        }
 
-		for (int index = 0; index < 1; index++)
-		{
-			httpClient.CancelPendingRequests();
-		}
+        for (int index = 0; index < 1; index++)
+        {
+            httpClient.CancelPendingRequests();
+        }
 
-		try
-		{
-			random.Next();
-		}
-		catch (InvalidOperationException)
-		{
-		}
-	}
+        try
+        {
+            random.Next();
+        }
+        catch (InvalidOperationException)
+        {
+        }
+    }
 }

@@ -142,7 +142,7 @@ public sealed class FoundationServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXF003",
             "cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations.InvalidAtomicFoundationService",
-            17
+            18
         );
     }
 

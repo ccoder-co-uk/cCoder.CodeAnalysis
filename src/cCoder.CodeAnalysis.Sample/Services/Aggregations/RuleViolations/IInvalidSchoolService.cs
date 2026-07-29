@@ -6,5 +6,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
 internal interface IInvalidSchoolService
 {
-	bool CanAggregate();
+    bool CanAggregate();
 }

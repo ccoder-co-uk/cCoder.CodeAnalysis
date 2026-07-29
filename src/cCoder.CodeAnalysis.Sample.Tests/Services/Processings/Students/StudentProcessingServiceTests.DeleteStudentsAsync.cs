@@ -20,15 +20,15 @@ public sealed partial class StudentProcessingServiceTests
         Student[] items = CreateStudents();
 
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.DeleteStudentAsync(studentId:It.IsAny<int>()))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (IStudentService studentService) => studentService.DeleteStudentAsync(studentId: It.IsAny<int>()))
+            .Returns(value: ValueTask.CompletedTask);
 
         StudentProcessingService service = CreateStudentProcessingService();
-        await service.DeleteStudentsAsync(deletedStudents:items);
+        await service.DeleteStudentsAsync(deletedStudents: items);
 
         studentServiceMock.Verify(
-expression:            (IStudentService foundation) => foundation.DeleteStudentAsync(studentId:It.IsAny<int>()),
-times:            Times.Exactly(callCount:2)
+expression: (IStudentService foundation) => foundation.DeleteStudentAsync(studentId: It.IsAny<int>()),
+times: Times.Exactly(callCount: 2)
         );
     }
 }

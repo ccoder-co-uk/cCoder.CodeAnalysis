@@ -19,6 +19,23 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             "Extensions",
             StringComparison.Ordinal))
         {
+            if (!DeclaresExtensionMethod(context: context))
+            {
+                yield return CreateAnalysisItem(
+                    code: "STXE006",
+                    description:
+                        "A type named Extensions must declare at least one extension method.",
+                    context: context);
+            }
+
+            foreach (AnalysisItem item in
+                EvaluateSTXE007(
+                    context: context,
+                    extensionContainerName: typeName))
+            {
+                yield return item;
+            }
+
             yield break;
         }
 
@@ -119,9 +136,114 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             || typeName.StartsWith(value: "BulkEventProvider<", comparisonType: StringComparison.Ordinal);
     }
 
+    private static bool DeclaresExtensionMethod(
+        EvaluationContext context) =>
+        context.Declarations
+            .SelectMany(
+                selector: (TypeDeclarationSyntax declaration) =>
+                    declaration.Members.OfType<MethodDeclarationSyntax>())
+            .Any(
+                predicate: (MethodDeclarationSyntax method) =>
+                    method.ParameterList.Parameters.Count > 0
+                    && method.ParameterList.Parameters[0]
+                        .Modifiers.Any(
+                            predicate: modifier =>
+                                modifier.RawKind
+                                    == (int)SyntaxKind.ThisKeyword));
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXE007(
+        EvaluationContext context,
+        string extensionContainerName) =>
+        context.Declarations
+            .SelectMany(
+                selector: (TypeDeclarationSyntax declaration) =>
+                    declaration.Members.OfType<MethodDeclarationSyntax>())
+            .Where(predicate: IsExtensionMethod)
+            .Where(
+                predicate: (MethodDeclarationSyntax method) =>
+                    !MatchesExtensionContainer(
+                        method: method,
+                        extensionContainerName: extensionContainerName))
+            .Select(
+                selector: (MethodDeclarationSyntax method) =>
+                    CreateAnalysisItem(
+                        code: "STXE007",
+                        description:
+                            "An extension method must be declared in the Extensions type named for its receiver.",
+                        context: context,
+                        location: method.GetLocation()));
+
+    private static bool IsExtensionMethod(
+        MethodDeclarationSyntax method) =>
+        method.ParameterList.Parameters.Count > 0
+        && method.ParameterList.Parameters[0]
+            .Modifiers.Any(
+                predicate: modifier =>
+                    modifier.RawKind
+                        == (int)SyntaxKind.ThisKeyword);
+
+    private static bool MatchesExtensionContainer(
+        MethodDeclarationSyntax method,
+        string extensionContainerName)
+    {
+        string receiverName = method.ParameterList.Parameters[0]
+            .Type
+            ?.ToString()
+            ?? string.Empty;
+
+        int genericStart = receiverName.IndexOf(
+            value: '<');
+
+        if (genericStart >= 0)
+        {
+            receiverName = receiverName.Substring(
+                startIndex: 0,
+                length: genericStart);
+        }
+
+        receiverName = receiverName
+            .Split(separator: new[] { '.' })
+            .Last()
+            .TrimEnd(trimChars: new[] { '?' });
+
+        receiverName = receiverName switch
+        {
+            "bool" => "Boolean",
+            "byte" => "Byte",
+            "char" => "Char",
+            "decimal" => "Decimal",
+            "double" => "Double",
+            "float" => "Single",
+            "int" => "Int32",
+            "long" => "Int64",
+            "object" => "Object",
+            "sbyte" => "SByte",
+            "short" => "Int16",
+            "string" => "String",
+            "uint" => "UInt32",
+            "ulong" => "UInt64",
+            "ushort" => "UInt16",
+            _ => receiverName,
+        };
+
+        string exactContainerName =
+            $"{receiverName}Extensions";
+
+        string interfaceContainerName =
+            receiverName.Length > 1
+            && receiverName[0] == 'I'
+            && char.IsUpper(c: receiverName[1])
+                ? $"{receiverName.Substring(startIndex: 1)}Extensions"
+                : exactContainerName;
+
+        return extensionContainerName == exactContainerName
+            || extensionContainerName == interfaceContainerName;
+    }
+
     private static IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
     {
-        if (context.IsApiController)
+        if (context.IsApiController
+            || IsStandardizedProviderClient(context))
         {
             return [];
         }
@@ -144,6 +266,24 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 ),
             ];
     }
+
+    private static bool IsStandardizedProviderClient(
+        EvaluationContext context) =>
+        context.ProjectName?.EndsWith(
+            value: ".Providers",
+            comparisonType: StringComparison.OrdinalIgnoreCase) == true
+        && context.TypeName.Split(separator: ['.'])
+            .Last()
+            .EndsWith(
+                value: "Client",
+                comparisonType: StringComparison.Ordinal)
+        && context.ImplementedInterfaces.Any(
+            predicate: interfaceName =>
+                interfaceName.Split(separator: ['.'])
+                    .Last()
+                    .EndsWith(
+                        value: "Client",
+                        comparisonType: StringComparison.Ordinal));
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
     {

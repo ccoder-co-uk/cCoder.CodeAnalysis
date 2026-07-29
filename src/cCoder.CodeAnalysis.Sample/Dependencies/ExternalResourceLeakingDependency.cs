@@ -4,9 +4,10 @@
 
 namespace cCoder.CodeAnalysis.Sample.Dependencies;
 
-internal sealed class LocalContractDependency : ILocalDependency
+internal sealed class ExternalResourceLeakingDependency : IDisposable
 {
-    public void Execute()
-    {
-    }
+    internal System.IO.StreamReader Reader { get; init; } = null!;
+
+    public void Dispose() =>
+        Reader.Dispose();
 }

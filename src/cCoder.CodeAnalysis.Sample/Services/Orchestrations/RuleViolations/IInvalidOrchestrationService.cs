@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Orchestrations.RuleViolations;
 
 internal interface IInvalidOrchestrationService
 {
-	ValueTask ImportSchoolAsync(School school);
+    ValueTask ImportSchoolAsync(School school);
 }

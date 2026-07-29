@@ -24,4 +24,5 @@ internal sealed partial class SchoolService
         Validate(inputs: updatedSchool);
 
     private static void ValidateSchoolOnDelete(int schoolId) =>
-        Validate(inputs: schoolId);}
+        Validate(inputs: schoolId);
+}

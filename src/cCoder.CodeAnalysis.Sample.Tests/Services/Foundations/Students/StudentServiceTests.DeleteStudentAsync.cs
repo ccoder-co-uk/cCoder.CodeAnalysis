@@ -22,16 +22,16 @@ public sealed partial class StudentServiceTests
         Student student = new Student { Id = 7 };
 
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Returns(value:new Student[1] { student }.AsQueryable());
+            .Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Returns(value: new Student[1] { student }.AsQueryable());
 
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent:student))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:1));
+            .Setup(expression: (IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent: student))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: 1));
 
         StudentService studentService = CreateStudentService();
-        await studentService.DeleteStudentAsync(studentId:student.Id);
-        studentBrokerMock.Verify(expression:(IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent:student), times:Times.Once);
+        await studentService.DeleteStudentAsync(studentId: student.Id);
+        studentBrokerMock.Verify(expression: (IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent: student), times: Times.Once);
     }
 
     [Fact]
@@ -41,16 +41,16 @@ public sealed partial class StudentServiceTests
         // When
         // Then
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Returns(value:Array.Empty<Student>()
+            .Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Returns(value: Array.Empty<Student>()
                 .AsQueryable());
 
         StudentService studentService = CreateStudentService();
-        await studentService.DeleteStudentAsync(studentId:7);
+        await studentService.DeleteStudentAsync(studentId: 7);
 
         studentBrokerMock.Verify(
-expression:            (IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent:It.IsAny<Student>()),
-times:            Times.Never
+expression: (IStudentBroker broker) => broker.DeleteStudentAsync(deletedStudent: It.IsAny<Student>()),
+times: Times.Never
         );
     }
 
@@ -61,17 +61,17 @@ times:            Times.Never
         // When
         // Then
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Throws(exception:new InvalidOperationException());
+            .Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Throws(exception: new InvalidOperationException());
 
         StudentService studentService = CreateStudentService();
 
         Func<Task> deleteStudent = async delegate
         {
-            await studentService.DeleteStudentAsync(studentId:7);
+            await studentService.DeleteStudentAsync(studentId: 7);
         };
 
         await deleteStudent.Should()
-            .ThrowAsync<StudentServiceDependencyException>(because:"",becauseArgs:[Array.Empty<object>()]);
+            .ThrowAsync<StudentServiceDependencyException>(because: "", becauseArgs: [Array.Empty<object>()]);
     }
 }

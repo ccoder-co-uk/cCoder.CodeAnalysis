@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Brokers.Storage.RuleViolations;
 
 internal interface IInvalidStorageBroker
 {
-	IQueryable<Student> GetStudents();
+    IQueryable<Student> GetStudents();
 }
