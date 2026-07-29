@@ -9,10 +9,12 @@ namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
 internal sealed partial class InvalidSchoolService(ISchoolImportManagementService importService, ISchoolImportReadinessManagementService readinessService) : IInvalidSchoolService
 {
-	public bool CanAggregate()
+    public bool CanAggregate()
 =>
-	    TryCatch(operation:() => {
-			bool flag = readinessService.CanImportSchool(school:new School());
-			bool flag2 = importService != null;
-			return flag && flag2;
-		});}
+        TryCatch(operation: () =>
+        {
+            bool flag = readinessService.CanImportSchool(school: new School());
+            bool flag2 = importService != null;
+            return flag && flag2;
+        });
+}

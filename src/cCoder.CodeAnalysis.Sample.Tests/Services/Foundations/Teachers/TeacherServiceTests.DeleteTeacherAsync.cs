@@ -20,16 +20,16 @@ public sealed partial class TeacherServiceTests
         Teacher existingTeacher = CreateTeacher();
 
         teacherBrokerMock
-            .Setup(expression:(ITeacherBroker broker) => broker.SelectAllTeachers())
-            .Returns(value:CreateTeachers(teacher:existingTeacher));
+            .Setup(expression: (ITeacherBroker broker) => broker.SelectAllTeachers())
+            .Returns(value: CreateTeachers(teacher: existingTeacher));
 
         teacherBrokerMock
-            .Setup(expression:(ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher:existingTeacher))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:1));
+            .Setup(expression: (ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher: existingTeacher))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: 1));
 
         TeacherService service = CreateTeacherService();
-        await service.DeleteTeacherAsync(teacherId:existingTeacher.Id);
-        teacherBrokerMock.Verify(expression:(ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher:existingTeacher), times:Times.Once);
+        await service.DeleteTeacherAsync(teacherId: existingTeacher.Id);
+        teacherBrokerMock.Verify(expression: (ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher: existingTeacher), times: Times.Once);
     }
 
     [Fact]
@@ -39,16 +39,16 @@ public sealed partial class TeacherServiceTests
         // When
         // Then
         teacherBrokerMock
-            .Setup(expression:(ITeacherBroker broker) => broker.SelectAllTeachers())
-            .Returns(value:Array.Empty<Teacher>()
+            .Setup(expression: (ITeacherBroker broker) => broker.SelectAllTeachers())
+            .Returns(value: Array.Empty<Teacher>()
                 .AsQueryable());
 
         TeacherService service = CreateTeacherService();
-        await service.DeleteTeacherAsync(teacherId:7);
+        await service.DeleteTeacherAsync(teacherId: 7);
 
         teacherBrokerMock.Verify(
-expression:            (ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher:It.IsAny<Teacher>()),
-times:            Times.Never
+expression: (ITeacherBroker broker) => broker.DeleteTeacherAsync(deletedTeacher: It.IsAny<Teacher>()),
+times: Times.Never
         );
     }
 }

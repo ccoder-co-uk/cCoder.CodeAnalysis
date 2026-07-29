@@ -20,16 +20,16 @@ public sealed partial class SchoolServiceTests
         School existingSchool = CreateSchool();
 
         schoolBrokerMock
-            .Setup(expression:(ISchoolBroker broker) => broker.SelectAllSchools())
-            .Returns(value:CreateSchools(school:existingSchool));
+            .Setup(expression: (ISchoolBroker broker) => broker.SelectAllSchools())
+            .Returns(value: CreateSchools(school: existingSchool));
 
         schoolBrokerMock
-            .Setup(expression:(ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool:existingSchool))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:1));
+            .Setup(expression: (ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool: existingSchool))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: 1));
 
         SchoolService service = CreateSchoolService();
-        await service.DeleteSchoolAsync(schoolId:existingSchool.Id);
-        schoolBrokerMock.Verify(expression:(ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool:existingSchool), times:Times.Once);
+        await service.DeleteSchoolAsync(schoolId: existingSchool.Id);
+        schoolBrokerMock.Verify(expression: (ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool: existingSchool), times: Times.Once);
     }
 
     [Fact]
@@ -39,12 +39,12 @@ public sealed partial class SchoolServiceTests
         // When
         // Then
         schoolBrokerMock
-            .Setup(expression:(ISchoolBroker broker) => broker.SelectAllSchools())
-            .Returns(value:Array.Empty<School>()
+            .Setup(expression: (ISchoolBroker broker) => broker.SelectAllSchools())
+            .Returns(value: Array.Empty<School>()
                 .AsQueryable());
 
         SchoolService service = CreateSchoolService();
-        await service.DeleteSchoolAsync(schoolId:7);
-        schoolBrokerMock.Verify(expression:(ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool:It.IsAny<School>()), times:Times.Never);
+        await service.DeleteSchoolAsync(schoolId: 7);
+        schoolBrokerMock.Verify(expression: (ISchoolBroker broker) => broker.DeleteSchoolAsync(deletedSchool: It.IsAny<School>()), times: Times.Never);
     }
 }

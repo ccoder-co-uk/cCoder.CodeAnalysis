@@ -15,14 +15,14 @@ public sealed class STXERulesProcessingServiceTests
     [Theory]
     [InlineData("AIConfigurationExtensions")]
     [InlineData("AIConfigurationProviderExtensions")]
-    public void EvaluateShouldIgnoreConfigurationExtensions(
+    public void EvaluateShouldRejectMismatchedConfigurationExtensions(
         string typeName)
     {
         TypeDeclarationSyntax declaration = ParseDeclaration(
             """
             public static class ConfigurationExtensions
             {
-                public static void Configure()
+                public static void Configure(this object configuration)
                 {
                     if (IsEnabled())
                     {
@@ -43,7 +43,176 @@ public sealed class STXERulesProcessingServiceTests
             .Evaluate(context)
             .ToArray();
 
-        results.Should().BeEmpty("");
+        results.Should()
+            .ContainSingle(
+                predicate: item =>
+                    item.Code == "STXE007");
+    }
+
+    [Fact]
+    public void EvaluateShouldRejectExtensionsTypeWithoutExtensionMethods()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            internal static class AuthorizationExtensions
+            {
+                internal static void Authorize(object user)
+                {
+                }
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "Example.Extensions.AuthorizationExtensions");
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(
+                predicate: item => item.Code == "STXE006");
+    }
+
+    [Fact]
+    public void EvaluateShouldRejectExtensionForDifferentReceiver()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            internal static class MailConfigurationExtensions
+            {
+                internal static void Configure(
+                    this MailConfiguration configuration)
+                {
+                }
+
+                internal static void AddProvider(
+                    this ProviderConfiguration configuration)
+                {
+                }
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName:
+                "Example.Extensions.MailConfigurationExtensions");
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(
+                predicate: item => item.Code == "STXE007");
+    }
+
+    [Fact]
+    public void EvaluateShouldAllowInterfaceReceiverNameWithoutInterfacePrefix()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            internal static class ServiceCollectionExtensions
+            {
+                internal static void AddMail(
+                    this IServiceCollection services)
+                {
+                }
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName:
+                "Example.Extensions.ServiceCollectionExtensions");
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(
+                predicate: item => item.Code == "STXE007");
+    }
+
+    [Fact]
+    public void EvaluateShouldAllowProviderClientOperationServices()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            internal sealed class MicrosoftGraphMailClient
+                : IMailClient
+            {
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName:
+                "cCoder.Mail.Providers.Exposures.MicrosoftGraphMailClient");
+
+        context.ProjectName = "cCoder.Mail.Providers";
+        context.ImplementedInterfaces = ["IMailClient"];
+        context.Dependencies =
+        [
+            new TypeDependency
+            {
+                TypeName = "IMailSenderService",
+                StandardElementType =
+                    StandardElementType.FoundationService
+            },
+            new TypeDependency
+            {
+                TypeName = "IMailReceiverService",
+                StandardElementType =
+                    StandardElementType.FoundationService
+            }
+        ];
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(
+                predicate: item => item.Code == "STXE003");
+    }
+
+    [Fact]
+    public void EvaluateShouldStillRejectOrdinaryExposureWithTwoServices()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            internal sealed class MailExposure
+            {
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "cCoder.Mail.Exposures.MailExposure");
+
+        context.ProjectName = "cCoder.Mail";
+        context.ImplementedInterfaces = [];
+        context.Dependencies =
+        [
+            new TypeDependency
+            {
+                TypeName = "IMailSenderService",
+                StandardElementType =
+                    StandardElementType.FoundationService
+            },
+            new TypeDependency
+            {
+                TypeName = "IMailReceiverService",
+                StandardElementType =
+                    StandardElementType.FoundationService
+            }
+        ];
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(
+                predicate: item => item.Code == "STXE003");
     }
 
     [Fact]

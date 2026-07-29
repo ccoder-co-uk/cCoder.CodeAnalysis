@@ -8,11 +8,11 @@ namespace cCoder.CodeAnalysis.Sample.AcceptanceTests.RuleViolations;
 
 public sealed class InvalidStudentControllerAcceptanceTests
 {
-	[Fact]
-	public void GetStudentReturnsStudent()
-	{
-		bool studentExists = true;
-		bool actualStudentExists = studentExists;
-		actualStudentExists.Should().BeTrue("");
-	}
+    [Fact]
+    public void GetStudentReturnsStudent()
+    {
+        bool studentExists = true;
+        bool actualStudentExists = studentExists;
+        actualStudentExists.Should().BeTrue("");
+    }
 }

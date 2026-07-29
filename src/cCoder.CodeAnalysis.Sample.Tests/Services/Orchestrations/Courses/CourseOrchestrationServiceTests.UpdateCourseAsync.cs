@@ -22,24 +22,24 @@ public sealed partial class CourseOrchestrationServiceTests
         Course updatedCourse = new Course { Id = 7 };
 
         courseServiceMock
-            .Setup(expression:(ICourseService courseService) => courseService.UpdateCourseAsync(updatedCourse:It.IsAny<Course>()))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:new Course { Id = 7 }));
+            .Setup(expression: (ICourseService courseService) => courseService.UpdateCourseAsync(updatedCourse: It.IsAny<Course>()))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: new Course { Id = 7 }));
 
         eventServiceMock
             .Setup(
-expression:                (IEntityEventService entityEventService) =>
-                    entityEventService.RaiseUpdateEventAsync(entityName:"updatedCourse", entity:updatedCourse)
+expression: (IEntityEventService entityEventService) =>
+                    entityEventService.RaiseUpdateEventAsync(entityName: "updatedCourse", entity: updatedCourse)
             )
-            .Returns(value:ValueTask.CompletedTask);
+            .Returns(value: ValueTask.CompletedTask);
 
         CourseOrchestrationService service = CreateCourseOrchestrationService();
 
-        ((object)(await service.UpdateCourseAsync(updatedCourse:updatedCourse))).Should()
-            .BeSameAs(expected:updatedCourse, because:"");
+        ((object)(await service.UpdateCourseAsync(updatedCourse: updatedCourse))).Should()
+            .BeSameAs(expected: updatedCourse, because: "");
 
         eventServiceMock.Verify(
-expression:            (IEntityEventService eventService) => eventService.RaiseUpdateEventAsync(entityName:"updatedCourse", entity:updatedCourse),
-times:            Times.Once
+expression: (IEntityEventService eventService) => eventService.RaiseUpdateEventAsync(entityName: "updatedCourse", entity: updatedCourse),
+times: Times.Once
         );
     }
 }

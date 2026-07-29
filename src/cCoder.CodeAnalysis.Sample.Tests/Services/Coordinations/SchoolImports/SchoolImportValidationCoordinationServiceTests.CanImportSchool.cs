@@ -21,22 +21,22 @@ public sealed partial class SchoolImportValidationCoordinationServiceTests
 
         structureServiceMock
             .Setup(
-expression:                (ISchoolStructureImportOrchestrationService schoolStructureImportOrchestrationService) =>
-                    schoolStructureImportOrchestrationService.CanImportSchool(school:school)
+expression: (ISchoolStructureImportOrchestrationService schoolStructureImportOrchestrationService) =>
+                    schoolStructureImportOrchestrationService.CanImportSchool(school: school)
             )
             .Returns(value: true);
 
         peopleServiceMock
             .Setup(
-expression:                (ISchoolPeopleImportOrchestrationService schoolPeopleImportOrchestrationService) =>
-                    schoolPeopleImportOrchestrationService.CanImportSchool(school:school)
+expression: (ISchoolPeopleImportOrchestrationService schoolPeopleImportOrchestrationService) =>
+                    schoolPeopleImportOrchestrationService.CanImportSchool(school: school)
             )
             .Returns(value: true);
 
         SchoolImportValidationCoordinationService service = CreateSchoolImportValidationCoordinationService();
-        bool result = service.CanImportSchool(school:school);
+        bool result = service.CanImportSchool(school: school);
 
         result.Should()
-            .BeTrue(because:"");
+            .BeTrue(because: "");
     }
 }

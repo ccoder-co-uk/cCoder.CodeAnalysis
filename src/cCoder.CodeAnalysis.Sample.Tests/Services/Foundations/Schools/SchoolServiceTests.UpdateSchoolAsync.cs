@@ -21,15 +21,15 @@ public sealed partial class SchoolServiceTests
         School updatedSchool = CreateSchool();
 
         schoolBrokerMock
-            .Setup(expression:(ISchoolBroker broker) => broker.UpdateSchoolAsync(updatedSchool:It.IsAny<School>()))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:CreateSchool()));
+            .Setup(expression: (ISchoolBroker broker) => broker.UpdateSchoolAsync(updatedSchool: It.IsAny<School>()))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: CreateSchool()));
 
         SchoolService service = CreateSchoolService();
-        School actualSchool = await service.UpdateSchoolAsync(updatedSchool:updatedSchool);
+        School actualSchool = await service.UpdateSchoolAsync(updatedSchool: updatedSchool);
 
         ((object)actualSchool).Should()
-            .NotBeSameAs(unexpected:updatedSchool, because:"");
+            .NotBeSameAs(unexpected: updatedSchool, because: "");
 
-        schoolBrokerMock.Verify(expression:(ISchoolBroker broker) => broker.UpdateSchoolAsync(updatedSchool:actualSchool), times:Times.Once);
+        schoolBrokerMock.Verify(expression: (ISchoolBroker broker) => broker.UpdateSchoolAsync(updatedSchool: actualSchool), times: Times.Once);
     }
 }

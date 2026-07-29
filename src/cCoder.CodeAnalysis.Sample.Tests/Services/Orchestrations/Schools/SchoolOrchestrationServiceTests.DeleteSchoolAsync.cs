@@ -20,23 +20,23 @@ public sealed partial class SchoolOrchestrationServiceTests
         // Then
         School existingSchool = new School { Id = 7 };
 
-        schoolServiceMock.Setup(expression:(ISchoolService schoolService) => schoolService.GetSchool(schoolId:7))
-            .Returns(value:existingSchool);
+        schoolServiceMock.Setup(expression: (ISchoolService schoolService) => schoolService.GetSchool(schoolId: 7))
+            .Returns(value: existingSchool);
 
         schoolServiceMock
-            .Setup(expression:(ISchoolService schoolService) => schoolService.DeleteSchoolAsync(schoolId:7))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (ISchoolService schoolService) => schoolService.DeleteSchoolAsync(schoolId: 7))
+            .Returns(value: ValueTask.CompletedTask);
 
         eventServiceMock
             .Setup(
-expression:                (IEntityEventService entityEventService) =>
-                    entityEventService.RaiseDeleteEventAsync(entityName:"updatedSchool", entity:existingSchool)
+expression: (IEntityEventService entityEventService) =>
+                    entityEventService.RaiseDeleteEventAsync(entityName: "updatedSchool", entity: existingSchool)
             )
-            .Returns(value:ValueTask.CompletedTask);
+            .Returns(value: ValueTask.CompletedTask);
 
         SchoolOrchestrationService service = CreateSchoolOrchestrationService();
-        await service.DeleteSchoolAsync(schoolId:7);
-        schoolServiceMock.Verify(expression:(ISchoolService foundation) => foundation.DeleteSchoolAsync(schoolId:7), times:Times.Once);
+        await service.DeleteSchoolAsync(schoolId: 7);
+        schoolServiceMock.Verify(expression: (ISchoolService foundation) => foundation.DeleteSchoolAsync(schoolId: 7), times: Times.Once);
     }
 
     [Fact]
@@ -45,15 +45,15 @@ expression:                (IEntityEventService entityEventService) =>
         // Given
         // When
         // Then
-        schoolServiceMock.Setup(expression:(ISchoolService schoolService) => schoolService.GetSchool(schoolId:7))
-            .Returns(value:(School?)null);
+        schoolServiceMock.Setup(expression: (ISchoolService schoolService) => schoolService.GetSchool(schoolId: 7))
+            .Returns(value: (School?)null);
 
         SchoolOrchestrationService service = CreateSchoolOrchestrationService();
-        await service.DeleteSchoolAsync(schoolId:7);
+        await service.DeleteSchoolAsync(schoolId: 7);
 
         schoolServiceMock.Verify(
-expression:            (ISchoolService foundation) => foundation.DeleteSchoolAsync(schoolId:It.IsAny<int>()),
-times:            Times.Never
+expression: (ISchoolService foundation) => foundation.DeleteSchoolAsync(schoolId: It.IsAny<int>()),
+times: Times.Never
         );
     }
 }

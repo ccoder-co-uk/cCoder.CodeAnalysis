@@ -21,23 +21,23 @@ public sealed partial class StudentOrchestrationServiceTests
         Student existingStudent = CreateStudent();
 
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.GetStudent(studentId:7))
-            .Returns(value:existingStudent);
+            .Setup(expression: (IStudentService studentService) => studentService.GetStudent(studentId: 7))
+            .Returns(value: existingStudent);
 
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.DeleteStudentAsync(studentId:7))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (IStudentService studentService) => studentService.DeleteStudentAsync(studentId: 7))
+            .Returns(value: ValueTask.CompletedTask);
 
         eventServiceMock
             .Setup(
-expression:                (IEntityEventService entityEventService) =>
-                    entityEventService.RaiseDeleteEventAsync(entityName:"updatedStudent", entity:existingStudent)
+expression: (IEntityEventService entityEventService) =>
+                    entityEventService.RaiseDeleteEventAsync(entityName: "updatedStudent", entity: existingStudent)
             )
-            .Returns(value:ValueTask.CompletedTask);
+            .Returns(value: ValueTask.CompletedTask);
 
         StudentOrchestrationService service = CreateStudentOrchestrationService();
-        await service.DeleteStudentAsync(studentId:7);
-        studentServiceMock.Verify(expression:(IStudentService foundation) => foundation.DeleteStudentAsync(studentId:7), times:Times.Once);
+        await service.DeleteStudentAsync(studentId: 7);
+        studentServiceMock.Verify(expression: (IStudentService foundation) => foundation.DeleteStudentAsync(studentId: 7), times: Times.Once);
     }
 
     [Fact]
@@ -47,15 +47,15 @@ expression:                (IEntityEventService entityEventService) =>
         // When
         // Then
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.GetStudent(studentId:7))
-            .Returns(value:(Student?)null);
+            .Setup(expression: (IStudentService studentService) => studentService.GetStudent(studentId: 7))
+            .Returns(value: (Student?)null);
 
         StudentOrchestrationService service = CreateStudentOrchestrationService();
-        await service.DeleteStudentAsync(studentId:7);
+        await service.DeleteStudentAsync(studentId: 7);
 
         studentServiceMock.Verify(
-expression:            (IStudentService foundation) => foundation.DeleteStudentAsync(studentId:It.IsAny<int>()),
-times:            Times.Never
+expression: (IStudentService foundation) => foundation.DeleteStudentAsync(studentId: It.IsAny<int>()),
+times: Times.Never
         );
     }
 }

@@ -18,6 +18,16 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         {
             yield return item;
         }
+
+        foreach (AnalysisItem item in EvaluateSTXD003(context: context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXD004(context: context))
+        {
+            yield return item;
+        }
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXD001(EvaluationContext context)
@@ -72,6 +82,49 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
                 Code = "STXD002",
                 Description =
                     "A dependency must inherit an external type or implement an external interface that the application cannot control.",
+                Severity = AnalysisSeverity.Warning,
+                Type = context.TypeName,
+                LineNumber = context.LineNumber,
+            };
+        }
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD003(
+        EvaluationContext context)
+    {
+        if (context.DeclaresDependencyIntent
+            && context.ExposesExternalResource)
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD003",
+                Description =
+                    "A dependency must encapsulate external resources rather than expose them through its surface.",
+                Severity = AnalysisSeverity.Warning,
+                Type = context.TypeName,
+                LineNumber = context.LineNumber,
+            };
+        }
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD004(
+        EvaluationContext context)
+    {
+        bool isBusinessElement =
+            context.StandardElementType
+                is StandardElementType.Broker
+                or StandardElementType.Exposure
+                or >= StandardElementType.FoundationService
+                    and <= StandardElementType.AggregationService;
+
+        if (isBusinessElement
+            && context.UsesExternalResource)
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD004",
+                Description =
+                    "Externally controlled operational resources must be owned by a dependency.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
                 LineNumber = context.LineNumber,

@@ -20,14 +20,14 @@ public sealed partial class StudentServiceTests
         // Then
         IQueryable<Student> expectedStudents = new Student[1] { new Student { Id = 7 } }.AsQueryable();
 
-        studentBrokerMock.Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Returns(value:expectedStudents);
+        studentBrokerMock.Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Returns(value: expectedStudents);
 
         StudentService studentService = CreateStudentService();
         IQueryable<Student> actualStudents = studentService.GetStudents();
 
         ((IEnumerable<Student>)actualStudents).Should()
-            .BeSameAs(expected:expectedStudents, because:"");
+            .BeSameAs(expected: expectedStudents, because: "");
     }
 
     [Fact]
@@ -37,8 +37,8 @@ public sealed partial class StudentServiceTests
         // When
         // Then
         studentBrokerMock
-            .Setup(expression:(IStudentBroker broker) => broker.SelectAllStudents())
-            .Throws(exception:new InvalidOperationException());
+            .Setup(expression: (IStudentBroker broker) => broker.SelectAllStudents())
+            .Throws(exception: new InvalidOperationException());
 
         StudentService studentService = CreateStudentService();
 
@@ -48,6 +48,6 @@ public sealed partial class StudentServiceTests
         };
 
         getStudents.Should()
-            .Throw<StudentServiceDependencyException>(because:"",becauseArgs:[Array.Empty<object>()]);
+            .Throw<StudentServiceDependencyException>(because: "", becauseArgs: [Array.Empty<object>()]);
     }
 }

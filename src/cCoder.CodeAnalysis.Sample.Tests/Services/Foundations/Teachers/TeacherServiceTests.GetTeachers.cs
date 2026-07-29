@@ -19,13 +19,13 @@ public sealed partial class TeacherServiceTests
         // Then
         IQueryable<Teacher> expectedTeachers = CreateTeachers();
 
-        teacherBrokerMock.Setup(expression:(ITeacherBroker broker) => broker.SelectAllTeachers())
-            .Returns(value:expectedTeachers);
+        teacherBrokerMock.Setup(expression: (ITeacherBroker broker) => broker.SelectAllTeachers())
+            .Returns(value: expectedTeachers);
 
         TeacherService service = CreateTeacherService();
         IQueryable<Teacher> actualTeachers = service.GetTeachers();
 
         ((IEnumerable<Teacher>)actualTeachers).Should()
-            .BeSameAs(expected:expectedTeachers, because:"");
+            .BeSameAs(expected: expectedTeachers, because: "");
     }
 }

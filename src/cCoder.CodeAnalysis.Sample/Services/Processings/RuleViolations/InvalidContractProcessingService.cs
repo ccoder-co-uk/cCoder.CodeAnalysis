@@ -6,9 +6,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal sealed partial class InvalidContractProcessingService : IIncorrectProcessingContract
 {
-	public int Calculate(int value)
+    public int Calculate(int value)
 =>
-	    TryCatch(operation:() => {
-			Validate(inputs:[value]);
-			return value * 3;
-		});}
+        TryCatch(operation: () =>
+        {
+            Validate(inputs: [value]);
+            return value * 3;
+        });
+}

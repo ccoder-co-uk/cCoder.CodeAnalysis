@@ -13,15 +13,15 @@ namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 [Route("api/[controller]")]
 public sealed class InvalidStudentsController(IStudentManager studentManager, ITeacherManager teacherManager) : ControllerBase
 {
-	[HttpGet("students")]
-	public ActionResult<IQueryable<Student>> GetStudents()
-	{
-		return Ok(value:studentManager.GetStudents());
-	}
+    [HttpGet("students")]
+    public ActionResult<IQueryable<Student>> GetStudents()
+    {
+        return Ok(value: studentManager.GetStudents());
+    }
 
-	[HttpGet("teachers")]
-	public ActionResult<IQueryable<Teacher>> GetTeachers()
-	{
-		return Ok(value:teacherManager.GetTeachers());
-	}
+    [HttpGet("teachers")]
+    public ActionResult<IQueryable<Teacher>> GetTeachers()
+    {
+        return Ok(value: teacherManager.GetTeachers());
+    }
 }

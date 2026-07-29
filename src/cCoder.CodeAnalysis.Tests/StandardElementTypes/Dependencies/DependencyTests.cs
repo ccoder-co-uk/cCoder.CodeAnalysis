@@ -80,7 +80,19 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(expected: 7);
+        Count(StandardElementType.Dependency).Should().Be(expected: 8);
+    }
+
+    [Fact]
+    public void ShouldRejectDependencyThatExposesExternalResource()
+    {
+        Architecture
+            .AnalysisItems.Should()
+            .ContainSingle(
+                predicate: item =>
+                    item.Code == "STXD003"
+                    && item.Type
+                        == "cCoder.CodeAnalysis.Sample.Dependencies.ExternalResourceLeakingDependency");
     }
 
     [Fact]
@@ -114,7 +126,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldClassifyExtensionContainerAsExposure()
     {
-        Class element = GetElement("cCoder.CodeAnalysis.Sample.Exposures.LegacyExtensions");
+        Class element = GetElement("cCoder.CodeAnalysis.Sample.Exposures.StringExtensions");
 
         element.StandardElementType.Should().Be(StandardElementType.Exposure, "");
         Architecture.AnalysisItems.Should().NotContain(item => item.Type == element.Name, "");

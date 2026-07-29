@@ -19,6 +19,8 @@ public sealed class EvaluationContext
     public bool ImplementsExternalInterface { get; set; }
     public bool ImplementsContract { get; set; }
     public bool HasExternalStateDependency { get; set; }
+    public bool ExposesExternalResource { get; set; }
+    public bool UsesExternalResource { get; set; }
     public bool DeclaresDependencyIntent { get; set; }
     public IReadOnlyList<TypeDeclarationSyntax> Declarations { get; set; }
     public IReadOnlyList<TypeDependency> Dependencies { get; set; }

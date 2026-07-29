@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal interface IInvalidProcessingDependencyService
 {
-	ValueTask ImportSchoolAsync(School school);
+    ValueTask ImportSchoolAsync(School school);
 }

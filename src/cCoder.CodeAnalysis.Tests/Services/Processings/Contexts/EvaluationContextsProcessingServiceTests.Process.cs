@@ -247,6 +247,58 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldNotTreatTaskAsLeakedExternalResource()
+    {
+        const string source =
+            """
+            namespace Example.Dependencies;
+
+            internal sealed class MailClientDependency
+                : System.Net.Http.HttpClient
+            {
+                internal System.Threading.Tasks.Task SendAsync() =>
+                    System.Threading.Tasks.Task.CompletedTask;
+            }
+            """;
+
+        EvaluationContext context = service
+            .Process(
+                architectureBuild:
+                    CreateArchitectureBuild(source: source))
+            .Single();
+
+        context.ExposesExternalResource.Should()
+            .BeFalse();
+    }
+
+    [Fact]
+    public void ProcessShouldTreatAwaitedDisposableAsLeakedExternalResource()
+    {
+        const string source =
+            """
+            namespace Example.Dependencies;
+
+            internal sealed class MailClientDependency
+                : System.Net.Http.HttpClient
+            {
+                internal System.Threading.Tasks.Task<
+                    System.Net.Http.HttpResponseMessage> SendAsync() =>
+                    System.Threading.Tasks.Task.FromResult(
+                        new System.Net.Http.HttpResponseMessage());
+            }
+            """;
+
+        EvaluationContext context = service
+            .Process(
+                architectureBuild:
+                    CreateArchitectureBuild(source: source))
+            .Single();
+
+        context.ExposesExternalResource.Should()
+            .BeTrue();
+    }
+
+    [Fact]
     public void ProcessShouldClassifyRootConfigurationMapperAsApp()
     {
         // Given

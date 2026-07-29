@@ -83,7 +83,7 @@ public sealed class StudentsControllerAcceptanceTests : IAsyncLifetime
     private WebApplicationFactory<Program> CreateUnavailableDatabaseApplicationFactory()
     {
         return applicationFactory.WithWebHostBuilder(
-            delegate(IWebHostBuilder builder)
+            delegate (IWebHostBuilder builder)
             {
                 builder.UseSetting(
                     "CodeAnalysisSample:ConnectionString",

@@ -8,8 +8,8 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal sealed partial class InvalidIdentifierProcessingService
 {
-private static void Validate(params object?[] inputs)
-	{
-		ValidationRulesEngine.Validate(inputs:inputs);
-	}
+    private static void Validate(params object?[] inputs)
+    {
+        ValidationRulesEngine.Validate(inputs: inputs);
+    }
 }

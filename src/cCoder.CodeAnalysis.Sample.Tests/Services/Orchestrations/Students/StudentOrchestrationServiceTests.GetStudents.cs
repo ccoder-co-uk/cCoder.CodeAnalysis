@@ -17,16 +17,16 @@ public sealed partial class StudentOrchestrationServiceTests
         // Given
         // When
         // Then
-        IQueryable<Student> expectedStudents = CreateStudents(student:CreateStudent());
+        IQueryable<Student> expectedStudents = CreateStudents(student: CreateStudent());
 
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.GetStudents())
-            .Returns(value:expectedStudents);
+            .Setup(expression: (IStudentService studentService) => studentService.GetStudents())
+            .Returns(value: expectedStudents);
 
         StudentOrchestrationService service = CreateStudentOrchestrationService();
         IQueryable<Student> actualStudents = service.GetStudents();
 
         ((IEnumerable<Student>)actualStudents).Should()
-            .BeSameAs(expected:expectedStudents, because:"");
+            .BeSameAs(expected: expectedStudents, because: "");
     }
 }

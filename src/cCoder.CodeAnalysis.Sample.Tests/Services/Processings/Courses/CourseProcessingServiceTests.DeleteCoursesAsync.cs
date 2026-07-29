@@ -20,15 +20,15 @@ public sealed partial class CourseProcessingServiceTests
         Course[] items = CreateCourses();
 
         courseServiceMock
-            .Setup(expression:(ICourseService courseService) => courseService.DeleteCourseAsync(courseId:It.IsAny<int>()))
-            .Returns(value:ValueTask.CompletedTask);
+            .Setup(expression: (ICourseService courseService) => courseService.DeleteCourseAsync(courseId: It.IsAny<int>()))
+            .Returns(value: ValueTask.CompletedTask);
 
         CourseProcessingService service = CreateCourseProcessingService();
-        await service.DeleteCoursesAsync(deletedCourses:items);
+        await service.DeleteCoursesAsync(deletedCourses: items);
 
         courseServiceMock.Verify(
-expression:            (ICourseService foundation) => foundation.DeleteCourseAsync(courseId:It.IsAny<int>()),
-times:            Times.Exactly(callCount:2)
+expression: (ICourseService foundation) => foundation.DeleteCourseAsync(courseId: It.IsAny<int>()),
+times: Times.Exactly(callCount: 2)
         );
     }
 }

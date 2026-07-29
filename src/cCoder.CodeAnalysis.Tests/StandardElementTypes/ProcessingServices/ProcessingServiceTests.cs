@@ -119,7 +119,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0019",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidMutationNamesProcessingService",
-            18
+            19
         );
     }
 
@@ -129,7 +129,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0020",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidMutationNamesProcessingService",
-            25
+            27
         );
     }
 
@@ -139,7 +139,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0021",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidMutationNamesProcessingService",
-            32
+            35
         );
     }
 
@@ -149,7 +149,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT001",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            44
+            45
         );
     }
 
@@ -159,7 +159,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT002",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            18
+            19
         );
     }
 
@@ -169,7 +169,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT003",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            10
+            11
         );
     }
 
@@ -179,7 +179,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT004",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            19
+            20
         );
     }
 
@@ -189,7 +189,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT005",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            21
+            22
         );
     }
 
@@ -219,7 +219,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT007",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            27
+            28
         );
     }
 
@@ -229,7 +229,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT008",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            34
+            35
         );
     }
 
@@ -239,7 +239,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT009",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            42
+            43
         );
     }
 
@@ -249,7 +249,7 @@ public sealed class ProcessingServiceTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXFORMAT010",
             "cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations.InvalidIdentifierProcessingService",
-            41
+            42
         );
     }
 

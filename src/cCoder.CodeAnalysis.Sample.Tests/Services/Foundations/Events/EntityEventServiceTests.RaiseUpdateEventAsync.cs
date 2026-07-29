@@ -19,12 +19,12 @@ public sealed partial class EntityEventServiceTests
         // Then
         Student student = CreateStudent();
         EntityEventService service = CreateEntityEventService();
-        await service.RaiseUpdateEventAsync(entityName:"student", entity:student);
+        await service.RaiseUpdateEventAsync(entityName: "student", entity: student);
 
         ((IEnumerable<IInvocation>)eventHubMock.Invocations).Should()
-            .ContainSingle(because:"");
+            .ContainSingle(because: "");
 
         eventHubMock.Invocations[0].Arguments[0].Should()
-            .Be(expected:"student_update", because:"");
+            .Be(expected: "student_update", because: "");
     }
 }

@@ -6,9 +6,9 @@ namespace cCoder.CodeAnalysis.Sample.Models.RuleViolations;
 
 internal sealed class InvalidModel
 {
-	public required string Name { get; set; } = string.Empty;
+    public required string Name { get; set; } = string.Empty;
 
-	public static void Execute()
-	{
-	}
+    public static void Execute()
+    {
+    }
 }

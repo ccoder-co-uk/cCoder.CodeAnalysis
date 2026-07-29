@@ -21,7 +21,7 @@ public sealed class StudentServiceTests
         brokerMock
             .Setup((IStudentBroker broker) => broker.InsertStudentAsync(It.IsAny<Student>()))
             .Callback(
-                delegate(Student student)
+                delegate (Student student)
                 {
                     persistedStudent = student;
                     student.Id = 42;
@@ -46,7 +46,7 @@ public sealed class StudentServiceTests
         brokerMock
             .Setup((IStudentBroker broker) => broker.UpdateStudentAsync(It.IsAny<Student>()))
             .Callback(
-                delegate(Student student)
+                delegate (Student student)
                 {
                     persistedStudent = student;
                     student.LastName = "Persisted";

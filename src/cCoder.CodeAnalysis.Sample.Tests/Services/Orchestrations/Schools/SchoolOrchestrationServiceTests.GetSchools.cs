@@ -17,15 +17,15 @@ public sealed partial class SchoolOrchestrationServiceTests
         // Given
         // When
         // Then
-        IQueryable<School> expectedSchools = CreateSchools(school:CreateSchool());
+        IQueryable<School> expectedSchools = CreateSchools(school: CreateSchool());
 
-        schoolServiceMock.Setup(expression:(ISchoolService schoolService) => schoolService.GetSchools())
-            .Returns(value:expectedSchools);
+        schoolServiceMock.Setup(expression: (ISchoolService schoolService) => schoolService.GetSchools())
+            .Returns(value: expectedSchools);
 
         SchoolOrchestrationService service = CreateSchoolOrchestrationService();
         IQueryable<School> actualSchools = service.GetSchools();
 
         ((IEnumerable<School>)actualSchools).Should()
-            .BeSameAs(expected:expectedSchools, because:"");
+            .BeSameAs(expected: expectedSchools, because: "");
     }
 }

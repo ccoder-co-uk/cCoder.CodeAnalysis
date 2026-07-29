@@ -8,5 +8,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Coordinations.RuleViolations;
 
 internal interface IInvalidCoordinationService
 {
-	ValueTask ImportSchoolAsync(School school);
+    ValueTask ImportSchoolAsync(School school);
 }

@@ -17,15 +17,15 @@ public sealed partial class SchoolPeopleImportOrchestrationServiceTests
         // When
         // Then
         School validSchool = CreateSchool();
-        School invalidSchool = CreateSchool(studentFirstName:string.Empty);
+        School invalidSchool = CreateSchool(studentFirstName: string.Empty);
         SchoolPeopleImportOrchestrationService service = CreateSchoolPeopleImportOrchestrationService();
-        bool validResult = service.CanImportSchool(school:validSchool);
-        bool invalidResult = service.CanImportSchool(school:invalidSchool);
+        bool validResult = service.CanImportSchool(school: validSchool);
+        bool invalidResult = service.CanImportSchool(school: invalidSchool);
 
         validResult.Should()
-            .BeTrue(because:"");
+            .BeTrue(because: "");
 
         invalidResult.Should()
-            .BeFalse(because:"");
+            .BeFalse(because: "");
     }
 }

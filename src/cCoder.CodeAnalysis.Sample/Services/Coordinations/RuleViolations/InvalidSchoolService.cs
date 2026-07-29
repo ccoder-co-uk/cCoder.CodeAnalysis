@@ -8,10 +8,12 @@ namespace cCoder.CodeAnalysis.Sample.Services.Coordinations.RuleViolations;
 
 internal sealed partial class InvalidSchoolService(ISchoolStructureImportOrchestrationService structureService, ISchoolPeopleImportOrchestrationService peopleService) : IInvalidSchoolService
 {
-	public bool CanImportSchool()
+    public bool CanImportSchool()
 =>
-	    TryCatch(operation:() => {
-			bool flag = structureService != null;
-			bool flag2 = peopleService != null;
-			return flag && flag2;
-		});}
+        TryCatch(operation: () =>
+        {
+            bool flag = structureService != null;
+            bool flag2 = peopleService != null;
+            return flag && flag2;
+        });
+}

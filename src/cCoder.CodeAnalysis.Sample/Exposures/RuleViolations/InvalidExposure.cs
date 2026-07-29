@@ -10,38 +10,38 @@ namespace cCoder.CodeAnalysis.Sample.Exposures.RuleViolations;
 
 internal sealed class InvalidExposure(IStudentService studentService, ITeacherService teacherService, IStudentBroker studentBroker)
 {
-	public string Value { get; set; } = string.Empty;
+    public string Value { get; set; } = string.Empty;
 
-	public static SchoolContext CreateContext()
-	{
-		return null!;
-	}
+    public static SchoolContext CreateContext()
+    {
+        return null!;
+    }
 
-	internal void Execute(bool shouldExecute)
-	{
-		if (shouldExecute)
-		{
-			Value = (studentService.GetStudents()
-			    .Count() + teacherService.GetTeachers()
-			    .Count() + studentBroker.SelectAllStudents()
-			    .Count()).ToString();
-		}
+    internal void Execute(bool shouldExecute)
+    {
+        if (shouldExecute)
+        {
+            Value = (studentService.GetStudents()
+                .Count() + teacherService.GetTeachers()
+                .Count() + studentBroker.SelectAllStudents()
+                .Count()).ToString();
+        }
 
-		while (shouldExecute)
-		{
-			shouldExecute = false;
-		}
-	}
+        while (shouldExecute)
+        {
+            shouldExecute = false;
+        }
+    }
 
-	internal void ExecuteSequence()
-	{
-		studentService.GetStudents();
-		teacherService.GetTeachers();
-		AllowAnyOrigin();
-		AllowCredentials();
-	}
+    internal void ExecuteSequence()
+    {
+        studentService.GetStudents();
+        teacherService.GetTeachers();
+        AllowAnyOrigin();
+        AllowCredentials();
+    }
 
-	private static void AllowAnyOrigin() { }
+    private static void AllowAnyOrigin() { }
 
-	private static void AllowCredentials() { }
+    private static void AllowCredentials() { }
 }

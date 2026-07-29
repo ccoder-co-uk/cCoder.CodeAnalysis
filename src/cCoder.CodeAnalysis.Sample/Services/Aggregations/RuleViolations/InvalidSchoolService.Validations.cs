@@ -8,8 +8,8 @@ namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
 internal sealed partial class InvalidSchoolService
 {
-private static void Validate(params object?[] inputs)
-	{
-		ValidationRulesEngine.Validate(inputs:inputs);
-	}
+    private static void Validate(params object?[] inputs)
+    {
+        ValidationRulesEngine.Validate(inputs: inputs);
+    }
 }

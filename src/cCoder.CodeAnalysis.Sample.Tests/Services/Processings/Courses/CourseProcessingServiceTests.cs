@@ -25,6 +25,6 @@ public sealed partial class CourseProcessingServiceTests
 
     private static Course[] CreateCourses()
     {
-        return new Course[2] { CreateCourse(courseId:0), CreateCourse(courseId:7) };
+        return new Course[2] { CreateCourse(courseId: 0), CreateCourse(courseId: 7) };
     }
 }

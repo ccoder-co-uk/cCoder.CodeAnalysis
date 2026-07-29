@@ -147,6 +147,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             StringComparison.OrdinalIgnoreCase);
         string supportingDataRegistration =
             GetSupportingDataRegistrationName(context.ProjectName);
+        string providerRegistration =
+            GetProviderRegistrationName(context.ProjectName);
 
         bool exposesDomainRegistration = GetMethods(context)
             .Any(method =>
@@ -155,7 +157,9 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                         Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
                 && method.ParameterList.Parameters.Any(parameter =>
                     parameter.Type?.ToString() == "IServiceCollection")
-                && (!string.IsNullOrWhiteSpace(supportingDataRegistration)
+                && (!string.IsNullOrWhiteSpace(providerRegistration)
+                    ? method.Identifier.Text == providerRegistration
+                    : !string.IsNullOrWhiteSpace(supportingDataRegistration)
                     ? method.Identifier.Text == supportingDataRegistration
                     : isDomainLibrary
                     ? method.Identifier.Text.StartsWith(
@@ -177,10 +181,24 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             [
                 CreateAnalysisItem(
                     code: "STXAPP002",
-                    description: "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.",
+                    description: "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.",
                     context: context
                 ),
             ];
+    }
+
+    private static string GetProviderRegistrationName(
+        string projectName)
+    {
+        string[] segments = projectName.Split(
+            separator: '.');
+
+        return segments.Length >= 3
+            && segments[segments.Length - 1].Equals(
+                value: "Providers",
+                comparisonType: StringComparison.OrdinalIgnoreCase)
+                    ? $"Add{segments[segments.Length - 2]}Providers"
+                    : string.Empty;
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP003(EvaluationContext context)
@@ -470,8 +488,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             entryPoint.ParameterList.Parameters.Any(parameter =>
                 parameter.Type?.ToString() == "IConfiguration");
 
-          bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
-              .Any(predicate: IsConfigurationCallback);
+        bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
+            .Any(predicate: IsConfigurationCallback);
 
         return acceptsApplicationConfiguration
             && exposesConfigurationCallback
@@ -484,7 +502,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
                     context,
                     entryPoint.GetLocation())
               ];
-      }
+    }
 
     private static bool IsConfigurationCallback(ParameterSyntax parameter)
     {

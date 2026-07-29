@@ -718,12 +718,24 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     }
             )
             .Where(predicate: item =>
-                item.ReturnType is not null
-                && !item.Method.Identifier.Text.Contains(
-                    value: item.ReturnType,
-                    comparisonType: StringComparison.Ordinal
-                )
-            )
+            {
+                if (item.ReturnType is null)
+                {
+                    return false;
+                }
+
+                string contractName =
+                    item.ReturnType.Length > 1
+                    && item.ReturnType[0] == 'I'
+                    && char.IsUpper(c: item.ReturnType[1])
+                        ? item.ReturnType.Substring(
+                            startIndex: 1)
+                        : item.ReturnType;
+
+                return !item.Method.Identifier.Text.Contains(
+                    value: contractName,
+                    comparisonType: StringComparison.Ordinal);
+            })
             .Select(selector: item =>
                 CreateAnalysisItem(
                     code: "STX0022",

@@ -20,14 +20,14 @@ public sealed partial class ServiceCollectionProcessingServiceTests
         ServiceCollectionProcessingService service = CreateServiceCollectionProcessingService();
 
         IServiceCollection registeredServices = service.AddCodeAnalysisSample(
-services:            services,
-connectionString:            "Server=(localdb)\\MSSQLLocalDB;Database=RegistrationTests;Trusted_Connection=True"
+services: services,
+connectionString: "Server=(localdb)\\MSSQLLocalDB;Database=RegistrationTests;Trusted_Connection=True"
         );
 
         ((IEnumerable<ServiceDescriptor>)registeredServices).Should()
-            .BeSameAs(expected:services, because:"");
+            .BeSameAs(expected: services, because: "");
 
         ((IEnumerable<ServiceDescriptor>)registeredServices).Should()
-            .NotBeEmpty(because:"");
+            .NotBeEmpty(because: "");
     }
 }

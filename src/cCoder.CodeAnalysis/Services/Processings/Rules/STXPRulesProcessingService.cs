@@ -50,7 +50,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
         );
 
         bool hasUnsupportedServiceDependency = context.Dependencies.Any(
-            predicate: delegate(TypeDependency dependency)
+            predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
                 return (uint)(standardElementType - 3) <= 4u;

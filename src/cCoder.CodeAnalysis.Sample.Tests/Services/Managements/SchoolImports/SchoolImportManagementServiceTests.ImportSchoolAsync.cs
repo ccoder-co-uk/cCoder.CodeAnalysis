@@ -21,17 +21,17 @@ public sealed partial class SchoolImportManagementServiceTests
 
         validationServiceMock
             .Setup(
-expression:                (ISchoolImportValidationCoordinationService schoolImportValidationCoordinationService) =>
-                    schoolImportValidationCoordinationService.CanImportSchool(school:school)
+expression: (ISchoolImportValidationCoordinationService schoolImportValidationCoordinationService) =>
+                    schoolImportValidationCoordinationService.CanImportSchool(school: school)
             )
             .Returns(value: true);
 
         SchoolImportManagementService service = CreateSchoolImportManagementService();
-        await service.ImportSchoolAsync(school:school);
+        await service.ImportSchoolAsync(school: school);
 
         importServiceMock.Verify(
-expression:            (ISchoolImportCoordinationService coordination) => coordination.ImportSchoolAsync(school:school),
-times:            Times.Once
+expression: (ISchoolImportCoordinationService coordination) => coordination.ImportSchoolAsync(school: school),
+times: Times.Once
         );
     }
 }

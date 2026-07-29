@@ -21,15 +21,15 @@ public sealed partial class TeacherServiceTests
         Teacher updatedTeacher = CreateTeacher();
 
         teacherBrokerMock
-            .Setup(expression:(ITeacherBroker broker) => broker.UpdateTeacherAsync(updatedTeacher:It.IsAny<Teacher>()))
-            .Returns(valueFunction:() => ValueTask.FromResult(result:CreateTeacher()));
+            .Setup(expression: (ITeacherBroker broker) => broker.UpdateTeacherAsync(updatedTeacher: It.IsAny<Teacher>()))
+            .Returns(valueFunction: () => ValueTask.FromResult(result: CreateTeacher()));
 
         TeacherService service = CreateTeacherService();
-        Teacher actualTeacher = await service.UpdateTeacherAsync(updatedTeacher:updatedTeacher);
+        Teacher actualTeacher = await service.UpdateTeacherAsync(updatedTeacher: updatedTeacher);
 
         ((object)actualTeacher).Should()
-            .NotBeSameAs(unexpected:updatedTeacher, because:"");
+            .NotBeSameAs(unexpected: updatedTeacher, because: "");
 
-        teacherBrokerMock.Verify(expression:(ITeacherBroker broker) => broker.UpdateTeacherAsync(updatedTeacher:actualTeacher), times:Times.Once);
+        teacherBrokerMock.Verify(expression: (ITeacherBroker broker) => broker.UpdateTeacherAsync(updatedTeacher: actualTeacher), times: Times.Once);
     }
 }

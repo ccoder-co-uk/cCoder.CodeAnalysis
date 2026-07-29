@@ -19,13 +19,13 @@ public sealed partial class CourseOrchestrationServiceTests
         // Then
         Course expectedCourse = new Course { Id = 7 };
 
-        courseServiceMock.Setup(expression:(ICourseService courseService) => courseService.GetCourse(courseId:7))
-            .Returns(value:expectedCourse);
+        courseServiceMock.Setup(expression: (ICourseService courseService) => courseService.GetCourse(courseId: 7))
+            .Returns(value: expectedCourse);
 
         CourseOrchestrationService service = CreateCourseOrchestrationService();
-        Course actualCourse = service.GetCourse(courseId:7)!;
+        Course actualCourse = service.GetCourse(courseId: 7)!;
 
         ((object)actualCourse).Should()
-            .BeSameAs(expected:expectedCourse, because:"");
+            .BeSameAs(expected: expectedCourse, because: "");
     }
 }

@@ -9,9 +9,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Managements.RuleViolations;
 
 internal sealed partial class InvalidSchoolService(ISchoolImportCoordinationService importService, ISchoolImportValidationCoordinationService validationService) : IInvalidSchoolService
 {
-	public bool CanManage()
+    public bool CanManage()
 =>
-	    TryCatch(operation:() => {
-			School school = new School();
-			return importService.CanImportSchool(school:school) && validationService.CanImportSchool(school:school);
-		});}
+        TryCatch(operation: () =>
+        {
+            School school = new School();
+            return importService.CanImportSchool(school: school) && validationService.CanImportSchool(school: school);
+        });
+}

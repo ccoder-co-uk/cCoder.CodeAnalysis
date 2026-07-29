@@ -8,9 +8,9 @@ namespace cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations;
 
 internal interface IInvalidFoundationService
 {
-	void Execute();
+    void Execute();
 
-	void Perform();
+    void Perform();
 
-	Student ConvertTeacher(Teacher teacher);
+    Student ConvertTeacher(Teacher teacher);
 }

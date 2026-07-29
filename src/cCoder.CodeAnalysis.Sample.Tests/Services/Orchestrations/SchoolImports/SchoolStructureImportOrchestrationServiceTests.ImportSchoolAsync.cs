@@ -20,16 +20,16 @@ public sealed partial class SchoolStructureImportOrchestrationServiceTests
         // Then
         School school = CreateSchool();
         SchoolStructureImportOrchestrationService service = CreateSchoolStructureImportOrchestrationService();
-        await service.ImportSchoolAsync(school:school);
+        await service.ImportSchoolAsync(school: school);
 
         schoolServiceMock.Verify(
-expression:            (ISchoolImportProcessingService processing) => processing.ImportSchoolAsync(school:school),
-times:            Times.Once
+expression: (ISchoolImportProcessingService processing) => processing.ImportSchoolAsync(school: school),
+times: Times.Once
         );
 
         courseServiceMock.Verify(
-expression:            (ICourseProcessingService processing) => processing.AddOrUpdateCoursesAsync(courses:school.Courses, schoolId:school.Id),
-times:            Times.Once
+expression: (ICourseProcessingService processing) => processing.AddOrUpdateCoursesAsync(courses: school.Courses, schoolId: school.Id),
+times: Times.Once
         );
     }
 }

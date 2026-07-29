@@ -6,5 +6,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Orchestrations.RuleViolations;
 
 internal interface IInvalidSchoolService
 {
-	int CountPeople();
+    int CountPeople();
 }

@@ -20,13 +20,13 @@ public sealed partial class StudentOrchestrationServiceTests
         Student expectedStudent = CreateStudent();
 
         studentServiceMock
-            .Setup(expression:(IStudentService studentService) => studentService.GetStudent(studentId:7))
-            .Returns(value:expectedStudent);
+            .Setup(expression: (IStudentService studentService) => studentService.GetStudent(studentId: 7))
+            .Returns(value: expectedStudent);
 
         StudentOrchestrationService service = CreateStudentOrchestrationService();
-        Student actualStudent = service.GetStudent(studentId:7)!;
+        Student actualStudent = service.GetStudent(studentId: 7)!;
 
         ((object)actualStudent).Should()
-            .BeSameAs(expected:expectedStudent, because:"");
+            .BeSameAs(expected: expectedStudent, because: "");
     }
 }

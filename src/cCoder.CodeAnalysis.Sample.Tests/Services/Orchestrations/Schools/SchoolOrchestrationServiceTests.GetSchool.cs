@@ -19,13 +19,13 @@ public sealed partial class SchoolOrchestrationServiceTests
         // Then
         School expectedSchool = new School { Id = 7 };
 
-        schoolServiceMock.Setup(expression:(ISchoolService schoolService) => schoolService.GetSchool(schoolId:7))
-            .Returns(value:expectedSchool);
+        schoolServiceMock.Setup(expression: (ISchoolService schoolService) => schoolService.GetSchool(schoolId: 7))
+            .Returns(value: expectedSchool);
 
         SchoolOrchestrationService service = CreateSchoolOrchestrationService();
-        School actualSchool = service.GetSchool(schoolId:7)!;
+        School actualSchool = service.GetSchool(schoolId: 7)!;
 
         ((object)actualSchool).Should()
-            .BeSameAs(expected:expectedSchool, because:"");
+            .BeSameAs(expected: expectedSchool, because: "");
     }
 }

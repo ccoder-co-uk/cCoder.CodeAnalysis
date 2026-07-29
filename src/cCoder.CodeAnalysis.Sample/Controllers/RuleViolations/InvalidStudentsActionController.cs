@@ -12,9 +12,9 @@ namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 [Route("api/students-invalid-action")]
 public sealed class InvalidStudentsActionController(IStudentManager studentManager) : ControllerBase
 {
-	[HttpGet]
-	public ActionResult<IQueryable<Student>> RetrieveStudents()
-	{
-		return Ok(value:studentManager.GetStudents());
-	}
+    [HttpGet]
+    public ActionResult<IQueryable<Student>> RetrieveStudents()
+    {
+        return Ok(value: studentManager.GetStudents());
+    }
 }

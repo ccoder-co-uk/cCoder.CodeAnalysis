@@ -6,5 +6,5 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal interface IIncorrectProcessingContract
 {
-	int Calculate(int value);
+    int Calculate(int value);
 }

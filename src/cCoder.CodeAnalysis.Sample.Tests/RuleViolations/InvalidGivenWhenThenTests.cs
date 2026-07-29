@@ -6,8 +6,8 @@ namespace cCoder.CodeAnalysis.Sample.Tests.RuleViolations;
 
 public sealed partial class InvalidGivenWhenThenTests
 {
-	[Fact]
-	public void ExecuteShouldComplete()
-	{
-	}
+    [Fact]
+    public void ExecuteShouldComplete()
+    {
+    }
 }

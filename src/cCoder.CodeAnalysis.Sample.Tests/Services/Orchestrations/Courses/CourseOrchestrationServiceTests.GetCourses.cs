@@ -19,13 +19,13 @@ public sealed partial class CourseOrchestrationServiceTests
         // Then
         IQueryable<Course> expectedCourses = new Course[1] { new Course { Id = 7 } }.AsQueryable();
 
-        courseServiceMock.Setup(expression:(ICourseService courseService) => courseService.GetCourses())
-            .Returns(value:expectedCourses);
+        courseServiceMock.Setup(expression: (ICourseService courseService) => courseService.GetCourses())
+            .Returns(value: expectedCourses);
 
         CourseOrchestrationService service = CreateCourseOrchestrationService();
         IQueryable<Course> actualCourses = service.GetCourses();
 
         ((IEnumerable<Course>)actualCourses).Should()
-            .BeSameAs(expected:expectedCourses, because:"");
+            .BeSameAs(expected: expectedCourses, because: "");
     }
 }

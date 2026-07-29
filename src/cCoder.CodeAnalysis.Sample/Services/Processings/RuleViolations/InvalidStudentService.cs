@@ -6,9 +6,11 @@ namespace cCoder.CodeAnalysis.Sample.Services.Processings.RuleViolations;
 
 internal sealed partial class InvalidStudentService : IInvalidStudentService
 {
-	public int Calculate(int value)
+    public int Calculate(int value)
 =>
-	    TryCatch(operation:() => {
-			Validate(inputs:[value]);
-			return value + 1;
-		});}
+        TryCatch(operation: () =>
+        {
+            Validate(inputs: [value]);
+            return value + 1;
+        });
+}
