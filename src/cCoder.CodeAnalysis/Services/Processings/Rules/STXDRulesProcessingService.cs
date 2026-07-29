@@ -30,16 +30,15 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
 
         bool mayConsumeDependency =
             context.StandardElementType == StandardElementType.Broker
-            || context.StandardElementType ==
-                StandardElementType.Dependency;
+            || context.StandardElementType == StandardElementType.Dependency
+            || context.DeclaresDependencyIntent;
 
         if (!mayConsumeDependency && consumesDependency)
         {
             yield return new AnalysisItem
             {
                 Code = "STXD001",
-                Description =
-                    "Dependency elements may only be consumed by brokers or other dependencies.",
+                Description = "Dependency elements may only be consumed by brokers or other dependencies.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
                 LineNumber = context.LineNumber,
@@ -60,7 +59,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             yield return new AnalysisItem
             {
                 Code = "STXD002",
-                Description = "A dependency must inherit an external type or implement an external interface that the application cannot control.",
+                Description =
+                    "A dependency must inherit an external type or implement an external interface that the application cannot control.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
                 LineNumber = context.LineNumber,

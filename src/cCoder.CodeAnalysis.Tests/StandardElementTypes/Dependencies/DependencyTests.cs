@@ -16,15 +16,14 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void RuleSTXD001EvaluatesAsExpected()
     {
-        AnalysisItem item = Architecture.AnalysisItems
-            .Where((AnalysisItem analysisItem) => analysisItem.Code == "STXD001")
+        AnalysisItem item = Architecture
+            .AnalysisItems.Where((AnalysisItem analysisItem) => analysisItem.Code == "STXD001")
             .Should()
             .ContainSingle("")
             .Which;
 
-        item.Type.Should().Be(
-            "cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations.InvalidFoundationService",
-            "");
+        item.Type.Should()
+            .Be("cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations.InvalidFoundationService", "");
         item.LineNumber.Should().Be(10, "");
     }
 
@@ -45,25 +44,32 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     public void RuleSTXD001_ShouldAllowDependencyComposition()
     {
         // Given
-        const string composedDependency =
-            "cCoder.CodeAnalysis.Sample.Dependencies.ComposedDependency";
+        const string composedDependency = "cCoder.CodeAnalysis.Sample.Dependencies.ComposedDependency";
 
         // When
-        IEnumerable<AnalysisItem> dependencyConsumptionItems =
-            Architecture.AnalysisItems.Where(
-                predicate: item => item.Code == "STXD001");
+        IEnumerable<AnalysisItem> dependencyConsumptionItems = Architecture.AnalysisItems.Where(predicate: item =>
+            item.Code == "STXD001"
+        );
 
         // Then
-        dependencyConsumptionItems.Should()
-            .NotContain(
-                predicate: item => item.Type == composedDependency);
+        dependencyConsumptionItems.Should().NotContain(predicate: item => item.Type == composedDependency);
+    }
+
+    [Fact]
+    public void RuleSTXD001_ShouldAllowDependencyIntentForAnotherLayerContract()
+    {
+        const string composedDependency = "cCoder.CodeAnalysis.Sample.Dependencies.ComposedProcessingDependency";
+
+        Architecture
+            .AnalysisItems.Should()
+            .NotContain(predicate: item => item.Code == "STXD001" && item.Type == composedDependency);
     }
 
     [Fact]
     public void RuleSTXD002EvaluatesAsExpected()
     {
-        Architecture.AnalysisItems
-            .Where((AnalysisItem item) => item.Code == "STXD002")
+        Architecture
+            .AnalysisItems.Where((AnalysisItem item) => item.Code == "STXD002")
             .Select((AnalysisItem item) => item.Type)
             .Should()
             .ContainSingle("")
@@ -91,10 +97,9 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
         Class element = GetElement("cCoder.CodeAnalysis.Sample.Dependencies.CompatibilityDependency");
 
         element.StandardElementType.Should().Be(StandardElementType.Unknown, "");
-        Architecture.AnalysisItems.Should().ContainSingle(
-            item => item.Code == "STXD002" && item.Type == element.Name,
-            ""
-        );
+        Architecture
+            .AnalysisItems.Should()
+            .ContainSingle(item => item.Code == "STXD002" && item.Type == element.Name, "");
     }
 
     [Fact]
@@ -127,21 +132,27 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldAcceptDependencyThatImplementsLocalContract()
     {
-        Architecture.AnalysisItems.Should().NotContain(
-            item =>
-                item.Code == "STXD002"
-                && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.LocalContractDependency",
-            "");
+        Architecture
+            .AnalysisItems.Should()
+            .NotContain(
+                item =>
+                    item.Code == "STXD002"
+                    && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.LocalContractDependency",
+                ""
+            );
     }
 
     [Fact]
     public void ShouldAcceptDependencyThatWrapsExternalState()
     {
-        Architecture.AnalysisItems.Should().NotContain(
-            item =>
-                item.Code == "STXD002"
-                && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.ExternalStateDependency",
-            "");
+        Architecture
+            .AnalysisItems.Should()
+            .NotContain(
+                item =>
+                    item.Code == "STXD002"
+                    && item.Type == "cCoder.CodeAnalysis.Sample.Dependencies.ExternalStateDependency",
+                ""
+            );
     }
 
     private Class GetElement(string name)

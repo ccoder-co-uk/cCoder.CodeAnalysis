@@ -112,7 +112,8 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
                 item =>
                     item.Code == "STX0019"
                     && item.Type.EndsWith(".IServiceCollectionExtensions", StringComparison.Ordinal),
-                "");
+                ""
+            );
     }
 
     [Fact]
@@ -150,7 +151,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfLinks()
     {
-        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(70, "");
+        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(71, "");
     }
 
     [Fact]
