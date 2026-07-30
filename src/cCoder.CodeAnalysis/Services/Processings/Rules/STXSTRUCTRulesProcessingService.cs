@@ -12,7 +12,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTXSTRUCT001(context: context)
-            .Concat(second: EvaluateSTXSTRUCT002(context: context));
+            .Concat(second: EvaluateSTXSTRUCT002(context: context))
+            .Concat(second: EvaluateSTXSTRUCT003(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT001(EvaluationContext context)
@@ -68,6 +69,37 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
 
     private static bool IsTopLevelClass(ClassDeclarationSyntax declaration) =>
         !declaration.Ancestors().OfType<TypeDeclarationSyntax>().Any();
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT003(
+        EvaluationContext context)
+    {
+        if (!IsService(elementType: context.StandardElementType))
+        {
+            return [];
+        }
+
+        return context.Declarations
+            .OfType<InterfaceDeclarationSyntax>()
+            .Where(predicate: declaration =>
+                declaration.Modifiers.Any(
+                    kind: Microsoft.CodeAnalysis.CSharp.SyntaxKind
+                        .PublicKeyword))
+            .Select(selector: declaration =>
+                CreateAnalysisItem(
+                    code: "STXSTRUCT003",
+                    description:
+                        "Service contracts must be internal; expose cross-library operations through a public manager interface.",
+                    context: context,
+                    location: declaration.GetLocation()));
+    }
+
+    private static bool IsService(StandardElementType elementType) =>
+        elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
 
     private static bool IsInStandardFolder(string filePath, StandardElementType elementType)
     {
