@@ -289,4 +289,37 @@ public sealed class ArchitectureServiceTests
             .Should()
             .Be(shouldReportViolation);
     }
+
+    [Fact]
+    public void BuildShouldEvaluateStandaloneServiceInterfaces()
+    {
+        // Given
+        const string source =
+            """
+            namespace Sample.Services.Processings;
+
+            public interface IStudentProcessingService
+            {
+            }
+            """;
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: source,
+            path: "Services/Processings/IStudentProcessingService.cs");
+        MetadataReference runtimeReference = MetadataReference.CreateFromFile(
+            path: typeof(object).Assembly.Location);
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Sample",
+            syntaxTrees: [syntaxTree],
+            references: [runtimeReference]);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(
+            compilation: compilation);
+
+        // Then
+        architecture.AnalysisItems
+            .Should()
+            .ContainSingle(
+                predicate: item => item.Code == "STXSTRUCT003");
+    }
 }

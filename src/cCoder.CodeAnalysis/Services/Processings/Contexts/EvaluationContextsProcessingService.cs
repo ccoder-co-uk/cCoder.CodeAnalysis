@@ -36,7 +36,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         );
 
         return architectureBuild
-            .DeclaredTypes.Where(predicate: (INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
+            .DeclaredTypes.Where(
+                predicate: (INamedTypeSymbol type) =>
+                    type.TypeKind is TypeKind.Class or TypeKind.Interface)
             .Select(
                 selector: (INamedTypeSymbol type) =>
                     CreateEvaluationContext(
