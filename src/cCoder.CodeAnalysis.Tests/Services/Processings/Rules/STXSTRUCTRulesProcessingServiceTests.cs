@@ -78,6 +78,58 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
         items.Should().NotContain(item => item.Code == "STXSTRUCT002", "");
     }
 
+    [Fact]
+    public void PublicServiceContractShouldProduceDiagnostic()
+    {
+        EvaluationContext context = CreateInterfaceContext(
+            typeName: "Example.IStudentProcessingService",
+            standardElementType:
+                StandardElementType.ProcessingService,
+            sourceCode:
+                """
+                namespace Example;
+
+                public interface IStudentProcessingService
+                {
+                }
+                """);
+
+        AnalysisItem[] items =
+            service.Evaluate(context: context).ToArray();
+
+        items.Should()
+            .ContainSingle(
+                predicate: item =>
+                    item.Code == "STXSTRUCT003",
+                because: "");
+    }
+
+    [Fact]
+    public void InternalServiceContractShouldNotProduceDiagnostic()
+    {
+        EvaluationContext context = CreateInterfaceContext(
+            typeName: "Example.IStudentProcessingService",
+            standardElementType:
+                StandardElementType.ProcessingService,
+            sourceCode:
+                """
+                namespace Example;
+
+                internal interface IStudentProcessingService
+                {
+                }
+                """);
+
+        AnalysisItem[] items =
+            service.Evaluate(context: context).ToArray();
+
+        items.Should()
+            .NotContain(
+                predicate: item =>
+                    item.Code == "STXSTRUCT003",
+                because: "");
+    }
+
     private static EvaluationContext CreateContext(
         string typeName,
         string sourceCode)
@@ -96,6 +148,40 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
         {
             TypeName = typeName,
             StandardElementType = StandardElementType.Model,
+            FilePath = syntaxTree.FilePath,
+            SourceCode = sourceCode,
+            Declarations = [declaration],
+            Dependencies = [],
+            ImplementedInterfaces = [],
+            PublicMethodNames = [],
+            ContractMethodNames = [],
+            PublicMethodCallLineNumbers = [],
+            PublicApiModelTypes = [],
+            LocalDependencyTypeNames = [],
+            ProjectTypeNames = [typeName],
+            UsingNamespaces = [],
+        };
+    }
+
+    private static EvaluationContext CreateInterfaceContext(
+        string typeName,
+        StandardElementType standardElementType,
+        string sourceCode)
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text: sourceCode,
+            path: "Services/Processings/Example.cs");
+
+        InterfaceDeclarationSyntax declaration = syntaxTree
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<InterfaceDeclarationSyntax>()
+            .First();
+
+        return new EvaluationContext
+        {
+            TypeName = typeName,
+            StandardElementType = standardElementType,
             FilePath = syntaxTree.FilePath,
             SourceCode = sourceCode,
             Declarations = [declaration],
