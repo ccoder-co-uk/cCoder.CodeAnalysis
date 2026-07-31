@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
@@ -166,6 +167,8 @@ public sealed class STXERulesProcessingServiceTests
                     StandardElementType.FoundationService
             }
         ];
+        context.ArchitectureElement!.AnalysisImplementedInterfaces = context.ImplementedInterfaces;
+        context.ArchitectureElement.AnalysisDependencies = context.Dependencies;
 
         STXERulesProcessingService service = new();
 
@@ -206,6 +209,8 @@ public sealed class STXERulesProcessingServiceTests
                     StandardElementType.FoundationService
             }
         ];
+        context.ArchitectureElement!.AnalysisImplementedInterfaces = context.ImplementedInterfaces;
+        context.ArchitectureElement.AnalysisDependencies = context.Dependencies;
 
         STXERulesProcessingService service = new();
 
@@ -294,14 +299,28 @@ public sealed class STXERulesProcessingServiceTests
 
     private static EvaluationContext CreateContext(
         TypeDeclarationSyntax declaration,
-        string typeName = "Example.Controllers.HomeController") =>
-        new()
+        string typeName = "Example.Controllers.HomeController")
+    {
+        Class architectureElement = new()
+        {
+            Name = typeName,
+            StandardElementType = StandardElementType.Exposure,
+            Properties = [],
+            Methods = [],
+            AnalysisDependencies = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisTypeFacts = ArchitectureProcessingService.CreateTypeAnalysisFacts(
+                declarations: [declaration]),
+        };
+
+        return new EvaluationContext
         {
             TypeName = typeName,
             StandardElementType = StandardElementType.Exposure,
-            Declarations = [declaration],
-            Dependencies = []
+            ArchitectureElement = architectureElement,
+            Dependencies = [],
         };
+    }
 
     private static TypeDeclarationSyntax ParseDeclaration(
         string source) =>

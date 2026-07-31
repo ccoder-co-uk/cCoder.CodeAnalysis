@@ -146,6 +146,11 @@ public sealed class RFCRulesProcessingServiceTests
         method.HttpMethods.Add("GET");
         method.HasKeyParameter = true;
         method.HandlesNullWithNotFound = true;
+        method.HttpResponses.Add(new HttpResponse
+        {
+            ResultMethod = "Ok",
+            StatusCode = 200,
+        });
         method.ThrowsExceptionTypes.AddRange(
             [
                 "AppValidationException",
@@ -176,12 +181,60 @@ public sealed class RFCRulesProcessingServiceTests
                 {{method}}
             }
             """);
-
-        return new EvaluationContext
+        MethodDeclarationSyntax declarationMethod = declaration.Members
+            .OfType<MethodDeclarationSyntax>()
+            .Single();
+        string methodName = declarationMethod.Identifier.Text;
+        string httpMethod = methodName switch
         {
-            TypeName = "Example.AppController",
-            Declarations = [declaration],
+            "Get" or "GetAll" => "GET",
+            "Post" => "POST",
+            "Put" => "PUT",
+            "Patch" => "PATCH",
+            "Delete" => "DELETE",
+            _ => string.Empty,
         };
+        Dictionary<string, int> statusCodes = new(StringComparer.Ordinal)
+        {
+            ["Ok"] = 200,
+            ["Updated"] = 200,
+            ["Created"] = 201,
+            ["CreatedAtAction"] = 201,
+            ["CreatedAtRoute"] = 201,
+            ["NoContent"] = 204,
+        };
+        List<HttpResponse> responses = declarationMethod.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .Select(invocation => invocation.Expression switch
+            {
+                IdentifierNameSyntax identifier => identifier.Identifier.Text,
+                MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+                _ => string.Empty,
+            })
+            .Where(statusCodes.ContainsKey)
+            .Select(resultMethod => new HttpResponse
+            {
+                ResultMethod = resultMethod,
+                StatusCode = statusCodes[resultMethod],
+            })
+            .ToList();
+        Method modelMethod = CreateHttpMethod();
+        modelMethod.Name = methodName;
+        modelMethod.LineNumber = declarationMethod.GetLocation()
+            .GetLineSpan().StartLinePosition.Line + 1;
+        modelMethod.IsODataControllerAction = true;
+        modelMethod.HasFromBodyParameter = declarationMethod.ParameterList.Parameters.Any(
+            parameter => parameter.AttributeLists
+                .SelectMany(attributes => attributes.Attributes)
+                .Any(attribute => attribute.Name.ToString() == "FromBody"));
+        modelMethod.HttpResponses = responses;
+
+        if (httpMethod.Length > 0)
+        {
+            modelMethod.HttpMethods.Add(httpMethod);
+        }
+
+        return CreateModelContext(method: modelMethod);
     }
 
     private static EvaluationContext CreateModelContext(Method method) =>

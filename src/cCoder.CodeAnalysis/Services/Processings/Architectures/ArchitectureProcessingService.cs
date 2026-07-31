@@ -253,6 +253,32 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             BaseTypeLine = firstWithBaseType?.BaseList is null
                 ? 0
                 : GetLineNumber(firstWithBaseType.BaseList),
+            BranchingLineNumbers = declarations
+                .SelectMany(declaration => declaration.DescendantNodes())
+                .Where(node => node is IfStatementSyntax
+                    or SwitchStatementSyntax
+                    or ConditionalExpressionSyntax)
+                .Select(GetLineNumber)
+                .ToArray(),
+            MvcActionResponseBranchingLineNumbers = declarations
+                .SelectMany(declaration => declaration.DescendantNodes())
+                .Where(node => node is IfStatementSyntax
+                    or SwitchStatementSyntax
+                    or ConditionalExpressionSyntax)
+                .Where(node => node.Ancestors()
+                    .OfType<MethodDeclarationSyntax>()
+                    .FirstOrDefault() is MethodDeclarationSyntax containingMethod
+                    && IsMvcActionResponseMethod(method: containingMethod))
+                .Select(GetLineNumber)
+                .ToArray(),
+            LoopLineNumbers = declarations
+                .SelectMany(declaration => declaration.DescendantNodes())
+                .Where(node => node is ForStatementSyntax
+                    or ForEachStatementSyntax
+                    or WhileStatementSyntax
+                    or DoStatementSyntax)
+                .Select(GetLineNumber)
+                .ToArray(),
         };
     }
 
@@ -273,6 +299,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .SelectMany(attributes => attributes.Attributes)
             .Select(attribute => attribute.Name.ToString())
             .ToArray();
+        ParameterSyntax? extensionParameter = method.ParameterList.Parameters.FirstOrDefault();
+        bool isMvcActionResponse = IsMvcActionResponseMethod(method: method);
 
         return new MethodAnalysisFacts
         {
@@ -289,9 +317,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             HasServiceCollectionParameter = method.ParameterList.Parameters.Any(
                 parameter => parameter.Type?.ToString() == "IServiceCollection"),
             FirstParameterIsServiceCollectionExtension = method.ParameterList.Parameters
-                .FirstOrDefault() is ParameterSyntax firstParameter
-                && firstParameter.Type?.ToString() == "IServiceCollection"
-                && firstParameter.Modifiers.Any(SyntaxKind.ThisKeyword),
+                .FirstOrDefault() is ParameterSyntax serviceParameter
+                && serviceParameter.Type?.ToString() == "IServiceCollection"
+                && serviceParameter.Modifiers.Any(SyntaxKind.ThisKeyword),
             HasConfigurationParameter = method.ParameterList.Parameters.Any(
                 parameter => parameter.Type?.ToString() == "IConfiguration"),
             ConfigurationCallbackType = GetConfigurationCallbackType(method),
@@ -304,6 +332,16 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     argument => argument.Expression.ToString() == commandParameter.Identifier.Text)),
             HasChainedServiceCollectionRegistration = invocations.Any(
                 IsChainedServiceCollectionRegistration),
+            IsExtensionMethod = extensionParameter is not null
+                && extensionParameter.Modifiers.Any(SyntaxKind.ThisKeyword),
+            ExtensionReceiverTypeName = extensionParameter?.Type?.ToString() ?? string.Empty,
+            HasMultipleRoutineCallStatements = method.Body is not null
+                && !isMvcActionResponse
+                && method.Body.Statements.Count(statement =>
+                    statement.DescendantNodesAndSelf()
+                        .OfType<InvocationExpressionSyntax>()
+                        .Any()) > 1,
+            IsMvcActionResponse = isMvcActionResponse,
             HasScopedOrTransientConfigurationRegistration = invocations.Any(invocation =>
                 invocation.ToString().Contains("Configuration", StringComparison.Ordinal)
                 && (invocation.Expression.ToString().Contains("AddScoped", StringComparison.Ordinal)
@@ -319,6 +357,12 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .ToArray(),
         };
     }
+
+    private static bool IsMvcActionResponseMethod(MethodDeclarationSyntax method) =>
+        method.Modifiers.Any(SyntaxKind.PublicKeyword)
+        && method.ReturnType.ToString().Contains(
+            value: "IActionResult",
+            comparisonType: StringComparison.Ordinal);
 
     private static string GetConfigurationCallbackType(
         MethodDeclarationSyntax method)
@@ -428,6 +472,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             HttpResponses = httpResponses,
             IsHttpRequestHandler = isHttpRequestHandler,
             IsODataControllerAction = isODataControllerAction,
+            HasFromBodyParameter = method.Parameters.Any(parameter =>
+                parameter.GetAttributes().Any(attribute =>
+                    attribute.AttributeClass?.Name == "FromBodyAttribute")),
             HasKeyParameter = httpMethods.Contains("GET", StringComparer.Ordinal)
                 && method.Parameters.Length > 0,
             HandlesNullWithNotFound = httpResponses.Any(

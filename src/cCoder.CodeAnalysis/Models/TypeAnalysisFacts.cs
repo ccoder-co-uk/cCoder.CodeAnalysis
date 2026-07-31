@@ -17,6 +17,9 @@ internal sealed class TypeAnalysisFacts
     internal bool AllDeclarationsArePartial { get; set; }
     internal int FirstNonPartialDeclarationLine { get; set; }
     internal int BaseTypeLine { get; set; }
+    internal IReadOnlyList<int> BranchingLineNumbers { get; set; } = [];
+    internal IReadOnlyList<int> MvcActionResponseBranchingLineNumbers { get; set; } = [];
+    internal IReadOnlyList<int> LoopLineNumbers { get; set; } = [];
 }
 
 internal sealed class MethodAnalysisFacts
@@ -38,6 +41,10 @@ internal sealed class MethodAnalysisFacts
     internal bool ResolvesServiceFromProvider { get; set; }
     internal bool PassesCommandDetails { get; set; }
     internal bool HasChainedServiceCollectionRegistration { get; set; }
+    internal bool IsExtensionMethod { get; set; }
+    internal string ExtensionReceiverTypeName { get; set; }
+    internal bool HasMultipleRoutineCallStatements { get; set; }
+    internal bool IsMvcActionResponse { get; set; }
     internal bool HasScopedOrTransientConfigurationRegistration { get; set; }
     internal IReadOnlyList<string> InvokedMethodNames { get; set; } = [];
 }

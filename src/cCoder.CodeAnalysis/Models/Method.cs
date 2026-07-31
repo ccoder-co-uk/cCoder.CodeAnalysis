@@ -22,6 +22,7 @@ public sealed class Method
     public List<HttpResponse> HttpResponses { get; set; }
     public bool IsHttpRequestHandler { get; set; }
     public bool IsODataControllerAction { get; set; }
+    public bool HasFromBodyParameter { get; set; }
     public bool HasKeyParameter { get; set; }
     public bool HandlesNullWithNotFound { get; set; }
 
