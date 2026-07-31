@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXAPI001(context: context))
@@ -49,14 +53,14 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI001(EvaluationContext context)
     {
-        if (!context.IsApiController)
+        if (!architectureModelQueries.IsApiController(context: context))
         {
             return [];
         }
 
-        int serviceDependencyCount = context.Dependencies.Count(
+        int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType
                     is >= StandardElementType.Exposure
@@ -76,9 +80,10 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI002(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI002(EvaluationContext context)
     {
-        return !context.IsApiController || context.PublicApiModelTypes.Count <= 1
+        return !architectureModelQueries.IsApiController(context: context)
+            || architectureModelQueries.GetPublicApiModelTypes(context: context).Count <= 1
             ? []
             :
             [
@@ -90,13 +95,14 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI003(EvaluationContext context)
     {
         string typeName = context.TypeName.Split(separator: ['.'])
             .Last();
 
         return
-            !context.IsApiController || typeName.EndsWith(value: "Controller", comparisonType: StringComparison.Ordinal)
+            !architectureModelQueries.IsApiController(context: context)
+            || typeName.EndsWith(value: "Controller", comparisonType: StringComparison.Ordinal)
             ? []
             :
             [
@@ -108,9 +114,9 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI004(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI004(EvaluationContext context)
     {
-        if (!context.IsApiController)
+        if (!architectureModelQueries.IsApiController(context: context))
         {
             return [];
         }

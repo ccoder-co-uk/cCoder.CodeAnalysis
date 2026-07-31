@@ -10,10 +10,10 @@ internal sealed class ArchitectureModelQueriesProcessingService
     : IArchitectureModelQueriesProcessingService
 {
     public IReadOnlyList<TypeDependency> GetDependencies(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisDependencies ?? context.Dependencies;
+        context.ArchitectureElement?.AnalysisDependencies ?? context.Dependencies ?? [];
 
     public bool ImplementsContract(EvaluationContext context) =>
-        (context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces).Count != 0;
+        (context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces ?? []).Count != 0;
 
     public bool HasMultipleTopLevelClasses(EvaluationContext context) =>
         context.ArchitectureElement is Class architectureElement
@@ -21,6 +21,15 @@ internal sealed class ArchitectureModelQueriesProcessingService
                 && architectureElement.AnalysisSourceFileTopLevelClassCount > 1
             : context.IsPrimaryTopLevelClassInFile
                 && context.SourceFileTopLevelClassCount > 1;
+
+    public bool IsApiController(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisIsApiController ?? context.IsApiController;
+
+    public IReadOnlyList<string> GetPublicApiModelTypes(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisPublicApiModelTypes ?? context.PublicApiModelTypes ?? [];
+
+    public IReadOnlyList<string> GetImplementedInterfaces(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces ?? [];
 
     public IReadOnlyList<Method> GetReachableMethods(EvaluationContext context, string methodId)
     {

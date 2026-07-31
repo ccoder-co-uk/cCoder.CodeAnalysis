@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         string typeName = context.TypeName
@@ -82,9 +86,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE001(EvaluationContext context)
     {
-        return context.IsApiController
+        return architectureModelQueries.IsApiController(context: context)
             || context.TypeName.Split(separator: ['.']).Last() == "Program"
             || IsEventProviderContract(context: context)
             ? []
@@ -240,15 +244,15 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             || extensionContainerName == interfaceContainerName;
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
     {
-        if (context.IsApiController
+        if (architectureModelQueries.IsApiController(context: context)
             || IsStandardizedProviderClient(context))
         {
             return [];
         }
 
-        int serviceDependencyCount = context.Dependencies.Count(
+        int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType
                     is >= StandardElementType.FoundationService
@@ -267,7 +271,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             ];
     }
 
-    private static bool IsStandardizedProviderClient(
+    private bool IsStandardizedProviderClient(
         EvaluationContext context) =>
         context.ProjectName?.EndsWith(
             value: ".Providers",
@@ -277,7 +281,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             .EndsWith(
                 value: "Client",
                 comparisonType: StringComparison.Ordinal)
-        && context.ImplementedInterfaces.Any(
+        && architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: interfaceName =>
                 interfaceName.Split(separator: ['.'])
                     .Last()
@@ -285,9 +289,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                         value: "Client",
                         comparisonType: StringComparison.Ordinal));
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
     {
-        return !context.Dependencies.Any(
+        return !architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) => dependency.StandardElementType == StandardElementType.Broker
         )
             ? []
@@ -301,9 +305,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE005(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE005(EvaluationContext context)
     {
-        return context.IsApiController
+        return architectureModelQueries.IsApiController(context: context)
             || IsHostedService(context: context)
             || context.TypeName.Split(separator: ['.']).Last() == "Program"
             ? []
@@ -332,15 +336,14 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 );
     }
 
-    private static bool IsHostedService(
+    private bool IsHostedService(
         EvaluationContext context) =>
-        context.ImplementedInterfaces?.Any(
+        architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: (string interfaceName) =>
                 interfaceName.EndsWith(
                     value: ".IHostedService",
                     comparisonType: StringComparison.Ordinal)
-                || interfaceName == "IHostedService")
-            == true;
+                || interfaceName == "IHostedService");
 
     private static bool IsMvcActionResponseNode(
         Microsoft.CodeAnalysis.SyntaxNode node)

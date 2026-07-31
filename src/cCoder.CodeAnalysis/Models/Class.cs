@@ -26,5 +26,11 @@ public sealed class Class
     internal bool AnalysisIsPrimaryTopLevelClassInFile { get; set; }
 
     [JsonIgnore]
+    internal bool AnalysisIsApiController { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<string> AnalysisPublicApiModelTypes { get; set; }
+
+    [JsonIgnore]
     internal List<Method> AnalysisMethods { get; set; }
 }
