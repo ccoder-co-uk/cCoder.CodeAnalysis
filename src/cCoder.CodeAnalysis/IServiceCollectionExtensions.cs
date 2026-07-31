@@ -42,6 +42,7 @@ public static class IServiceCollectionExtensions
     private static void AddCodeAnalysisProcessings(IServiceCollection services)
     {
         services.AddScoped<IArchitectureProcessingService, ArchitectureProcessingService>();
+        services.AddScoped<IArchitectureGraphProcessingService, ArchitectureGraphProcessingService>();
         services.AddSingleton<IEvaluationContextsProcessingService, EvaluationContextsProcessingService>();
         services.AddSingleton<ISTXRulesProcessingService, STXRulesProcessingService>();
         services.AddSingleton<ISTXAPPRulesProcessingService, STXAPPRulesProcessingService>();

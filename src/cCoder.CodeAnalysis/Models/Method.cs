@@ -13,6 +13,7 @@ public sealed class Method
     public string Name { get; set; }
     public List<Input> Inputs { get; set; }
     public string ReturnType { get; set; }
+    public List<string> Implements { get; set; }
     public List<MethodCall> Calls { get; set; }
     public List<string> ThrowsExceptionTypes { get; set; }
 

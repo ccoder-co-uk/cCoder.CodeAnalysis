@@ -208,6 +208,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     selector: (IParameterSymbol parameter) =>
                         new Input { Name = parameter.Name, Type = GetTypeName(type: parameter.Type) })
                 .ToList(),
+            Implements = GetImplementedMethodIds(method: method),
             Calls = directCalls
                 .Where(
                     predicate: (MethodCall call) =>
@@ -339,6 +340,21 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         SymbolEqualityComparer.Default.Equals(x: method.ContainingAssembly, y: compilation.Assembly)
         && method.Locations.Any(location => location.IsInSource);
+
+    private static List<string> GetImplementedMethodIds(IMethodSymbol method)
+    {
+        return method.ContainingType.AllInterfaces
+            .SelectMany(contract => contract.GetMembers().OfType<IMethodSymbol>())
+            .Where(
+                contractMethod =>
+                    SymbolEqualityComparer.Default.Equals(
+                        method.ContainingType.FindImplementationForInterfaceMember(contractMethod),
+                        method))
+            .Select(GetMethodId)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(methodId => methodId, StringComparer.Ordinal)
+            .ToList();
+    }
 
     private static string GetMethodId(IMethodSymbol method) =>
 
