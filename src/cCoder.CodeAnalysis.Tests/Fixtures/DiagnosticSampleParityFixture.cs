@@ -29,6 +29,9 @@ public sealed class DiagnosticSampleParityFixture : IAsyncLifetime
             "cCoder.CodeAnalysis.SampleWeb",
             "cCoder.CodeAnalysis.Sample.Tests",
             "cCoder.CodeAnalysis.Sample.AcceptanceTests",
+            "School.Cli",
+            "School.Cli.MissingHost",
+            "School.Cli.BadHost",
         ];
 
         Architectures = projectNames.ToDictionary(

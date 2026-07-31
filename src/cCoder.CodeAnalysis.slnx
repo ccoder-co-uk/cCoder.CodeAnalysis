@@ -4,6 +4,9 @@
     <Project Path="cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj" />
     <Project Path="cCoder.CodeAnalysis.Sample/cCoder.CodeAnalysis.Sample.csproj" />
     <Project Path="cCoder.CodeAnalysis.SampleWeb/cCoder.CodeAnalysis.SampleWeb.csproj" />
+    <Project Path="School.Cli.BadHost/School.Cli.BadHost.csproj" />
+    <Project Path="School.Cli.MissingHost/School.Cli.MissingHost.csproj" />
+    <Project Path="School.Cli/School.Cli.csproj" />
   </Folder>
   <Project Path="cCoder.CodeAnalysis.Tests/cCoder.CodeAnalysis.Tests.csproj" />
   <Project Path="cCoder.CodeAnalysis.Analyzers/cCoder.CodeAnalysis.Analyzers.csproj" />

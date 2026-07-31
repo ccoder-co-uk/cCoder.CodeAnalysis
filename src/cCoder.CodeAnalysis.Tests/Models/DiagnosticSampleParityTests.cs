@@ -15,26 +15,9 @@ public sealed class DiagnosticSampleParityTests(
 {
     private static readonly string[] diagnosticsAwaitingSampleViolation =
     [
-        "RFC0001",
-        "RFC0002",
-        "RFC0003",
-        "RFC0004",
-        "STXAPP001",
-        "STXAPP002",
-        "STXAPP003",
-        "STXAPP004",
         "STXAPP006",
-        "STXAPP007",
-        "STXAPP008",
-        "STXAPP009",
-        "STXAPP010",
-        "STXAPP011",
-        "STXAPP012",
         "STXAPP013",
-        "STXAPP014",
         "STXAPP015",
-        "STXD004",
-        "STXSTRUCT002",
     ];
 
     [Fact]
@@ -96,6 +79,21 @@ public sealed class DiagnosticSampleParityTests(
 
     private static string GetIntendedProject(string diagnosticCode)
     {
+        if (diagnosticCode == "STXAPP006")
+        {
+            return "School.Cli.MissingHost";
+        }
+
+        if (diagnosticCode == "STXAPP007")
+        {
+            return "School.Cli.BadHost";
+        }
+
+        if (diagnosticCode.StartsWith("STXAPP", StringComparison.Ordinal))
+        {
+            return "School.Cli";
+        }
+
         if (diagnosticCode == "STXTEST006")
         {
             return "cCoder.CodeAnalysis.Sample.AcceptanceTests";
@@ -106,7 +104,9 @@ public sealed class DiagnosticSampleParityTests(
             return "cCoder.CodeAnalysis.Sample.Tests";
         }
 
-        if (diagnosticCode.StartsWith("RFC", StringComparison.Ordinal))
+        if (diagnosticCode.StartsWith("RFC", StringComparison.Ordinal)
+            || diagnosticCode.StartsWith("ODATA", StringComparison.Ordinal)
+            || diagnosticCode.StartsWith("OWASP", StringComparison.Ordinal))
         {
             return "cCoder.CodeAnalysis.SampleWeb";
         }

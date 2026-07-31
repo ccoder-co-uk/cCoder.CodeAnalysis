@@ -30,19 +30,19 @@ public sealed class RFCViolationController : ODataController
         HttpRuleModel model) =>
         NoContent();
 
-    [HttpPost("validation")]
+    [HttpGet("validation")]
     public void Validate()
     {
         throw new HttpRuleValidationException();
     }
 
-    [HttpPost("authentication")]
+    [HttpGet("authentication")]
     public void Authenticate()
     {
         throw new HttpRuleAuthenticationException();
     }
 
-    [HttpPost("authorization")]
+    [HttpGet("authorization")]
     public void Authorize()
     {
         throw new HttpRuleAuthorizationException();
@@ -64,7 +64,7 @@ public sealed class RFCViolationController : ODataController
         throw new NotImplementedException();
     }
 
-    [HttpPost("disclosure")]
+    [HttpGet("disclosure")]
     public IActionResult DiscloseValidationFailure()
     {
         try
