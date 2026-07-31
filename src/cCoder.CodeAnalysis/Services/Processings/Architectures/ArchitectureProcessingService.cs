@@ -213,6 +213,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         {
             Id = GetMethodId(method: method),
             Name = method.Name,
+            LineNumber = method.Locations
+                .FirstOrDefault(location => location.IsInSource)?
+                .GetLineSpan()
+                .StartLinePosition.Line + 1
+                ?? 0,
             ReturnType = GetTypeName(type: method.ReturnType),
             Inputs = method
                 .Parameters.Select(
@@ -454,6 +459,12 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         .FirstOrDefault(
                             statement => statement.Condition.ToString()
                                 .Contains("null", StringComparison.Ordinal));
+                    ConditionalExpressionSyntax? nullConditional = invocation
+                        .Ancestors()
+                        .OfType<ConditionalExpressionSyntax>()
+                        .FirstOrDefault(
+                            conditional => conditional.Condition.ToString()
+                                .Contains("null", StringComparison.Ordinal));
 
                     responses.Add(
                         new HttpResponse
@@ -464,7 +475,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 catchClause: exceptionCatch,
                                 compilation: compilation),
                             IsExceptionPath = exceptionCatch is not null,
-                            IsNullPath = statusCode == 404 && nullBranch is not null,
+                            IsNullPath = statusCode == 404
+                                && (nullBranch is not null || nullConditional is not null),
                         });
                 }
             }
@@ -520,6 +532,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             "Forbid" => 403,
             "NotFound" => 404,
             "Conflict" => 409,
+            "PreconditionFailed" => 412,
+            "UnprocessableEntity" => 422,
             "StatusCode" => GetConstantStatusCode(invocation: invocation, compilation: compilation),
             _ => null,
         };

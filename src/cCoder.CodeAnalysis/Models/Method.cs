@@ -11,6 +11,7 @@ public sealed class Method
 {
     public string Id { get; set; }
     public string Name { get; set; }
+    public int LineNumber { get; set; }
     public List<Input> Inputs { get; set; }
     public string ReturnType { get; set; }
     public List<string> Implements { get; set; }

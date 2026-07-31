@@ -17,7 +17,7 @@ public sealed class DiagnosticCodeStandardPageIndexTests
             .GetDiagnosticCodeStandardPages()
             .ToArray();
 
-        pages.Should().HaveCount(106, "");
+        pages.Should().HaveCount(112, "");
         pages.Select((DiagnosticCodeStandardPage page) => page.DiagnosticCode).Should().OnlyHaveUniqueItems("");
     }
 
@@ -67,6 +67,12 @@ public sealed class DiagnosticCodeStandardPageIndexTests
     [InlineData("RFC0002")]
     [InlineData("RFC0003")]
     [InlineData("RFC0004")]
+    [InlineData("RFC0005")]
+    [InlineData("RFC0006")]
+    [InlineData("RFC0007")]
+    [InlineData("RFC0008")]
+    [InlineData("RFC0009")]
+    [InlineData("RFC0010")]
     public void ShouldMapHttpRulesToAnAuthoritativeSpecification(
         string diagnosticCode)
     {

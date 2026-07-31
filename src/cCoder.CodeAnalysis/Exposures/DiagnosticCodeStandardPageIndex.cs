@@ -68,6 +68,16 @@ internal static class DiagnosticCodeStandardPageIndex
             firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
             secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.1"
         ),
+        new(diagnosticCode: "RFC0005", standardPageUri: $"{HttpSemanticsPage}#section-15.5.1"),
+        new(
+            diagnosticCode: "RFC0006",
+            firstStandardPageUri: $"{HttpSemanticsPage}#section-15.5.2",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-11.6.1"
+        ),
+        new(diagnosticCode: "RFC0007", standardPageUri: $"{HttpSemanticsPage}#section-15.5.4"),
+        new(diagnosticCode: "RFC0008", standardPageUri: $"{HttpSemanticsPage}#section-15.5.5"),
+        new(diagnosticCode: "RFC0009", standardPageUri: $"{HttpSemanticsPage}#section-15.5.10"),
+        new(diagnosticCode: "RFC0010", standardPageUri: $"{HttpSemanticsPage}#section-15.6.1"),
         new(diagnosticCode: "STX0001", standardPageUri: $"{TheoryPage}#002-tri-nature"),
         new(diagnosticCode: "STX0002", standardPageUri: $"{ModelingPage}#01200-data-carrier-models"),
         new(diagnosticCode: "STX0003", standardPageUri: $"{ProcessingsPage}#22201-pass-through"),

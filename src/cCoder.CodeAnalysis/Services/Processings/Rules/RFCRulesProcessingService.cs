@@ -26,7 +26,118 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
                 }
             }
         }
+
+        if (context.ArchitectureElement is not null)
+        {
+            foreach (AnalysisItem item in EvaluateModelRules(context: context))
+            {
+                yield return item;
+            }
+        }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateModelRules(
+        EvaluationContext context)
+    {
+        foreach (Method method in context.ArchitectureElement.Methods
+            .Where(method => method.IsHttpRequestHandler))
+        {
+            if (HasEscapingException(method: method, category: "Validation")
+                && !HasExceptionResponse(method: method, category: "Validation", 400, 422))
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0005",
+                    description: "An HTTP validation failure must return 400 Bad Request or the adopted 422 semantic-validation response.",
+                    context: context,
+                    method: method);
+            }
+
+            if (HasEscapingException(method: method, category: "Authentication")
+                && !method.HttpResponses.Any(
+                    response => response.IsExceptionPath
+                        && response.ExceptionType.Contains("Authentication", StringComparison.Ordinal)
+                        && response.StatusCode == 401
+                        && response.ResultMethod == "Challenge"))
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0006",
+                    description: "An authentication failure must return 401 Unauthorized with an authentication challenge.",
+                    context: context,
+                    method: method);
+            }
+
+            if (HasEscapingException(method: method, category: "Authorization")
+                && !HasExceptionResponse(method: method, category: "Authorization", 403))
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0007",
+                    description: "An authenticated caller denied an operation must receive 403 Forbidden.",
+                    context: context,
+                    method: method);
+            }
+
+            if (method.IsODataControllerAction
+                && method.HttpMethods.Contains("GET", StringComparer.Ordinal)
+                && method.HasKeyParameter
+                && !method.HandlesNullWithNotFound)
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0008",
+                    description: "A keyed OData retrieval must return 404 Not Found when no entity exists.",
+                    context: context,
+                    method: method);
+            }
+
+            if (HasConflictException(method: method)
+                && !HasExceptionResponse(method: method, category: "Conflict", 409)
+                && !HasExceptionResponse(method: method, category: "Concurrency", 409))
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0009",
+                    description: "A non-precondition state or concurrency conflict must return 409 Conflict.",
+                    context: context,
+                    method: method);
+            }
+
+            if (method.HttpResponses.Any(
+                response => response.IsExceptionPath
+                    && response.ExceptionType == "System.Exception"
+                    && response.StatusCode != 500))
+            {
+                yield return CreateModelAnalysisItem(
+                    code: "RFC0010",
+                    description: "An unclassified HTTP failure must be rethrown to approved terminal handling or return 500, never a successful or client-error response.",
+                    context: context,
+                    method: method);
+            }
+        }
+    }
+
+    private static bool HasEscapingException(
+        Method method,
+        string category) =>
+
+        method.ThrowsExceptionTypes.Any(
+            exceptionType => exceptionType.Contains(category, StringComparison.Ordinal));
+
+    private static bool HasConflictException(Method method) =>
+
+        method.ThrowsExceptionTypes.Any(
+            exceptionType =>
+                (exceptionType.Contains("Conflict", StringComparison.Ordinal)
+                    || exceptionType.Contains("Concurrency", StringComparison.Ordinal))
+                && !exceptionType.Contains("Precondition", StringComparison.Ordinal)
+                && !exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasExceptionResponse(
+        Method method,
+        string category,
+        params int[] statusCodes) =>
+
+        method.HttpResponses.Any(
+            response => response.IsExceptionPath
+                && response.ExceptionType.Contains(category, StringComparison.Ordinal)
+                && statusCodes.Contains(response.StatusCode));
 
     private static AnalysisItem? EvaluateMethod(
         EvaluationContext context,
@@ -159,5 +270,20 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
             LineNumber = method.GetLocation()
                 .GetLineSpan()
                 .StartLinePosition.Line + 1,
+        };
+
+    private static AnalysisItem CreateModelAnalysisItem(
+        string code,
+        string description,
+        EvaluationContext context,
+        Method method) =>
+
+        new()
+        {
+            Code = code,
+            Description = description,
+            Severity = AnalysisSeverity.Warning,
+            Type = context.TypeName,
+            LineNumber = method.LineNumber > 0 ? method.LineNumber : context.LineNumber,
         };
 }
