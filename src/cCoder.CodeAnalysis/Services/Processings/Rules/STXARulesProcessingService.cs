@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXA001(context: context))
@@ -37,11 +41,11 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXA001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXA001(EvaluationContext context)
     {
         bool hasSingleDependencyVariation =
-            context
-                .Dependencies
+            architectureModelQueries
+                .GetDependencies(context: context)
                 .Where(predicate: (TypeDependency dependency) =>
                     IsServiceVariation(
                         standardElementType: dependency.StandardElementType))

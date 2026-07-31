@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXF001(context: context))
@@ -79,10 +83,10 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                     }
             );
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXF002(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXF002(EvaluationContext context)
     {
         return (
-            !context.Dependencies.Any(
+            !architectureModelQueries.GetDependencies(context: context).Any(
                 predicate: delegate (TypeDependency dependency)
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;

@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXP001(context: context))
@@ -42,14 +46,16 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXP001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXP001(EvaluationContext context)
     {
-        int foundationCount = context.Dependencies.Count(
+        IReadOnlyList<TypeDependency> dependencies =
+            architectureModelQueries.GetDependencies(context: context);
+        int foundationCount = dependencies.Count(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.FoundationService
         );
 
-        bool hasUnsupportedServiceDependency = context.Dependencies.Any(
+        bool hasUnsupportedServiceDependency = dependencies.Any(
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
@@ -86,10 +92,11 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXP003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXP003(EvaluationContext context)
     {
-        TypeDependency[] foundationDependencies = context
-            .Dependencies.Where(
+        TypeDependency[] foundationDependencies = architectureModelQueries
+            .GetDependencies(context: context)
+            .Where(
                 predicate: (TypeDependency dependency) =>
                     dependency.StandardElementType == StandardElementType.FoundationService
             )

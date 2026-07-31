@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXO001(context: context))
@@ -20,23 +24,25 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
         }
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXO001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXO001(EvaluationContext context)
     {
-        int count = context.Dependencies.Count;
+        IReadOnlyList<TypeDependency> dependencies =
+            architectureModelQueries.GetDependencies(context: context);
+        int count = dependencies.Count;
         bool flag = (uint)(count - 2) <= 1u;
         bool hasValidCount = flag;
 
-        bool containsFoundation = context.Dependencies.Any(
+        bool containsFoundation = dependencies.Any(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.FoundationService
         );
 
-        bool containsProcessing = context.Dependencies.Any(
+        bool containsProcessing = dependencies.Any(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.ProcessingService
         );
 
-        bool containsOnlySupportedDependencies = context.Dependencies.All(
+        bool containsOnlySupportedDependencies = dependencies.All(
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;

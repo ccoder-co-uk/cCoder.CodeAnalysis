@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXMG001(context: context))
@@ -37,12 +41,14 @@ internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXMG001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXMG001(EvaluationContext context)
     {
-        int dependencyCount = context.Dependencies.Count;
+        IReadOnlyList<TypeDependency> dependencies =
+            architectureModelQueries.GetDependencies(context: context);
+        int dependencyCount = dependencies.Count;
         bool hasValidCount = dependencyCount is 2 or 3;
 
-        bool containsOnlyCoordinations = context.Dependencies.All(
+        bool containsOnlyCoordinations = dependencies.All(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.CoordinationService
         );
