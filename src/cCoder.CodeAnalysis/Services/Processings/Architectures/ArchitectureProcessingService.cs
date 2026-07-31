@@ -235,6 +235,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 call.TargetSymbol.DeclaredAccessibility == Accessibility.Public
                                 || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)))
                 .ToList(),
+            PossibleExceptionTypes = directlyThrownExceptionTypes.ToList(),
             ThrowsExceptionTypes = directlyThrownExceptionTypes.ToList(),
             HttpMethods = httpMethods,
             HttpResponses = httpResponses,
@@ -315,8 +316,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     {
         return method
             .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
-            .SelectMany(node => node.DescendantNodes().OfType<ThrowStatementSyntax>())
-            .Select(statement => statement.Expression)
+            .SelectMany(node =>
+                node.DescendantNodes()
+                    .Select(descendant => descendant switch
+                    {
+                        ThrowStatementSyntax statement => statement.Expression,
+                        ThrowExpressionSyntax expression => expression.Expression,
+                        _ => null,
+                    }))
             .Where(expression => expression is not null)
             .Select(
                 expression =>

@@ -176,6 +176,45 @@ public sealed class ArchitectureProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldCaptureExpressionBodiedThrowException()
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                using System;
+
+                public sealed class StudentValidationException : Exception
+                {
+                }
+
+                public sealed class StudentController
+                {
+                    public object PostStudent() =>
+                        throw new StudentValidationException();
+                }
+                """,
+            path: "StudentController.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+        ArchitectureProcessingService service = new(architectureServiceMock.Object);
+
+        ArchitectureBuild result = service.Process(compilation);
+
+        Method method = result.Architecture.Classes
+            .Single(element => element.Name == "StudentController")
+            .Methods.Single(item => item.Name == "PostStudent");
+        method.ThrowsExceptionTypes.Should()
+            .ContainSingle()
+            .Which.Should()
+            .Be("StudentValidationException", "");
+    }
+
+    [Fact]
     public void ProcessShouldExcludeGeneratedSyntaxTrees()
     {
         CSharpCompilation compilation = CSharpCompilation.Create(
