@@ -5,6 +5,8 @@
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Processings.ArchitectureModels;
 
@@ -38,6 +40,52 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
 
         service.GetDependencies(context: context).Should().ContainSingle()
             .Which.Should().BeSameAs(dependency);
+    }
+
+    [Fact]
+    public void SourceQueriesShouldPreferAttachedModelFacts()
+    {
+        TypeDeclarationSyntax modelDeclaration = CreateDeclaration(source: "class Model { }");
+        TypeDeclarationSyntax legacyDeclaration = CreateDeclaration(source: "class Legacy { }");
+        EvaluationContext context = new()
+        {
+            Declarations = [legacyDeclaration],
+            FilePath = "Legacy.cs",
+            SourceCode = "legacy",
+            ProjectLineEnding = "\n",
+            ArchitectureElement = new Class
+            {
+                AnalysisDeclarations = [modelDeclaration],
+                AnalysisFilePath = "Model.cs",
+                AnalysisSourceCode = "model",
+                AnalysisProjectLineEnding = "\r\n",
+            },
+        };
+
+        service.GetDeclarations(context: context).Should().ContainSingle()
+            .Which.Should().BeSameAs(modelDeclaration);
+        service.GetFilePath(context: context).Should().Be(expected: "Model.cs");
+        service.GetSourceCode(context: context).Should().Be(expected: "model");
+        service.GetProjectLineEnding(context: context).Should().Be(expected: "\r\n");
+    }
+
+    [Fact]
+    public void SourceQueriesShouldSupportLegacyContextDuringMigration()
+    {
+        TypeDeclarationSyntax declaration = CreateDeclaration(source: "class Legacy { }");
+        EvaluationContext context = new()
+        {
+            Declarations = [declaration],
+            FilePath = "Legacy.cs",
+            SourceCode = "legacy",
+            ProjectLineEnding = "\n",
+        };
+
+        service.GetDeclarations(context: context).Should().ContainSingle()
+            .Which.Should().BeSameAs(declaration);
+        service.GetFilePath(context: context).Should().Be(expected: "Legacy.cs");
+        service.GetSourceCode(context: context).Should().Be(expected: "legacy");
+        service.GetProjectLineEnding(context: context).Should().Be(expected: "\n");
     }
 
     [Fact]
@@ -109,4 +157,11 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
             DirectCalls = calls ?? [],
             ThrowsExceptionTypes = [],
         };
+
+    private static TypeDeclarationSyntax CreateDeclaration(string source) =>
+        CSharpSyntaxTree.ParseText(text: source)
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<TypeDeclarationSyntax>()
+            .Single();
 }
