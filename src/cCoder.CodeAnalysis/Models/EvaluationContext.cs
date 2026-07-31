@@ -2,12 +2,19 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 #nullable disable
+using System.Text.Json.Serialization;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Models;
 
 public sealed class EvaluationContext
 {
+    [JsonIgnore]
+    internal Architecture ArchitectureModel { get; set; }
+
+    [JsonIgnore]
+    internal Class ArchitectureElement { get; set; }
+
     public string TypeName { get; set; }
     public StandardElementType StandardElementType { get; set; }
     public int LineNumber { get; set; }

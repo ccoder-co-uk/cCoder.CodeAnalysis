@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXB001(context: context))
@@ -47,9 +51,9 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
         }
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
     {
-        int dependencyCount = context.Dependencies.Count(
+        int dependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
@@ -113,9 +117,9 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
                     )
             );
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXB004(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXB004(EvaluationContext context)
     {
-        return (context.ImplementedInterfaces.Count != 0)
+        return architectureModelQueries.ImplementsContract(context: context)
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -143,10 +147,10 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
                     )
             );
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXB006(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXB006(EvaluationContext context)
     {
         return (
-            !context.Dependencies.Any(
+            !architectureModelQueries.GetDependencies(context: context).Any(
                 predicate: delegate (TypeDependency dependency)
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;

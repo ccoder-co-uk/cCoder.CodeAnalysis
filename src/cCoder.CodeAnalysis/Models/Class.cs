@@ -14,5 +14,11 @@ public sealed class Class
     public List<Method> Methods { get; set; }
 
     [JsonIgnore]
+    internal IReadOnlyList<TypeDependency> AnalysisDependencies { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<string> AnalysisImplementedInterfaces { get; set; }
+
+    [JsonIgnore]
     internal List<Method> AnalysisMethods { get; set; }
 }

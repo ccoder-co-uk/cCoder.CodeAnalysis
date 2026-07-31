@@ -41,15 +41,24 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     type.TypeKind is TypeKind.Class or TypeKind.Interface)
             .Select(
                 selector: (INamedTypeSymbol type) =>
-                    CreateEvaluationContext(
-                        type: type,
-                        declaredTypes: architectureBuild.DeclaredTypes,
-                        compilation: architectureBuild.Compilation,
-                        projectLineEnding: architectureBuild.ProjectLineEnding,
-                        localDependencyTypeNames: localDependencyTypeNames
+                    AttachArchitectureModel(
+                        context: CreateEvaluationContext(
+                            type: type,
+                            declaredTypes: architectureBuild.DeclaredTypes,
+                            compilation: architectureBuild.Compilation,
+                            projectLineEnding: architectureBuild.ProjectLineEnding,
+                            localDependencyTypeNames: localDependencyTypeNames),
+                        architecture: architectureBuild.Architecture
                     )
             );
     }
+
+    private static EvaluationContext AttachArchitectureModel(
+        EvaluationContext context,
+        Architecture? architecture) =>
+        architecture is null
+            ? context
+            : EvaluationContextModelAdapter.Attach(context: context, architecture: architecture);
 
     private static EvaluationContext CreateEvaluationContext(
         INamedTypeSymbol type,
