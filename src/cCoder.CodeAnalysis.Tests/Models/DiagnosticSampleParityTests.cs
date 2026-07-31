@@ -34,11 +34,7 @@ public sealed class DiagnosticSampleParityTests(
         "STXAPP014",
         "STXAPP015",
         "STXD004",
-        "STXE006",
-        "STXE007",
-        "STXFORMAT013",
         "STXSTRUCT002",
-        "STXSTRUCT003",
     ];
 
     [Fact]
