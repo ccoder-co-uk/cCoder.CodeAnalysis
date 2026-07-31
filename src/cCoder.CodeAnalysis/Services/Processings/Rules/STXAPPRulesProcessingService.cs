@@ -24,13 +24,15 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
 
         string typeName = GetTypeName(context.TypeName);
         string projectName = facts.ProjectName;
+        bool isApplicationElement = context.StandardElementType == StandardElementType.App;
 
-        if (!LivesAtProjectRoot(typeName, projectName, facts.FilePath))
+        if (isApplicationElement
+            && !LivesAtProjectRoot(typeName, projectName, facts.FilePath))
         {
             yield return Create("STXAPP001", "Application composition helpers must live at the project root.", context);
         }
 
-        if (typeName == "IServiceCollectionExtensions")
+        if (isApplicationElement && typeName == "IServiceCollectionExtensions")
         {
             if (!ExposesDomainRegistration(facts.Methods, projectName))
             {
@@ -93,21 +95,20 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             }
         }
 
-        if (typeName == "WebApplicationExtensions"
+        if (isApplicationElement && typeName == "WebApplicationExtensions"
             && !facts.Methods.Any(method => method.ResolvesServiceFromProvider))
         {
             yield return Create("STXAPP004", "WebApplicationExtensions must consume the service provider to start application services.", context);
         }
 
-        if (typeName == "Program"
-            && facts.IsConsoleApplication
+        if (isApplicationElement && typeName == "Program"
             && IsCommandApplication(facts.SourceCode)
             && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal)))
         {
             yield return Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context);
         }
 
-        if (typeName == "IHostExtensions"
+        if (isApplicationElement && typeName == "IHostExtensions"
             && !facts.Methods.Any(method => method.HasCommandDetailsParameter
                 && method.ResolvesServiceFromProvider
                 && method.PassesCommandDetails))
@@ -128,7 +129,10 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             }
         }
 
-        if (typeName == "Program" && !facts.IsConsoleApplication)
+        if (isApplicationElement
+            && typeName == "Program"
+            && !facts.IsConsoleApplication
+            && !IsCommandApplication(facts.SourceCode))
         {
             bool bindsConfiguration = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
             bool passesConfiguration = facts.SourceCode.Contains(".Configuration", StringComparison.Ordinal)

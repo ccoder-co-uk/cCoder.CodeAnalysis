@@ -135,7 +135,8 @@ public static class IServiceCollectionExtensions
         AddRuleHandlingServices<
             ISTXFORMATRulesProcessingService,
             ISTXSTRUCTRulesProcessingService,
-            ISTXMRulesProcessingService>(
+            ISTXMRulesProcessingService,
+            ISTXAPPRulesProcessingService>(
             services: services,
             standardElementType: StandardElementType.Model
         );

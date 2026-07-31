@@ -13,13 +13,6 @@ namespace cCoder.CodeAnalysis.Tests.Models;
 public sealed class DiagnosticSampleParityTests(
     DiagnosticSampleParityFixture fixture)
 {
-    private static readonly string[] diagnosticsAwaitingSampleViolation =
-    [
-        "STXAPP006",
-        "STXAPP013",
-        "STXAPP015",
-    ];
-
     [Fact]
     public void EveryCataloguedDiagnosticShouldBeAccountedForByTheSampleSuite()
     {
@@ -44,7 +37,6 @@ public sealed class DiagnosticSampleParityTests(
 
         string[] accountedForCodes = demonstratedDiagnostics
             .Select(group => group.Key)
-            .Concat(diagnosticsAwaitingSampleViolation)
             .OrderBy(code => code, StringComparer.Ordinal)
             .ToArray();
 
@@ -52,7 +44,8 @@ public sealed class DiagnosticSampleParityTests(
             "a demonstrated diagnostic must be removed from the migration list");
         accountedForCodes.Should().Equal(
             cataloguedCodes,
-            "every registered diagnostic must remain visible while sample coverage is completed");
+            "every registered diagnostic must remain visible; missing: {0}",
+            string.Join(", ", cataloguedCodes.Except(accountedForCodes)));
     }
 
     [Fact]
