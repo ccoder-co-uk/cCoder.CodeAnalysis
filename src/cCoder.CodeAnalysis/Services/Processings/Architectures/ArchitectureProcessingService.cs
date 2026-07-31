@@ -181,8 +181,195 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .Where(predicate: (Method method) => method.Symbol.DeclaredAccessibility == Accessibility.Public)
                 .ToList(),
             AnalysisMethods = analysisMethods,
+            AnalysisTypeFacts = CreateTypeAnalysisFacts(
+                type: type,
+                compilation: compilation,
+                declaredTypes: declaredTypes),
         };
     }
+
+    private static TypeAnalysisFacts CreateTypeAnalysisFacts(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        TypeAnalysisFacts facts = CreateTypeAnalysisFacts(type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .ToArray());
+
+        SyntaxTree? syntaxTree = type.DeclaringSyntaxReferences
+            .Select(reference => reference.SyntaxTree)
+            .FirstOrDefault();
+        facts.ProjectName = compilation.AssemblyName ?? string.Empty;
+        facts.FilePath = syntaxTree?.FilePath ?? string.Empty;
+        facts.SourceCode = syntaxTree?.GetText().ToString() ?? string.Empty;
+        facts.IsConsoleApplication = compilation.Options.OutputKind
+            is OutputKind.ConsoleApplication or OutputKind.WindowsApplication;
+        facts.ProjectTypeNames = declaredTypes.Select(GetTypeName).ToArray();
+
+        return facts;
+    }
+
+    internal static TypeAnalysisFacts CreateTypeAnalysisFacts(
+        IReadOnlyList<TypeDeclarationSyntax> declarations)
+    {
+
+        MethodAnalysisFacts[] methods = declarations
+            .SelectMany(declaration => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .Select(CreateMethodAnalysisFacts)
+            .ToArray();
+
+        PropertyAnalysisFacts[] properties = declarations
+            .SelectMany(declaration => declaration.Members)
+            .OfType<PropertyDeclarationSyntax>()
+            .Select(property => new PropertyAnalysisFacts
+            {
+                TypeName = property.Type.ToString(),
+                LineNumber = GetLineNumber(property),
+                IsPublic = property.Modifiers.Any(SyntaxKind.PublicKeyword),
+                HasGetter = property.AccessorList?.Accessors.Any(
+                    accessor => accessor.IsKind(SyntaxKind.GetAccessorDeclaration)) == true,
+                HasSetter = property.AccessorList?.Accessors.Any(
+                    accessor => accessor.IsKind(SyntaxKind.SetAccessorDeclaration)) == true,
+            })
+            .ToArray();
+
+        TypeDeclarationSyntax? firstWithBaseType = declarations.FirstOrDefault(
+            declaration => declaration.BaseList is not null);
+        TypeDeclarationSyntax? firstNonPartial = declarations.FirstOrDefault(
+            declaration => !declaration.Modifiers.Any(SyntaxKind.PartialKeyword));
+
+        return new TypeAnalysisFacts
+        {
+            Methods = methods,
+            Properties = properties,
+            AllDeclarationsArePartial = declarations.All(
+                declaration => declaration.Modifiers.Any(SyntaxKind.PartialKeyword)),
+            FirstNonPartialDeclarationLine = firstNonPartial is null
+                ? 0
+                : GetLineNumber(firstNonPartial),
+            BaseTypeLine = firstWithBaseType?.BaseList is null
+                ? 0
+                : GetLineNumber(firstWithBaseType.BaseList),
+        };
+    }
+
+    private static MethodAnalysisFacts CreateMethodAnalysisFacts(
+        MethodDeclarationSyntax method)
+    {
+        InvocationExpressionSyntax[] invocations = method.DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .ToArray();
+        ParameterSyntax? commandParameter = method.ParameterList.Parameters
+            .FirstOrDefault(parameter =>
+                parameter.Type?.ToString() is "string" or "string[]" or "IReadOnlyList<string>");
+        string source = method.ToFullString();
+        int given = source.IndexOf("// Given", StringComparison.Ordinal);
+        int when = source.IndexOf("// When", StringComparison.Ordinal);
+        int then = source.IndexOf("// Then", StringComparison.Ordinal);
+        string[] attributes = method.AttributeLists
+            .SelectMany(attributes => attributes.Attributes)
+            .Select(attribute => attribute.Name.ToString())
+            .ToArray();
+
+        return new MethodAnalysisFacts
+        {
+            Name = method.Identifier.Text,
+            LineNumber = GetLineNumber(method),
+            IsPublic = method.Modifiers.Any(SyntaxKind.PublicKeyword),
+            IsPrivate = method.Modifiers.Any(SyntaxKind.PrivateKeyword),
+            IsGeneric = method.TypeParameterList is not null,
+            IsTest = attributes.Any(attribute =>
+                attribute is "Fact" or "FactAttribute" or "Theory" or "TheoryAttribute"),
+            IsFact = attributes.Any(attribute => attribute is "Fact" or "FactAttribute"),
+            HasGivenWhenThenComments = given >= 0 && when > given && then > when,
+            HasInvocations = invocations.Length > 0,
+            HasServiceCollectionParameter = method.ParameterList.Parameters.Any(
+                parameter => parameter.Type?.ToString() == "IServiceCollection"),
+            FirstParameterIsServiceCollectionExtension = method.ParameterList.Parameters
+                .FirstOrDefault() is ParameterSyntax firstParameter
+                && firstParameter.Type?.ToString() == "IServiceCollection"
+                && firstParameter.Modifiers.Any(SyntaxKind.ThisKeyword),
+            HasConfigurationParameter = method.ParameterList.Parameters.Any(
+                parameter => parameter.Type?.ToString() == "IConfiguration"),
+            ConfigurationCallbackType = GetConfigurationCallbackType(method),
+            HasCommandDetailsParameter = commandParameter is not null,
+            ResolvesServiceFromProvider = invocations.Any(invocation =>
+                invocation.Expression.ToString().Contains("GetRequiredService", StringComparison.Ordinal)
+                || invocation.Expression.ToString().Contains("GetService", StringComparison.Ordinal)),
+            PassesCommandDetails = commandParameter is not null
+                && invocations.Any(invocation => invocation.ArgumentList.Arguments.Any(
+                    argument => argument.Expression.ToString() == commandParameter.Identifier.Text)),
+            HasChainedServiceCollectionRegistration = invocations.Any(
+                IsChainedServiceCollectionRegistration),
+            HasScopedOrTransientConfigurationRegistration = invocations.Any(invocation =>
+                invocation.ToString().Contains("Configuration", StringComparison.Ordinal)
+                && (invocation.Expression.ToString().Contains("AddScoped", StringComparison.Ordinal)
+                    || invocation.Expression.ToString().Contains("AddTransient", StringComparison.Ordinal))),
+            InvokedMethodNames = invocations.Select(invocation => invocation.Expression switch
+                {
+                    IdentifierNameSyntax identifier => identifier.Identifier.Text,
+                    MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+                    _ => string.Empty,
+                })
+                .Where(name => name.Length > 0)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
+        };
+    }
+
+    private static string GetConfigurationCallbackType(
+        MethodDeclarationSyntax method)
+    {
+        TypeSyntax? callbackType = method.ParameterList.Parameters
+            .Select(parameter => parameter.Type)
+            .FirstOrDefault(type => type switch
+            {
+                GenericNameSyntax generic => generic.Identifier.Text == "Action",
+                NullableTypeSyntax { ElementType: GenericNameSyntax generic } =>
+                    generic.Identifier.Text == "Action",
+                _ => false,
+            });
+
+        GenericNameSyntax? action = callbackType switch
+        {
+            GenericNameSyntax generic => generic,
+            NullableTypeSyntax { ElementType: GenericNameSyntax generic } => generic,
+            _ => null,
+        };
+
+        return action?.TypeArgumentList.Arguments.Count == 1
+            ? action.TypeArgumentList.Arguments[0].ToString()
+            : string.Empty;
+    }
+
+    private static bool IsChainedServiceCollectionRegistration(
+        InvocationExpressionSyntax invocation)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || memberAccess.Expression is not InvocationExpressionSyntax previousInvocation
+            || !memberAccess.Name.Identifier.Text.StartsWith("Add", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        ExpressionSyntax expression = previousInvocation.Expression;
+
+        while (expression is MemberAccessExpressionSyntax nestedMemberAccess)
+        {
+            expression = nestedMemberAccess.Expression is InvocationExpressionSyntax nestedInvocation
+                ? nestedInvocation.Expression
+                : nestedMemberAccess.Expression;
+        }
+
+        return expression is IdentifierNameSyntax identifier
+            && identifier.Identifier.Text == "services";
+    }
+
+    private static int GetLineNumber(SyntaxNode node) =>
+        node.GetLocation().GetLineSpan().StartLinePosition.Line + 1;
 
     private static Method CreateMethod(
         IMethodSymbol method,

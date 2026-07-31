@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
@@ -615,7 +616,7 @@ public sealed class ApplicationCompositionRuleTests
             path: filePath ?? $"{typeName.Split(separator: ['.']).Last()}.cs"
         );
 
-        return new EvaluationContext
+        EvaluationContext context = new EvaluationContext
         {
             TypeName = typeName,
             StandardElementType = StandardElementType.App,
@@ -631,5 +632,19 @@ public sealed class ApplicationCompositionRuleTests
                 .ToArray(),
             UsingNamespaces = [],
         };
+
+        TypeAnalysisFacts facts = ArchitectureProcessingService
+            .CreateTypeAnalysisFacts(context.Declarations);
+        facts.ProjectName = projectName;
+        facts.FilePath = context.FilePath;
+        facts.SourceCode = sourceCode;
+        facts.IsConsoleApplication = isConsoleApplication;
+        facts.ProjectTypeNames = context.ProjectTypeNames;
+        context.ArchitectureElement = new Class
+        {
+            AnalysisTypeFacts = facts,
+        };
+
+        return context;
     }
 }

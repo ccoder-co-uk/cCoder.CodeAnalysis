@@ -2,909 +2,285 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingService
 {
+    private static readonly string[] layerNames =
+    [
+        "Dependencies", "Brokers", "Foundations", "Processings", "Orchestrations",
+        "Coordinations", "Managements", "Aggregations", "Exposures",
+    ];
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXAPP001(context: context))
+        TypeAnalysisFacts? facts = context.ArchitectureElement?.AnalysisTypeFacts;
+
+        if (facts is null)
         {
-            yield return item;
+            yield break;
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP002(context: context))
+        string typeName = GetTypeName(context.TypeName);
+        string projectName = facts.ProjectName;
+
+        if (!LivesAtProjectRoot(typeName, projectName, facts.FilePath))
         {
-            yield return item;
+            yield return Create("STXAPP001", "Application composition helpers must live at the project root.", context);
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP003(context: context))
+        if (typeName == "IServiceCollectionExtensions")
         {
-            yield return item;
+            if (!ExposesDomainRegistration(facts.Methods, projectName))
+            {
+                yield return Create("STXAPP002", "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.", context);
+            }
+
+            MethodAnalysisFacts? invalidLifetime = facts.Methods.FirstOrDefault(
+                method => method.HasScopedOrTransientConfigurationRegistration);
+
+            if (invalidLifetime is not null)
+            {
+                yield return Create("STXAPP003", "Configuration objects should be registered as singletons.", context, invalidLifetime.LineNumber);
+            }
+
+            MethodAnalysisFacts? chained = facts.Methods.FirstOrDefault(
+                method => method.HasChainedServiceCollectionRegistration);
+
+            if (chained is not null)
+            {
+                yield return Create("STXAPP008", "IServiceCollection registrations must be declared as individual statements rather than fluent chains.", context, chained.LineNumber);
+            }
+
+            MethodAnalysisFacts[] methods = facts.Methods.ToArray();
+            MethodAnalysisFacts? invalidLayering = methods
+                .Where(IsDomainRegistrationMethod)
+                .Where(method => method.HasInvocations)
+                .FirstOrDefault(method => !DelegatesRegistrationByLayer(method, methods));
+
+            if (invalidLayering is not null)
+            {
+                yield return Create("STXAPP009", "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.", context, invalidLayering.LineNumber);
+            }
+
+            MethodAnalysisFacts? nonExtension = methods.FirstOrDefault(
+                method => !method.FirstParameterIsServiceCollectionExtension);
+
+            if (nonExtension is not null)
+            {
+                yield return Create("STXAPP010", "IServiceCollectionExtensions may contain only IServiceCollection extension methods.", context, nonExtension.LineNumber);
+            }
+
+            if (!projectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase))
+            {
+                MethodAnalysisFacts? entryPoint = methods.FirstOrDefault(
+                    method => method.IsPublic && IsApplicationEntryPoint(method, projectName));
+
+                if (entryPoint is null)
+                {
+                    yield return Create("STXAPP011", "Application IServiceCollectionExtensions must expose Add{AppName}.", context);
+                }
+
+                MethodAnalysisFacts? configurationEntryPoint = methods.FirstOrDefault(
+                    method => method.IsPublic && method.HasConfigurationParameter);
+
+                if (configurationEntryPoint is not null
+                    && string.IsNullOrWhiteSpace(configurationEntryPoint.ConfigurationCallbackType))
+                {
+                    yield return Create("STXAPP012", "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.", context, configurationEntryPoint.LineNumber);
+                }
+            }
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP004(context: context))
+        if (typeName == "WebApplicationExtensions"
+            && !facts.Methods.Any(method => method.ResolvesServiceFromProvider))
         {
-            yield return item;
+            yield return Create("STXAPP004", "WebApplicationExtensions must consume the service provider to start application services.", context);
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP006(context: context))
+        if (typeName == "Program"
+            && facts.IsConsoleApplication
+            && IsCommandApplication(facts.SourceCode)
+            && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal)))
         {
-            yield return item;
+            yield return Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context);
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP007(context: context))
+        if (typeName == "IHostExtensions"
+            && !facts.Methods.Any(method => method.HasCommandDetailsParameter
+                && method.ResolvesServiceFromProvider
+                && method.PassesCommandDetails))
         {
-            yield return item;
+            yield return Create("STXAPP007", "IHostExtensions must route requested command details to a handling service resolved from the service provider.", context);
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP008(context: context))
+        if (typeName.EndsWith("Configuration", StringComparison.Ordinal))
         {
-            yield return item;
+            PropertyAnalysisFacts? invalidProperty = facts.Properties.FirstOrDefault(property =>
+                !property.IsPublic || !property.HasGetter || !property.HasSetter
+                || property.TypeName == "dynamic"
+                || property.TypeName.Contains("Dictionary", StringComparison.Ordinal));
+
+            if (invalidProperty is not null)
+            {
+                yield return Create("STXAPP013", "Configuration properties must be public, strongly typed, and bindable with get and set accessors.", context, invalidProperty.LineNumber);
+            }
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP009(context: context))
+        if (typeName == "Program" && !facts.IsConsoleApplication)
         {
-            yield return item;
+            bool bindsConfiguration = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
+            bool passesConfiguration = facts.SourceCode.Contains(".Configuration", StringComparison.Ordinal)
+                && facts.SourceCode.Contains(".Services.Add", StringComparison.Ordinal);
+
+            if (bindsConfiguration || !passesConfiguration)
+            {
+                yield return Create("STXAPP014", "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.", context);
+            }
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP010(context: context))
-        {
-            yield return item;
-        }
+        string projectConfigurationName = string.Concat(projectName.Split(
+            ['.', '-'], StringSplitOptions.RemoveEmptyEntries)) + "Configuration";
 
-        foreach (AnalysisItem item in EvaluateSTXAPP011(context: context))
+        if (typeName == projectConfigurationName)
         {
-            yield return item;
-        }
+            PropertyAnalysisFacts? scalar = facts.Properties.FirstOrDefault(
+                property => !property.TypeName.EndsWith("Configuration", StringComparison.Ordinal));
 
-        foreach (AnalysisItem item in EvaluateSTXAPP012(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP013(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP014(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP015(context: context))
-        {
-            yield return item;
+            if (scalar is not null)
+            {
+                yield return Create("STXAPP015", "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.", context, scalar.LineNumber);
+            }
         }
     }
 
-    private static AnalysisItem CreateAnalysisItem(
+    private static bool LivesAtProjectRoot(string typeName, string projectName, string filePath)
+    {
+        string[] parts = filePath.Replace('\\', '/').Split('/');
+        string fileName = parts.LastOrDefault() ?? string.Empty;
+        string parent = parts.Length > 1 ? parts[parts.Length - 2] : string.Empty;
+        bool conventional = fileName == $"{typeName}.cs"
+            || fileName.StartsWith($"{typeName}.", StringComparison.Ordinal)
+                && fileName.EndsWith(".cs", StringComparison.Ordinal);
+
+        return conventional && parent.Equals(projectName, StringComparison.Ordinal);
+    }
+
+    private static bool ExposesDomainRegistration(
+        IReadOnlyList<MethodAnalysisFacts> methods,
+        string projectName)
+    {
+        string supportingData = GetSupportingDataRegistrationName(projectName);
+        string provider = GetProviderRegistrationName(projectName);
+        bool isDomainLibrary = projectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase);
+
+        return methods.Any(method => method.IsPublic
+            && method.HasServiceCollectionParameter
+            && (!string.IsNullOrWhiteSpace(provider)
+                ? method.Name == provider
+                : !string.IsNullOrWhiteSpace(supportingData)
+                    ? method.Name == supportingData
+                    : isDomainLibrary
+                        ? method.Name.StartsWith("Add", StringComparison.Ordinal)
+                            && (method.Name.EndsWith("Web", StringComparison.Ordinal)
+                                || method.Name.EndsWith("HostedServices", StringComparison.Ordinal))
+                        : IsApplicationEntryPoint(method, projectName)));
+    }
+
+    private static bool IsDomainRegistrationMethod(MethodAnalysisFacts method) =>
+        method.IsPublic
+        && method.Name.StartsWith("Add", StringComparison.Ordinal)
+        && !method.IsGeneric
+        && !method.Name.EndsWith("Providers", StringComparison.Ordinal)
+        && method.HasServiceCollectionParameter;
+
+    private static bool IsApplicationEntryPoint(
+        MethodAnalysisFacts method,
+        string projectName)
+    {
+        if (string.IsNullOrWhiteSpace(method.ConfigurationCallbackType))
+        {
+            return method.Name.StartsWith("Add", StringComparison.Ordinal)
+                && method.HasConfigurationParameter;
+        }
+
+        string callbackType = method.ConfigurationCallbackType;
+
+        if (!callbackType.EndsWith("Configuration", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string prefix = callbackType.Substring(
+            startIndex: 0,
+            length: callbackType.Length - "Configuration".Length);
+        string suffix = projectName.Split('.').Last();
+
+        if (!prefix.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
+        {
+            prefix += suffix;
+        }
+
+        return (method.Name == $"Add{prefix}" || method.Name == $"Add{suffix}")
+            && method.HasConfigurationParameter;
+    }
+
+    private static bool DelegatesRegistrationByLayer(
+        MethodAnalysisFacts method,
+        IReadOnlyCollection<MethodAnalysisFacts> methods)
+    {
+        MethodAnalysisFacts[] initializers = methods.Where(candidate =>
+            candidate.IsPrivate
+            && layerNames.Any(layer => candidate.Name == $"Add{layer}")
+            && candidate.FirstParameterIsServiceCollectionExtension).ToArray();
+
+        if (initializers.Length == 0)
+        {
+            return method.InvokedMethodNames.Any(name =>
+                name.EndsWith("Web", StringComparison.Ordinal)
+                || name.EndsWith("HostedServices", StringComparison.Ordinal));
+        }
+
+        return method.InvokedMethodNames.Contains(method.Name, StringComparer.Ordinal)
+            || initializers.All(initializer =>
+                method.InvokedMethodNames.Contains(initializer.Name, StringComparer.Ordinal));
+    }
+
+    private static bool IsCommandApplication(string sourceCode) =>
+        sourceCode.Contains("RootCommand", StringComparison.Ordinal)
+        || sourceCode.Contains("System.CommandLine", StringComparison.Ordinal)
+        || sourceCode.Contains(".InvokeAsync(args", StringComparison.Ordinal)
+        || sourceCode.Contains(".RunAsync(args", StringComparison.Ordinal);
+
+    private static string GetProviderRegistrationName(string projectName)
+    {
+        string[] segments = projectName.Split('.');
+        return segments.Length >= 3 && segments[segments.Length - 1].Equals("Providers", StringComparison.OrdinalIgnoreCase)
+            ? $"Add{segments[segments.Length - 2]}Providers"
+            : string.Empty;
+    }
+
+    private static string GetSupportingDataRegistrationName(string projectName)
+    {
+        string[] segments = projectName.Split(['.', '-'], StringSplitOptions.RemoveEmptyEntries);
+        return segments.Length < 2 || !segments[segments.Length - 1].Equals("Data", StringComparison.OrdinalIgnoreCase)
+            ? string.Empty
+            : segments.Length == 2 ? "AddData" : $"Add{segments[segments.Length - 2]}Data";
+    }
+
+    private static string GetTypeName(string fullName) => fullName.Split('.').Last();
+
+    private static AnalysisItem Create(
         string code,
         string description,
         EvaluationContext context,
-        Microsoft.CodeAnalysis.Location? location = null
-    )
-    {
-        return new AnalysisItem
+        int lineNumber = 0) => new()
         {
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            LineNumber = lineNumber == 0 ? context.LineNumber : lineNumber,
         };
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP001(EvaluationContext context)
-    {
-        string typeName = context.TypeName.Split(separator: ['.'])
-            .Last();
-
-        string[] filePathParts = context.FilePath.Replace(oldChar: '\\', newChar: '/')
-            .Split(separator: ['/']);
-
-        string fileName = filePathParts.LastOrDefault() ?? string.Empty;
-        string parentFolder = filePathParts.Length > 1 ? filePathParts[filePathParts.Length - 2] : string.Empty;
-
-        bool hasConventionalFileName =
-            fileName == $"{typeName}.cs"
-            || fileName.StartsWith(
-                value: $"{typeName}.",
-                comparisonType: StringComparison.Ordinal)
-                && fileName.EndsWith(
-                    value: ".cs",
-                    comparisonType: StringComparison.Ordinal);
-
-        bool livesAtProjectRoot =
-            hasConventionalFileName
-            && parentFolder.Equals(value: context.ProjectName, comparisonType: StringComparison.Ordinal);
-
-        return livesAtProjectRoot
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP001",
-                    description: "Application composition helpers must live at the project root.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP002(EvaluationContext context)
-    {
-        if (context.TypeName.Split(separator: ['.'])
-            .Last() != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        bool isDomainLibrary = context.ProjectName.StartsWith(
-            "cCoder.",
-            StringComparison.OrdinalIgnoreCase);
-        string supportingDataRegistration =
-            GetSupportingDataRegistrationName(context.ProjectName);
-        string providerRegistration =
-            GetProviderRegistrationName(context.ProjectName);
-
-        bool exposesDomainRegistration = GetMethods(context)
-            .Any(method =>
-                method.Modifiers.Any(modifier =>
-                    modifier.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                && method.ParameterList.Parameters.Any(parameter =>
-                    parameter.Type?.ToString() == "IServiceCollection")
-                && (!string.IsNullOrWhiteSpace(providerRegistration)
-                    ? method.Identifier.Text == providerRegistration
-                    : !string.IsNullOrWhiteSpace(supportingDataRegistration)
-                    ? method.Identifier.Text == supportingDataRegistration
-                    : isDomainLibrary
-                    ? method.Identifier.Text.StartsWith(
-                        "Add",
-                        StringComparison.Ordinal)
-                        && (method.Identifier.Text.EndsWith(
-                            "Web",
-                            StringComparison.Ordinal)
-                            || method.Identifier.Text.EndsWith(
-                                "HostedServices",
-                                StringComparison.Ordinal))
-                    : IsApplicationEntryPoint(
-                        method: method,
-                        projectName: context.ProjectName)));
-
-        return exposesDomainRegistration
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP002",
-                    description: "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static string GetProviderRegistrationName(
-        string projectName)
-    {
-        string[] segments = projectName.Split(
-            separator: '.');
-
-        return segments.Length >= 3
-            && segments[segments.Length - 1].Equals(
-                value: "Providers",
-                comparisonType: StringComparison.OrdinalIgnoreCase)
-                    ? $"Add{segments[segments.Length - 2]}Providers"
-                    : string.Empty;
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP003(EvaluationContext context)
-    {
-        if (context.TypeName.Split(separator: ['.'])
-            .Last() != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        InvocationExpressionSyntax? invalidRegistration = context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(
-                predicate: (InvocationExpressionSyntax invocation) =>
-                    invocation.ToString()
-            .Contains(value: "Configuration", comparisonType: StringComparison.Ordinal)
-                    && (
-                        invocation
-                            .Expression.ToString()
-            .Contains(value: "AddScoped", comparisonType: StringComparison.Ordinal)
-                        || invocation
-                            .Expression.ToString()
-            .Contains(value: "AddTransient", comparisonType: StringComparison.Ordinal)
-                    )
-            );
-
-        return invalidRegistration is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP003",
-                    description: "Configuration objects should be registered as singletons.",
-                    context: context,
-                    location: invalidRegistration.GetLocation()
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP004(EvaluationContext context)
-    {
-        if (context.TypeName.Split(separator: ['.'])
-            .Last() != "WebApplicationExtensions")
-        {
-            return [];
-        }
-
-        bool startsServicesThroughProvider = GetMethods(context: context)
-            .Any(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method.ParameterList.Parameters.Any(
-                        predicate: (ParameterSyntax parameter) =>
-                            parameter.Type?.ToString() is "IServiceProvider" or "WebApplication"
-                    )
-                    && method
-                        .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>()
-                        .Any(
-                            predicate: (InvocationExpressionSyntax invocation) =>
-                                invocation
-                                    .Expression.ToString()
-            .Contains(value: "GetRequiredService", comparisonType: StringComparison.Ordinal)
-                                || invocation
-                                    .Expression.ToString()
-            .Contains(value: "GetService", comparisonType: StringComparison.Ordinal)
-                        )
-            );
-
-        return startsServicesThroughProvider
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP004",
-                    description: "WebApplicationExtensions must consume the service provider to start application services.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP006(EvaluationContext context)
-    {
-        if (
-            GetTypeName(context: context) != "Program"
-            || !context.IsConsoleApplication
-            || !IsCommandApplication(context: context)
-        )
-        {
-            return [];
-        }
-
-        bool hasHostExtensions = context.ProjectTypeNames.Any(
-            predicate: (string typeName) =>
-                typeName.EndsWith(value: ".IHostExtensions", comparisonType: StringComparison.Ordinal)
-        );
-
-        return hasHostExtensions
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP006",
-                    description: "Console command applications must declare a root IHostExtensions composition class.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP007(EvaluationContext context)
-    {
-        if (GetTypeName(context: context) != "IHostExtensions")
-        {
-            return [];
-        }
-
-        bool routesCommandsThroughProvider = GetMethods(context: context)
-            .Any(predicate: RoutesCommandThroughProvider);
-
-        return routesCommandsThroughProvider
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP007",
-                    description: "IHostExtensions must route requested command details to a handling service resolved from the service provider.",
-                    context: context
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP008(EvaluationContext context)
-    {
-        if (GetTypeName(context: context) != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        InvocationExpressionSyntax? chainedRegistration = GetMethods(context: context)
-            .SelectMany(selector: (MethodDeclarationSyntax method) => method.DescendantNodes())
-            .OfType<InvocationExpressionSyntax>()
-            .FirstOrDefault(predicate: IsChainedServiceCollectionRegistration);
-
-        return chainedRegistration is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP008",
-                    description: "IServiceCollection registrations must be declared as individual statements rather than fluent chains.",
-                    context: context,
-                    location: chainedRegistration.GetLocation()
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP009(EvaluationContext context)
-    {
-        if (GetTypeName(context: context) != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        MethodDeclarationSyntax[] methods = GetMethods(context: context).ToArray();
-
-        MethodDeclarationSyntax[] domainRegistrationMethods = methods
-            .Where(predicate: IsDomainRegistrationMethod)
-            .Where(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method.DescendantNodes()
-                        .OfType<InvocationExpressionSyntax>()
-                        .Any()
-            )
-            .ToArray();
-
-        MethodDeclarationSyntax? invalidMethod = domainRegistrationMethods.FirstOrDefault(
-            predicate: (MethodDeclarationSyntax method) =>
-                !DelegatesRegistrationByLayer(method: method, methods: methods)
-        );
-
-        return invalidMethod is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXAPP009",
-                    description: "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.",
-                    context: context,
-                    location: invalidMethod.GetLocation()
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP010(
-        EvaluationContext context)
-    {
-        if (GetTypeName(context) != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        MethodDeclarationSyntax? invalidMethod = GetMethods(context)
-            .FirstOrDefault(method =>
-                method.ParameterList.Parameters.FirstOrDefault()
-                    is not ParameterSyntax parameter
-                || parameter.Type?.ToString() != "IServiceCollection"
-                || !parameter.Modifiers.Any(modifier =>
-                    modifier.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.ThisKeyword));
-
-        return invalidMethod is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP010",
-                    "IServiceCollectionExtensions may contain only IServiceCollection extension methods.",
-                    context,
-                    invalidMethod.GetLocation())
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP011(
-        EvaluationContext context)
-    {
-        if (GetTypeName(context) != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        if (context.ProjectName.StartsWith(
-            "cCoder.",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return [];
-        }
-
-        MethodDeclarationSyntax? publicEntryPoint = GetMethods(context)
-            .FirstOrDefault(method =>
-                method.Modifiers.Any(modifier =>
-                    modifier.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                && IsApplicationEntryPoint(
-                    method: method,
-                    projectName: context.ProjectName));
-
-        return publicEntryPoint is not null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP011",
-                    "Application IServiceCollectionExtensions must expose Add{AppName}.",
-                    context)
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP012(
-        EvaluationContext context)
-    {
-        if (GetTypeName(context) != "IServiceCollectionExtensions")
-        {
-            return [];
-        }
-
-        if (context.ProjectName.StartsWith(
-            "cCoder.",
-            StringComparison.OrdinalIgnoreCase))
-        {
-            return [];
-        }
-
-        MethodDeclarationSyntax? entryPoint = GetMethods(context)
-            .FirstOrDefault(method =>
-                method.Modifiers.Any(modifier =>
-                    modifier.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                && method.ParameterList.Parameters.Any(parameter =>
-                    parameter.Type?.ToString() == "IConfiguration"));
-
-        if (entryPoint is null)
-        {
-            return [];
-        }
-
-        bool acceptsApplicationConfiguration =
-            entryPoint.ParameterList.Parameters.Any(parameter =>
-                parameter.Type?.ToString() == "IConfiguration");
-
-        bool exposesConfigurationCallback = entryPoint.ParameterList.Parameters
-            .Any(predicate: IsConfigurationCallback);
-
-        return acceptsApplicationConfiguration
-            && exposesConfigurationCallback
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP012",
-                    "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.",
-                    context,
-                    entryPoint.GetLocation())
-              ];
-    }
-
-    private static bool IsConfigurationCallback(ParameterSyntax parameter)
-    {
-        GenericNameSyntax? genericName = parameter.Type switch
-        {
-            GenericNameSyntax actionType => actionType,
-            NullableTypeSyntax
-            {
-                ElementType: GenericNameSyntax actionType
-            } => actionType,
-            _ => null
-        };
-
-        return genericName is not null
-            && genericName.Identifier.Text == "Action"
-            && genericName.TypeArgumentList.Arguments.Count == 1
-            && genericName.TypeArgumentList.Arguments[0]
-                .ToString()
-                .EndsWith(
-                    "Configuration",
-                    StringComparison.Ordinal);
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(
-        EvaluationContext context)
-    {
-        if (!GetTypeName(context).EndsWith(
-            "Configuration",
-            StringComparison.Ordinal))
-        {
-            return [];
-        }
-
-        PropertyDeclarationSyntax? invalidProperty = context.Declarations
-            .SelectMany(declaration => declaration.Members)
-            .OfType<PropertyDeclarationSyntax>()
-            .FirstOrDefault(property =>
-                !property.Modifiers.Any(modifier =>
-                    modifier.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword)
-                || property.AccessorList is null
-                || !property.AccessorList.Accessors.Any(accessor =>
-                    accessor.Keyword.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.GetKeyword)
-                || !property.AccessorList.Accessors.Any(accessor =>
-                    accessor.Keyword.RawKind == (int)
-                        Microsoft.CodeAnalysis.CSharp.SyntaxKind.SetKeyword)
-                || property.Type.ToString() == "dynamic"
-                || property.Type.ToString().Contains(
-                    "Dictionary",
-                    StringComparison.Ordinal));
-
-        return invalidProperty is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP013",
-                    "Configuration properties must be public, strongly typed, and bindable with get and set accessors.",
-                    context,
-                    invalidProperty.GetLocation())
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP014(
-        EvaluationContext context)
-    {
-        if (GetTypeName(context) != "Program"
-            || context.IsConsoleApplication)
-        {
-            return [];
-        }
-
-        bool bindsConfigurationInProgram = context.SourceCode.Contains(
-            ".Bind",
-            StringComparison.Ordinal);
-
-        bool passesApplicationConfiguration = context.SourceCode.Contains(
-            ".Configuration",
-            StringComparison.Ordinal)
-            && context.SourceCode.Contains(
-                ".Services.Add",
-                StringComparison.Ordinal);
-
-        return !bindsConfigurationInProgram
-            && passesApplicationConfiguration
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP014",
-                    "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.",
-                    context)
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP015(
-        EvaluationContext context)
-    {
-        string configurationName = GetTypeName(context);
-        string projectConfigurationName = string.Concat(
-            context.ProjectName.Split(
-                ['.', '-'],
-                StringSplitOptions.RemoveEmptyEntries))
-            + "Configuration";
-
-        if (!string.Equals(
-            configurationName,
-            projectConfigurationName,
-            StringComparison.Ordinal))
-        {
-            return [];
-        }
-
-        PropertyDeclarationSyntax? scalarProperty = context.Declarations
-            .SelectMany(declaration => declaration.Members)
-            .OfType<PropertyDeclarationSyntax>()
-            .FirstOrDefault(property =>
-                !property.Type.ToString().EndsWith(
-                    "Configuration",
-                    StringComparison.Ordinal));
-
-        return scalarProperty is null
-            ? []
-            :
-            [
-                CreateAnalysisItem(
-                    "STXAPP015",
-                    "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.",
-                    context,
-                    scalarProperty.GetLocation())
-            ];
-    }
-
-    private static bool IsCommandApplication(EvaluationContext context) =>
-
-        context.SourceCode.Contains(value: "RootCommand", comparisonType: StringComparison.Ordinal)
-        || context.SourceCode.Contains(value: "System.CommandLine", comparisonType: StringComparison.Ordinal)
-        || context.SourceCode.Contains(value: ".InvokeAsync(args", comparisonType: StringComparison.Ordinal)
-        || context.SourceCode.Contains(value: ".RunAsync(args", comparisonType: StringComparison.Ordinal);
-
-    private static bool RoutesCommandThroughProvider(MethodDeclarationSyntax method)
-    {
-        ParameterSyntax? commandParameter = method.ParameterList.Parameters.FirstOrDefault(
-            predicate: (ParameterSyntax parameter) =>
-                parameter.Type?.ToString() is "string" or "string[]" or "IReadOnlyList<string>"
-        );
-
-        if (commandParameter is null)
-        {
-            return false;
-        }
-
-        InvocationExpressionSyntax[] invocations = method
-            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>()
-            .ToArray();
-
-        bool resolvesHandlingService = invocations.Any(
-            predicate: (InvocationExpressionSyntax invocation) =>
-                invocation.Expression.ToString()
-                    .Contains(value: "GetRequiredService", comparisonType: StringComparison.Ordinal)
-                || invocation.Expression.ToString()
-                    .Contains(value: "GetService", comparisonType: StringComparison.Ordinal)
-        );
-
-        bool passesCommandDetails = invocations.Any(
-            predicate: (InvocationExpressionSyntax invocation) =>
-                invocation.ArgumentList.Arguments.Any(
-                    predicate: (ArgumentSyntax argument) =>
-                        argument.Expression.ToString() == commandParameter.Identifier.Text
-                )
-        );
-
-        return resolvesHandlingService && passesCommandDetails;
-    }
-
-    private static bool IsChainedServiceCollectionRegistration(InvocationExpressionSyntax invocation)
-    {
-        if (
-            invocation.Expression is not MemberAccessExpressionSyntax memberAccess
-            || memberAccess.Expression is not InvocationExpressionSyntax previousInvocation
-        )
-        {
-            return false;
-        }
-
-        return GetInvocationRoot(previousInvocation: previousInvocation) is IdentifierNameSyntax identifier
-            && identifier.Identifier.Text == "services"
-            && memberAccess.Name.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal);
-    }
-
-    private static ExpressionSyntax GetInvocationRoot(InvocationExpressionSyntax previousInvocation)
-    {
-        ExpressionSyntax expression = previousInvocation.Expression;
-
-        while (expression is MemberAccessExpressionSyntax memberAccess)
-        {
-            expression = memberAccess.Expression is InvocationExpressionSyntax nestedInvocation
-                ? nestedInvocation.Expression
-                : memberAccess.Expression;
-        }
-
-        return expression;
-    }
-
-    private static bool IsDomainRegistrationMethod(MethodDeclarationSyntax method) =>
-
-        method.Modifiers.Any(
-            predicate: (Microsoft.CodeAnalysis.SyntaxToken modifier) =>
-                modifier.RawKind == (int)Microsoft.CodeAnalysis.CSharp.SyntaxKind.PublicKeyword
-        )
-        && method.Identifier.Text.StartsWith(value: "Add", comparisonType: StringComparison.Ordinal)
-        && method.TypeParameterList is null
-        && !method.Identifier.Text.EndsWith(
-            value: "Providers",
-            comparisonType: StringComparison.Ordinal)
-        && method.ParameterList.Parameters.Any(
-            predicate: (ParameterSyntax parameter) => parameter.Type?.ToString() == "IServiceCollection"
-        );
-
-    private static bool IsApplicationEntryPoint(
-        MethodDeclarationSyntax method,
-        string projectName)
-    {
-        GenericNameSyntax? configurationCallback = method.ParameterList
-            .Parameters
-            .Select(parameter => parameter.Type)
-            .OfType<GenericNameSyntax>()
-            .FirstOrDefault(genericName =>
-                genericName.Identifier.Text == "Action"
-                && genericName.TypeArgumentList.Arguments.Count == 1);
-
-        if (configurationCallback is null)
-        {
-            return method.Identifier.Text.StartsWith(
-                "Add",
-                StringComparison.Ordinal)
-                && method.ParameterList.Parameters.Any(parameter =>
-                    parameter.Type?.ToString() == "IConfiguration");
-        }
-
-        string configurationType = configurationCallback
-            .TypeArgumentList.Arguments[0]
-            .ToString();
-
-        if (!configurationType.EndsWith(
-            value: "Configuration",
-            comparisonType: StringComparison.Ordinal))
-        {
-            return false;
-        }
-
-        string configurationPrefix = configurationType.Substring(
-            startIndex: 0,
-            length: configurationType.Length - "Configuration".Length);
-        string applicationSuffix = projectName
-            .Split(separator: ['.'])
-            .Last();
-
-        if (!configurationPrefix.EndsWith(
-            value: applicationSuffix,
-            comparisonType: StringComparison.OrdinalIgnoreCase))
-        {
-            configurationPrefix += applicationSuffix;
-        }
-
-        string configurationEntryPointName =
-            $"Add{configurationPrefix}";
-
-        string applicationEntryPointName =
-            $"Add{applicationSuffix}";
-
-        return method.Identifier.Text is not null
-            && (string.Equals(
-                    a: method.Identifier.Text,
-                    b: configurationEntryPointName,
-                    comparisonType: StringComparison.Ordinal)
-                || string.Equals(
-                    a: method.Identifier.Text,
-                    b: applicationEntryPointName,
-                    comparisonType: StringComparison.Ordinal))
-            && method.ParameterList.Parameters.Any(parameter =>
-                parameter.Type?.ToString() == "IConfiguration");
-    }
-
-    private static bool DelegatesRegistrationByLayer(
-        MethodDeclarationSyntax method,
-        IReadOnlyCollection<MethodDeclarationSyntax> methods
-    )
-    {
-        string[] layerNames =
-        [
-            "Dependencies",
-            "Brokers",
-            "Foundations",
-            "Processings",
-            "Orchestrations",
-            "Coordinations",
-            "Managements",
-            "Aggregations",
-            "Exposures",
-        ];
-
-        MethodDeclarationSyntax[] layerInitializers = methods
-            .Where(
-                predicate: (MethodDeclarationSyntax candidate) =>
-                    candidate.Modifiers.Any(modifier =>
-                        modifier.RawKind == (int)
-                            Microsoft.CodeAnalysis.CSharp.SyntaxKind.PrivateKeyword)
-                    && layerNames.Any(
-                        predicate: (string layerName) =>
-                            candidate.Identifier.Text == $"Add{layerName}")
-                    && candidate.ParameterList.Parameters.FirstOrDefault()
-                        is ParameterSyntax parameter
-                    && parameter.Type?.ToString() == "IServiceCollection"
-                    && parameter.Modifiers.Any(modifier =>
-                        modifier.RawKind == (int)
-                            Microsoft.CodeAnalysis.CSharp.SyntaxKind.ThisKeyword)
-            )
-            .ToArray();
-
-        if (layerInitializers.Length == 0)
-        {
-            return method.DescendantNodes()
-                .OfType<InvocationExpressionSyntax>()
-                .Select(invocation => invocation.Expression)
-                .OfType<MemberAccessExpressionSyntax>()
-                .Select(memberAccess => memberAccess.Name.Identifier.Text)
-                .Any(methodName =>
-                    methodName.EndsWith(
-                        "Web",
-                        StringComparison.Ordinal)
-                    || methodName.EndsWith(
-                        "HostedServices",
-                        StringComparison.Ordinal));
-        }
-
-        bool delegatesToRegistrationOverload = method
-            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>()
-            .Select(invocation => invocation.Expression)
-            .OfType<MemberAccessExpressionSyntax>()
-            .Any(memberAccess =>
-                memberAccess.Name.Identifier.Text ==
-                    method.Identifier.Text);
-
-        if (delegatesToRegistrationOverload)
-        {
-            return true;
-        }
-
-        HashSet<string> invokedMethods = new HashSet<string>(
-            collection: method
-                .DescendantNodes()
-                .OfType<InvocationExpressionSyntax>()
-                .Select(selector: (InvocationExpressionSyntax invocation) => invocation.Expression)
-                .Select(
-                    selector: (ExpressionSyntax expression) =>
-                        expression switch
-                        {
-                            IdentifierNameSyntax identifier => identifier.Identifier.Text,
-                            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
-                            _ => string.Empty,
-                        }
-                ),
-            comparer: StringComparer.Ordinal
-        );
-
-        return layerInitializers.All(initializer =>
-            invokedMethods.Contains(initializer.Identifier.Text));
-    }
-
-    private static string GetTypeName(EvaluationContext context) =>
-
-        context.TypeName.Split(separator: ['.'])
-            .Last();
-
-    private static string GetSupportingDataRegistrationName(
-        string projectName)
-    {
-        string[] segments = projectName.Split(
-            separator: ['.', '-'],
-            options: StringSplitOptions.RemoveEmptyEntries);
-
-        if (segments.Length < 2
-            || !string.Equals(
-                segments[segments.Length - 1],
-                "Data",
-                StringComparison.OrdinalIgnoreCase))
-        {
-            return string.Empty;
-        }
-
-        return segments.Length == 2
-            ? "AddData"
-            : $"Add{segments[segments.Length - 2]}Data";
-    }
-
-    private static IEnumerable<MethodDeclarationSyntax> GetMethods(EvaluationContext context) =>
-
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>();
 }

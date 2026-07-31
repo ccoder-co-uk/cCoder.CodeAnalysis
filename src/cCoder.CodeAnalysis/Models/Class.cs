@@ -46,4 +46,7 @@ public sealed class Class
 
     [JsonIgnore]
     internal string AnalysisProjectLineEnding { get; set; }
+
+    [JsonIgnore]
+    internal TypeAnalysisFacts AnalysisTypeFacts { get; set; }
 }
