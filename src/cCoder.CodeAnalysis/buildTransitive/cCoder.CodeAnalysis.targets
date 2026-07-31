@@ -5,7 +5,7 @@
     <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskSourceDirectory)' != ''"
       >$(cCoderCodeAnalysisBuildTaskDirectory)cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
     <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskAssembly)' == ''"
-      >$(MSBuildThisFileDirectory)..\tools\net10.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
+      >$(MSBuildThisFileDirectory)..\tools\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
   </PropertyGroup>
   <UsingTask
     TaskName="cCoder.CodeAnalysis.BuildTasks.GenerateArchitectureTask"

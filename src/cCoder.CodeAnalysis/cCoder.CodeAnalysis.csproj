@@ -61,15 +61,15 @@
     />
     <None Include="buildTransitive\cCoder.CodeAnalysis.targets" Pack="true" PackagePath="buildTransitive" />
     <None
-      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\net10.0\*.dll"
+      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\*.dll"
       Pack="true"
-      PackagePath="tools/net10.0"
+      PackagePath="tools/netstandard2.0"
       Visible="false"
     />
     <None
-      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\net10.0\cCoder.CodeAnalysis.BuildTasks.deps.json"
+      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.deps.json"
       Pack="true"
-      PackagePath="tools/net10.0"
+      PackagePath="tools/netstandard2.0"
       Visible="false"
     />
   </ItemGroup>
