@@ -16,6 +16,12 @@ public sealed class Method
     public List<string> Implements { get; set; }
     public List<MethodCall> Calls { get; set; }
     public List<string> ThrowsExceptionTypes { get; set; }
+    public List<string> HttpMethods { get; set; }
+    public List<HttpResponse> HttpResponses { get; set; }
+    public bool IsHttpRequestHandler { get; set; }
+    public bool IsODataControllerAction { get; set; }
+    public bool HasKeyParameter { get; set; }
+    public bool HandlesNullWithNotFound { get; set; }
 
     [JsonIgnore]
     internal IMethodSymbol Symbol { get; set; }

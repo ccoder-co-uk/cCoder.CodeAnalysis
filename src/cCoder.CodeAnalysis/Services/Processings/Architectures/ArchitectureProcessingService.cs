@@ -198,6 +198,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             method: method,
             compilation: compilation);
 
+        List<string> httpMethods = GetHttpMethods(method: method);
+        bool isODataControllerAction = InheritsFromTypeNamed(
+            type: method.ContainingType,
+            typeName: "ODataController");
+        bool isHttpRequestHandler = httpMethods.Count > 0
+            || isODataControllerAction
+            || InheritsFromTypeNamed(type: method.ContainingType, typeName: "ControllerBase");
+        List<HttpResponse> httpResponses = isHttpRequestHandler
+            ? GetHttpResponses(method: method, compilation: compilation)
+            : [];
+
         return new Method
         {
             Id = GetMethodId(method: method),
@@ -220,6 +231,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)))
                 .ToList(),
             ThrowsExceptionTypes = directlyThrownExceptionTypes.ToList(),
+            HttpMethods = httpMethods,
+            HttpResponses = httpResponses,
+            IsHttpRequestHandler = isHttpRequestHandler,
+            IsODataControllerAction = isODataControllerAction,
+            HasKeyParameter = httpMethods.Contains("GET", StringComparer.Ordinal)
+                && method.Parameters.Length > 0,
+            HandlesNullWithNotFound = httpResponses.Any(
+                response => response.StatusCode == 404 && response.IsNullPath),
             Symbol = method,
             DirectCalls = directCalls,
             DirectlyThrowsExceptionTypes = directlyThrownExceptionTypes,
@@ -341,6 +360,223 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     };
                 })
             .ToList();
+    }
+
+    private static List<string> GetHttpMethods(IMethodSymbol method)
+    {
+        List<string> methods = method.GetAttributes()
+            .Select(attribute => attribute.AttributeClass?.Name ?? string.Empty)
+            .Select(
+                attributeName => attributeName switch
+                {
+                    "HttpGetAttribute" => "GET",
+                    "HttpPostAttribute" => "POST",
+                    "HttpPutAttribute" => "PUT",
+                    "HttpPatchAttribute" => "PATCH",
+                    "HttpDeleteAttribute" => "DELETE",
+                    _ => string.Empty,
+                })
+            .Where(httpMethod => httpMethod.Length > 0)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(httpMethod => httpMethod, StringComparer.Ordinal)
+            .ToList();
+
+        if (methods.Count == 0 && InheritsFromTypeNamed(method.ContainingType, "ODataController"))
+        {
+            string conventionalMethod = method.Name.EndsWith("Async", StringComparison.Ordinal)
+                ? method.Name.Substring(0, method.Name.Length - "Async".Length)
+                : method.Name;
+
+            string? httpMethod = conventionalMethod switch
+            {
+                "Get" or "GetAll" => "GET",
+                "Post" => "POST",
+                "Put" => "PUT",
+                "Patch" => "PATCH",
+                "Delete" => "DELETE",
+                _ => null,
+            };
+
+            if (httpMethod is not null)
+            {
+                methods.Add(httpMethod);
+            }
+        }
+
+        return methods;
+    }
+
+    private static List<HttpResponse> GetHttpResponses(
+        IMethodSymbol method,
+        CSharpCompilation compilation)
+    {
+        List<HttpResponse> responses = [];
+
+        foreach (SyntaxNode declaration in method.DeclaringSyntaxReferences.Select(reference => reference.GetSyntax()))
+        {
+            IEnumerable<ExpressionSyntax> responseExpressions = declaration
+                .DescendantNodes()
+                .OfType<ReturnStatementSyntax>()
+                .Where(statement => BelongsToMethod(statement: statement, declaration: declaration))
+                .Select(statement => statement.Expression)
+                .Where(expression => expression is not null)
+                .Select(expression => expression!);
+
+            if (declaration is MethodDeclarationSyntax { ExpressionBody.Expression: ExpressionSyntax expressionBody })
+            {
+                responseExpressions = responseExpressions.Append(expressionBody);
+            }
+
+            foreach (ExpressionSyntax responseExpression in responseExpressions)
+            {
+                foreach (InvocationExpressionSyntax invocation in responseExpression
+                    .DescendantNodesAndSelf()
+                    .OfType<InvocationExpressionSyntax>())
+                {
+                    string resultMethod = GetInvocationName(invocation: invocation);
+                    int? statusCode = GetStatusCode(
+                        resultMethod: resultMethod,
+                        invocation: invocation,
+                        compilation: compilation);
+
+                    if (statusCode is null)
+                    {
+                        continue;
+                    }
+
+                    CatchClauseSyntax? exceptionCatch = invocation
+                        .Ancestors()
+                        .OfType<CatchClauseSyntax>()
+                        .FirstOrDefault();
+                    IfStatementSyntax? nullBranch = invocation
+                        .Ancestors()
+                        .OfType<IfStatementSyntax>()
+                        .FirstOrDefault(
+                            statement => statement.Condition.ToString()
+                                .Contains("null", StringComparison.Ordinal));
+
+                    responses.Add(
+                        new HttpResponse
+                        {
+                            StatusCode = statusCode.Value,
+                            ResultMethod = resultMethod,
+                            ExceptionType = GetCaughtExceptionType(
+                                catchClause: exceptionCatch,
+                                compilation: compilation),
+                            IsExceptionPath = exceptionCatch is not null,
+                            IsNullPath = statusCode == 404 && nullBranch is not null,
+                        });
+                }
+            }
+        }
+
+        return responses
+            .GroupBy(
+                response => (
+                    response.StatusCode,
+                    response.ResultMethod,
+                    response.ExceptionType,
+                    response.IsExceptionPath,
+                    response.IsNullPath))
+            .Select(group => group.First())
+            .OrderBy(response => response.StatusCode)
+            .ThenBy(response => response.ResultMethod, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static bool BelongsToMethod(
+        ReturnStatementSyntax statement,
+        SyntaxNode declaration) =>
+
+        !statement.Ancestors()
+            .TakeWhile(ancestor => ancestor != declaration)
+            .Any(
+                ancestor => ancestor
+                    is AnonymousFunctionExpressionSyntax
+                    or LocalFunctionStatementSyntax
+                    or MethodDeclarationSyntax);
+
+    private static string GetInvocationName(InvocationExpressionSyntax invocation) =>
+
+        invocation.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            _ => string.Empty,
+        };
+
+    private static int? GetStatusCode(
+        string resultMethod,
+        InvocationExpressionSyntax invocation,
+        CSharpCompilation compilation) =>
+
+        resultMethod switch
+        {
+            "Ok" or "Updated" => 200,
+            "Created" or "CreatedAtAction" or "CreatedAtRoute" => 201,
+            "NoContent" => 204,
+            "BadRequest" => 400,
+            "Unauthorized" or "Challenge" => 401,
+            "Forbid" => 403,
+            "NotFound" => 404,
+            "Conflict" => 409,
+            "StatusCode" => GetConstantStatusCode(invocation: invocation, compilation: compilation),
+            _ => null,
+        };
+
+    private static int? GetConstantStatusCode(
+        InvocationExpressionSyntax invocation,
+        CSharpCompilation compilation)
+    {
+        ExpressionSyntax? argument = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
+
+        if (argument is null)
+        {
+            return null;
+        }
+
+        Optional<object?> constant = compilation
+            .GetSemanticModel(argument.SyntaxTree)
+            .GetConstantValue(argument);
+
+        return constant.HasValue && constant.Value is int statusCode ? statusCode : null;
+    }
+
+    private static string GetCaughtExceptionType(
+        CatchClauseSyntax? catchClause,
+        CSharpCompilation compilation)
+    {
+        if (catchClause is null)
+        {
+            return string.Empty;
+        }
+
+        if (catchClause.Declaration is null)
+        {
+            return "System.Exception";
+        }
+
+        ITypeSymbol? exceptionType = compilation
+            .GetSemanticModel(catchClause.SyntaxTree)
+            .GetTypeInfo(catchClause.Declaration.Type)
+            .Type;
+
+        return exceptionType is null ? string.Empty : GetTypeName(type: exceptionType);
+    }
+
+    private static bool InheritsFromTypeNamed(
+        INamedTypeSymbol type,
+        string typeName)
+    {
+        for (INamedTypeSymbol? current = type; current is not null; current = current.BaseType)
+        {
+            if (string.Equals(current.Name, typeName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsDeclaredInCurrentProject(

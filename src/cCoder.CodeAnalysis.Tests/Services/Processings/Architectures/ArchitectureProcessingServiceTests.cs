@@ -15,6 +15,89 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Architectures;
 public sealed class ArchitectureProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldCaptureHttpResponseAndExceptionPaths()
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                using System;
+                namespace Example.Controllers;
+
+                public sealed class HttpGetAttribute : Attribute { }
+                public class ODataController
+                {
+                    protected object Ok(object value) => value;
+                    protected object BadRequest() => new object();
+                    protected object Forbid() => new object();
+                    protected object NotFound() => new object();
+                }
+                public sealed class StudentValidationException : Exception { }
+                public sealed class StudentAuthorizationException : Exception { }
+
+                public sealed class StudentController : ODataController
+                {
+                    [HttpGet]
+                    public object GetStudent(int studentId)
+                    {
+                        try
+                        {
+                            object? student = null;
+
+                            if (student is null)
+                            {
+                                return NotFound();
+                            }
+
+                            return Ok(student);
+                        }
+                        catch (StudentValidationException)
+                        {
+                            return BadRequest();
+                        }
+                        catch (StudentAuthorizationException)
+                        {
+                            return Forbid();
+                        }
+                    }
+                }
+                """,
+            path: "StudentController.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+        ArchitectureProcessingService service = new(architectureServiceMock.Object);
+
+        ArchitectureBuild result = service.Process(compilation);
+
+        Method action = result.Architecture.Classes
+            .Single(element => element.Name == "Example.Controllers.StudentController")
+            .Methods.Single(method => method.Name == "GetStudent");
+        action.IsHttpRequestHandler.Should().BeTrue("");
+        action.IsODataControllerAction.Should().BeTrue("");
+        action.HasKeyParameter.Should().BeTrue("");
+        action.HandlesNullWithNotFound.Should().BeTrue("");
+        action.HttpMethods.Should().ContainSingle().Which.Should().Be("GET", "");
+        action.HttpResponses.Should().Contain(
+            response => response.StatusCode == 200 && !response.IsExceptionPath,
+            "");
+        action.HttpResponses.Should().Contain(
+            response => response.StatusCode == 404 && response.IsNullPath,
+            "");
+        action.HttpResponses.Should().Contain(
+            response => response.StatusCode == 400
+                && response.ExceptionType == "Example.Controllers.StudentValidationException",
+            "");
+        action.HttpResponses.Should().Contain(
+            response => response.StatusCode == 403
+                && response.ExceptionType == "Example.Controllers.StudentAuthorizationException",
+            "");
+    }
+
+    [Fact]
     public void ProcessShouldCaptureMethodCallsExceptionsAndDependencyBoundaries()
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
