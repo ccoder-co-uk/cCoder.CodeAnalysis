@@ -58,6 +58,25 @@ public sealed class RFCViolationController : ODataController
         throw new HttpRuleConcurrencyException();
     }
 
+    [HttpGet("unsupported")]
+    public void GetUnsupportedFunction()
+    {
+        throw new NotImplementedException();
+    }
+
+    [HttpPost("disclosure")]
+    public IActionResult DiscloseValidationFailure()
+    {
+        try
+        {
+            throw new HttpRuleValidationException();
+        }
+        catch (HttpRuleValidationException exception)
+        {
+            return BadRequest(error: exception.Message);
+        }
+    }
+
     [HttpGet("unexpected")]
     public IActionResult GetUnexpectedFailure()
     {
