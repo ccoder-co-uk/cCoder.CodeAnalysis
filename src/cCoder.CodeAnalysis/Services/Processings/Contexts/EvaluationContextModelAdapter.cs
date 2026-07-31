@@ -31,6 +31,10 @@ internal static class EvaluationContextModelAdapter
             context.IsPrimaryTopLevelClassInFile;
         architectureElement.AnalysisIsApiController = context.IsApiController;
         architectureElement.AnalysisPublicApiModelTypes = context.PublicApiModelTypes;
+        architectureElement.AnalysisDeclarations = context.Declarations;
+        architectureElement.AnalysisFilePath = context.FilePath;
+        architectureElement.AnalysisSourceCode = context.SourceCode;
+        architectureElement.AnalysisProjectLineEnding = context.ProjectLineEnding;
         context.ArchitectureModel = architecture;
         context.ArchitectureElement = architectureElement;
 

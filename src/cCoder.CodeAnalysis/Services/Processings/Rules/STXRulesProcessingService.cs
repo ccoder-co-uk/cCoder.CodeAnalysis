@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,6 +11,8 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService
+        architectureModelQueries = new ArchitectureModelQueriesProcessingService();
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTX0024(
@@ -92,8 +95,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTX0024(
         EvaluationContext context)
     {
-        InvocationExpressionSyntax[] invocations = context
-            .Declarations
+        InvocationExpressionSyntax[] invocations = architectureModelQueries
+            .GetDeclarations(context: context)
             .SelectMany(
                 selector: declaration =>
                     declaration.DescendantNodes())
@@ -190,8 +193,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTX0002(EvaluationContext context) =>
         IsEventProviderContract(context: context)
             ? []
-            : context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+            : architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<PropertyDeclarationSyntax>()
             .Select(
                 selector: (PropertyDeclarationSyntax property) =>
@@ -214,8 +217,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0003(EvaluationContext context)
     {
-        MethodDeclarationSyntax[] methods = context
-            .Declarations.Where(
+        MethodDeclarationSyntax[] methods = architectureModelQueries
+            .GetDeclarations(context: context).Where(
                 predicate: (TypeDeclarationSyntax declaration) =>
                     !declaration.SyntaxTree.FilePath.EndsWith(
                         value: ".Validations.cs",
@@ -330,13 +333,13 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateServiceContractPattern(EvaluationContext context)
     {
-        MethodDeclarationSyntax[] publicMethods = context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        MethodDeclarationSyntax[] publicMethods = architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.Modifiers.Any(kind: SyntaxKind.PublicKeyword))
             .ToArray();
 
-        bool hasValidationPartial = context.Declarations.Any(
+        bool hasValidationPartial = architectureModelQueries.GetDeclarations(context: context).Any(
             predicate: (TypeDeclarationSyntax declaration) =>
                 declaration.SyntaxTree.FilePath.EndsWith(
                     value: ".Validations.cs",
@@ -344,7 +347,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 )
         );
 
-        bool hasExceptionPartial = context.Declarations.Any(
+        bool hasExceptionPartial = architectureModelQueries.GetDeclarations(context: context).Any(
             predicate: (TypeDeclarationSyntax declaration) =>
                 declaration.SyntaxTree.FilePath.EndsWith(
                     value: ".Exceptions.cs",
@@ -360,8 +363,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         bool allUseOperationSpecificValidations =
             !isFoundationService || publicMethods.All(predicate: UsesOperationSpecificValidation);
 
-        MethodDeclarationSyntax[] operationValidationMethods = context
-            .Declarations.Where(
+        MethodDeclarationSyntax[] operationValidationMethods = architectureModelQueries
+            .GetDeclarations(context: context).Where(
                 predicate: (TypeDeclarationSyntax declaration) =>
                     declaration.SyntaxTree.FilePath.EndsWith(
                         value: ".Validations.cs",
@@ -546,8 +549,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     {
         string[] nonDomainVerbs = new string[4] { "Select", "Insert", "Post", "Put" };
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -570,8 +573,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0017(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .SelectMany(selector: (MethodDeclarationSyntax method) => method.ParameterList.Parameters)
             .Where(predicate: (ParameterSyntax parameter) => parameter.Identifier.Text == "id")
@@ -595,8 +598,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         List<AnalysisItem> items = new List<AnalysisItem>();
 
         foreach (
-            MethodDeclarationSyntax method in context
-                .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+            MethodDeclarationSyntax method in architectureModelQueries
+                .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
         )
         {
@@ -662,8 +665,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0018(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.Modifiers.Any(kind: SyntaxKind.PublicKeyword))
             .Select(
@@ -698,8 +701,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0022(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>

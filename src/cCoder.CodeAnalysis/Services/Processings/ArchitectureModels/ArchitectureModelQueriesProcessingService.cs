@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
@@ -30,6 +31,20 @@ internal sealed class ArchitectureModelQueriesProcessingService
 
     public IReadOnlyList<string> GetImplementedInterfaces(EvaluationContext context) =>
         context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces ?? [];
+
+    public IReadOnlyList<TypeDeclarationSyntax> GetDeclarations(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisDeclarations ?? context.Declarations ?? [];
+
+    public string GetFilePath(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisFilePath ?? context.FilePath ?? string.Empty;
+
+    public string GetSourceCode(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisSourceCode ?? context.SourceCode ?? string.Empty;
+
+    public string GetProjectLineEnding(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisProjectLineEnding
+            ?? context.ProjectLineEnding
+            ?? string.Empty;
 
     public IReadOnlyList<Method> GetReachableMethods(EvaluationContext context, string methodId)
     {

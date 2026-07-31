@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -11,6 +12,8 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService
+        architectureModelQueries = new ArchitectureModelQueriesProcessingService();
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         foreach (AnalysisItem item in EvaluateSTXFORMAT011(context: context))
@@ -81,8 +84,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT013(EvaluationContext context) =>
 
-        context
-            .Declarations.GroupBy(
+        architectureModelQueries
+            .GetDeclarations(context: context).GroupBy(
                 keySelector: (TypeDeclarationSyntax declaration) => declaration.SyntaxTree.FilePath,
                 comparer: StringComparer.OrdinalIgnoreCase
             )
@@ -97,7 +100,7 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
                         Position = FindInconsistentLineEnding(
                             source: syntaxTree.GetText()
             .ToString(),
-                            projectLineEnding: context.ProjectLineEnding
+                            projectLineEnding: architectureModelQueries.GetProjectLineEnding(context: context)
                         ),
                     }
             )
@@ -145,8 +148,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT012(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.Modifiers.Any(kind: SyntaxKind.AsyncKeyword))
             .Where(
@@ -167,8 +170,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
     {
         return (context.StandardElementType == StandardElementType.Test)
             ? Array.Empty<AnalysisItem>()
-            : context
-                .Declarations.SelectMany(
+            : architectureModelQueries
+                .GetDeclarations(context: context).SelectMany(
                     selector: (TypeDeclarationSyntax declaration) =>
                         declaration.DescendantTrivia(descendIntoChildren: null, descendIntoTrivia: false)
                 )
@@ -192,8 +195,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT011(EvaluationContext context) =>
 
-        context
-            .Declarations.GroupBy<TypeDeclarationSyntax, string>(
+        architectureModelQueries
+            .GetDeclarations(context: context).GroupBy<TypeDeclarationSyntax, string>(
                 keySelector: (TypeDeclarationSyntax declaration) => declaration.SyntaxTree.FilePath,
                 comparer: StringComparer.OrdinalIgnoreCase
             )
@@ -321,8 +324,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT009(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .OfType<MemberAccessExpressionSyntax>()
             .Where(
                 predicate: (MemberAccessExpressionSyntax memberAccess) =>
@@ -345,8 +348,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT008(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(
                 selector: (TypeDeclarationSyntax declaration) =>
                     declaration
                         .DescendantNodes()
@@ -395,8 +398,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT007(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(
                 selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes()
             .OfType<StatementSyntax>()
             )
@@ -436,8 +439,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT006(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => GetSingleInvocation(method: method) != null)
             .Where(
@@ -494,8 +497,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT001(EvaluationContext context) =>
 
-        context
-            .Declarations.GroupBy<TypeDeclarationSyntax, string>(
+        architectureModelQueries
+            .GetDeclarations(context: context).GroupBy<TypeDeclarationSyntax, string>(
                 keySelector: (TypeDeclarationSyntax declaration) => declaration.SyntaxTree.FilePath,
                 comparer: StringComparer.OrdinalIgnoreCase
             )
@@ -520,8 +523,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT002(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.ExpressionBody != null)
             .Where(
@@ -556,8 +559,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT003(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(
                 selector: (TypeDeclarationSyntax declaration) =>
                     declaration
                         .DescendantNodes()
@@ -628,8 +631,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT004(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(
                 selector: (TypeDeclarationSyntax declaration) =>
                     declaration.Members.Zip(
                         second: declaration.Members.Skip(count: 1),
@@ -661,8 +664,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT005(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .OfType<InvocationExpressionSyntax>()
             .Where(
                 predicate: (InvocationExpressionSyntax invocation) =>

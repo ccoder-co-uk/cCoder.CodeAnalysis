@@ -10,7 +10,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -28,8 +28,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             return [];
         }
 
-        return context
-            .Declarations.Where(
+        return architectureModelQueries
+            .GetDeclarations(context: context).Where(
                 predicate: (Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax declaration) =>
                     !IsInStandardFolder(
                         filePath: declaration.SyntaxTree.FilePath,
@@ -49,7 +49,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
 
     private IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
     {
-        ClassDeclarationSyntax? declaration = context.Declarations
+        ClassDeclarationSyntax? declaration = architectureModelQueries
+            .GetDeclarations(context: context)
             .OfType<ClassDeclarationSyntax>()
             .FirstOrDefault(predicate: IsTopLevelClass);
 
@@ -77,7 +78,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             return [];
         }
 
-        return context.Declarations
+        return architectureModelQueries.GetDeclarations(context: context)
             .OfType<InterfaceDeclarationSyntax>()
             .Where(predicate: declaration =>
                 declaration.Modifiers.Any(

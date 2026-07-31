@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 #nullable disable
 using System.Text.Json.Serialization;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Models;
 
@@ -33,4 +34,16 @@ public sealed class Class
 
     [JsonIgnore]
     internal List<Method> AnalysisMethods { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<TypeDeclarationSyntax> AnalysisDeclarations { get; set; }
+
+    [JsonIgnore]
+    internal string AnalysisFilePath { get; set; }
+
+    [JsonIgnore]
+    internal string AnalysisSourceCode { get; set; }
+
+    [JsonIgnore]
+    internal string AnalysisProjectLineEnding { get; set; }
 }
