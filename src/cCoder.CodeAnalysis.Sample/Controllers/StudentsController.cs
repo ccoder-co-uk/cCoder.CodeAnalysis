@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Exposures.Students;
+using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using Microsoft.AspNetCore.Mvc;
 
@@ -46,14 +47,21 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
     [HttpDelete("{studentId:int}")]
     public async ValueTask<IActionResult> DeleteStudentAsync(int studentId)
     {
-        Student? student = studentManager.GetStudent(studentId: studentId);
-
-        if (student == null)
+        try
         {
-            return NotFound();
-        }
+            Student? student = studentManager.GetStudent(studentId: studentId);
 
-        await studentManager.DeleteStudentAsync(studentId: studentId);
-        return NoContent();
+            if (student == null)
+            {
+                return NotFound();
+            }
+
+            await studentManager.DeleteStudentAsync(studentId: studentId);
+            return NoContent();
+        }
+        catch (ServiceValidationException)
+        {
+            return BadRequest();
+        }
     }
 }
