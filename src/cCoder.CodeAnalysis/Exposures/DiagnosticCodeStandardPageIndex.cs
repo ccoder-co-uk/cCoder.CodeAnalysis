@@ -50,6 +50,9 @@ internal static class DiagnosticCodeStandardPageIndex
     private const string ODataProtocolPage =
         "https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html";
 
+    private const string OwaspApiSecurityPage =
+        "https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/";
+
     private static readonly DiagnosticCodeStandardPage[] diagnosticCodeStandardPages =
     [
         new(
@@ -78,6 +81,10 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "RFC0008", standardPageUri: $"{HttpSemanticsPage}#section-15.5.5"),
         new(diagnosticCode: "RFC0009", standardPageUri: $"{HttpSemanticsPage}#section-15.5.10"),
         new(diagnosticCode: "RFC0010", standardPageUri: $"{HttpSemanticsPage}#section-15.6.1"),
+        new(diagnosticCode: "ODATA0001", standardPageUri: $"{ODataProtocolPage}#sec_CreateanEntity"),
+        new(diagnosticCode: "ODATA0002", standardPageUri: $"{ODataProtocolPage}#sec_RetrieveanEntity"),
+        new(diagnosticCode: "ODATA0003", standardPageUri: $"{ODataProtocolPage}#sec_UnsupportedFunctionality"),
+        new(diagnosticCode: "OWASP0004", standardPageUri: OwaspApiSecurityPage),
         new(diagnosticCode: "STX0001", standardPageUri: $"{TheoryPage}#002-tri-nature"),
         new(diagnosticCode: "STX0002", standardPageUri: $"{ModelingPage}#01200-data-carrier-models"),
         new(diagnosticCode: "STX0003", standardPageUri: $"{ProcessingsPage}#22201-pass-through"),

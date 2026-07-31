@@ -48,6 +48,8 @@ public static class IServiceCollectionExtensions
         services.AddSingleton<ISTXAPPRulesProcessingService, STXAPPRulesProcessingService>();
         services.AddSingleton<ISTXAPIRulesProcessingService, STXAPIRulesProcessingService>();
         services.AddSingleton<IRFCRulesProcessingService, RFCRulesProcessingService>();
+        services.AddSingleton<IODATARulesProcessingService, ODATARulesProcessingService>();
+        services.AddSingleton<IOWASPRulesProcessingService, OWASPRulesProcessingService>();
         services.AddSingleton<ISTXBRulesProcessingService, STXBRulesProcessingService>();
         services.AddSingleton<ISTXDRulesProcessingService, STXDRulesProcessingService>();
         services.AddSingleton<ISTXERulesProcessingService, STXERulesProcessingService>();
@@ -66,6 +68,8 @@ public static class IServiceCollectionExtensions
         AddRule<ISTXAPPRulesProcessingService>(services: services, "STXAPP");
         AddRule<ISTXAPIRulesProcessingService>(services: services, "STXAPI");
         AddRule<IRFCRulesProcessingService>(services: services, "RFC");
+        AddRule<IODATARulesProcessingService>(services: services, "ODATA");
+        AddRule<IOWASPRulesProcessingService>(services: services, "OWASP");
         AddRule<ISTXARulesProcessingService>(services: services, "STXA");
         AddRule<ISTXBRulesProcessingService>(services: services, "STXB");
         AddRule<ISTXCRulesProcessingService>(services: services, "STXC");
@@ -128,7 +132,10 @@ public static class IServiceCollectionExtensions
             standardElementType: StandardElementType.Dependency
         );
 
-        AddRuleHandlingServices<ISTXFORMATRulesProcessingService, ISTXMRulesProcessingService>(
+        AddRuleHandlingServices<
+            ISTXFORMATRulesProcessingService,
+            ISTXSTRUCTRulesProcessingService,
+            ISTXMRulesProcessingService>(
             services: services,
             standardElementType: StandardElementType.Model
         );
@@ -146,14 +153,20 @@ public static class IServiceCollectionExtensions
             ISTXBRulesProcessingService
         >(services: services, standardElementType: StandardElementType.Broker);
 
-        AddRuleHandlingServices<
-            ISTXFORMATRulesProcessingService,
-            ISTXSTRUCTRulesProcessingService,
-            ISTXRulesProcessingService,
-            ISTXERulesProcessingService,
-            ISTXAPIRulesProcessingService,
-            IRFCRulesProcessingService
-        >(services: services, standardElementType: StandardElementType.Exposure);
+        AddRuleHandlingServices(
+            services: services,
+            standardElementType: StandardElementType.Exposure,
+            ruleServicesFactory: serviceProvider =>
+                [
+                    serviceProvider.GetRequiredService<ISTXFORMATRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXSTRUCTRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXERulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXAPIRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<IRFCRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<IODATARulesProcessingService>(),
+                    serviceProvider.GetRequiredService<IOWASPRulesProcessingService>(),
+                ]);
 
         AddServiceRuleHandlingServices<ISTXARulesProcessingService>(
             services: services,

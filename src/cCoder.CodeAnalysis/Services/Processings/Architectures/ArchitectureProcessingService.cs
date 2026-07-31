@@ -477,6 +477,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             IsExceptionPath = exceptionCatch is not null,
                             IsNullPath = statusCode == 404
                                 && (nullBranch is not null || nullConditional is not null),
+                            ExposesExceptionDetails = ExposesExceptionDetails(
+                                invocation: invocation,
+                                exceptionCatch: exceptionCatch),
                         });
                 }
             }
@@ -489,7 +492,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     response.ResultMethod,
                     response.ExceptionType,
                     response.IsExceptionPath,
-                    response.IsNullPath))
+                    response.IsNullPath,
+                    response.ExposesExceptionDetails))
             .Select(group => group.First())
             .OrderBy(response => response.StatusCode)
             .ThenBy(response => response.ResultMethod, StringComparer.Ordinal)
@@ -576,6 +580,20 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .Type;
 
         return exceptionType is null ? string.Empty : GetTypeName(type: exceptionType);
+    }
+
+    private static bool ExposesExceptionDetails(
+        InvocationExpressionSyntax invocation,
+        CatchClauseSyntax? exceptionCatch)
+    {
+        string exceptionIdentifier = exceptionCatch?.Declaration?.Identifier.Text ?? string.Empty;
+
+        return exceptionIdentifier.Length > 0
+            && invocation.ArgumentList.Arguments.Any(
+                argument => argument.Expression
+                    .DescendantNodesAndSelf()
+                    .OfType<IdentifierNameSyntax>()
+                    .Any(identifier => identifier.Identifier.Text == exceptionIdentifier));
     }
 
     private static bool InheritsFromTypeNamed(

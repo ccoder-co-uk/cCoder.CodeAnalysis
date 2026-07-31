@@ -82,7 +82,7 @@ public sealed class PublicApiTests
         services.AddCodeAnalysis();
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        provider.GetServices<IRuleProcessingService>().Should().HaveCount(18, "");
+        provider.GetServices<IRuleProcessingService>().Should().HaveCount(20, "");
     }
 
     [Theory]
@@ -90,6 +90,8 @@ public sealed class PublicApiTests
     [InlineData("STXAPP", typeof(ISTXAPPRulesProcessingService))]
     [InlineData("STXAPI", typeof(ISTXAPIRulesProcessingService))]
     [InlineData("RFC", typeof(IRFCRulesProcessingService))]
+    [InlineData("ODATA", typeof(IODATARulesProcessingService))]
+    [InlineData("OWASP", typeof(IOWASPRulesProcessingService))]
     [InlineData("STXA", typeof(ISTXARulesProcessingService))]
     [InlineData("STXB", typeof(ISTXBRulesProcessingService))]
     [InlineData("STXC", typeof(ISTXCRulesProcessingService))]
