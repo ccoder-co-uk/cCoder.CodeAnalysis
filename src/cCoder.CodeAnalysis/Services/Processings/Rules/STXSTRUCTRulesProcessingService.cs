@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessingService
 {
+    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTXSTRUCT001(context: context)
@@ -43,28 +47,23 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             );
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
     {
-        return context.Declarations
+        ClassDeclarationSyntax? declaration = context.Declarations
             .OfType<ClassDeclarationSyntax>()
-            .Where(predicate: IsTopLevelClass)
-            .Where(
-                predicate: (ClassDeclarationSyntax declaration) =>
-                    declaration.SyntaxTree
-                        .GetRoot()
-                        .DescendantNodes()
-                        .OfType<ClassDeclarationSyntax>()
-                        .Count(predicate: IsTopLevelClass) > 1
-            )
-            .Select(
-                selector: (ClassDeclarationSyntax declaration) =>
+            .FirstOrDefault(predicate: IsTopLevelClass);
+
+        return declaration is not null
+            && architectureModelQueries.HasMultipleTopLevelClasses(context: context)
+                ?
+                [
                     CreateAnalysisItem(
                         code: "STXSTRUCT002",
                         description: "A source file must contain only one top-level class.",
                         context: context,
-                        location: declaration.GetLocation()
-                    )
-            );
+                        location: declaration.GetLocation())
+                ]
+                : [];
     }
 
     private static bool IsTopLevelClass(ClassDeclarationSyntax declaration) =>

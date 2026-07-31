@@ -104,6 +104,8 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 type: type,
                 compilation: compilation),
             DeclaresDependencyIntent = DeclaresDependencyIntent(type: type),
+            SourceFileTopLevelClassCount = GetTopLevelClasses(declaration: declaration).Count,
+            IsPrimaryTopLevelClassInFile = IsPrimaryTopLevelClass(declaration: declaration),
             Declarations = type
                 .DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
@@ -158,6 +160,28 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             PublicApiModelTypes = GetPublicApiModelTypes(type: type),
             ProjectTypeNames = declaredTypes.Select(selector: GetTypeName).ToArray(),
         };
+    }
+
+    private static IReadOnlyList<ClassDeclarationSyntax> GetTopLevelClasses(
+        TypeDeclarationSyntax? declaration) =>
+        declaration?.SyntaxTree
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .Where(predicate: candidate =>
+                !candidate.Ancestors().OfType<TypeDeclarationSyntax>().Any())
+            .ToArray()
+        ?? [];
+
+    private static bool IsPrimaryTopLevelClass(TypeDeclarationSyntax? declaration)
+    {
+        if (declaration is not ClassDeclarationSyntax classDeclaration)
+        {
+            return false;
+        }
+
+        return GetTopLevelClasses(declaration: declaration).FirstOrDefault()?.SpanStart
+            == classDeclaration.SpanStart;
     }
 
     private static string[] GetPublicApiModelTypes(INamedTypeSymbol type) =>

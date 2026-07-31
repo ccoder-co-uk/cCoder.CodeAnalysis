@@ -15,6 +15,13 @@ internal sealed class ArchitectureModelQueriesProcessingService
     public bool ImplementsContract(EvaluationContext context) =>
         (context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces).Count != 0;
 
+    public bool HasMultipleTopLevelClasses(EvaluationContext context) =>
+        context.ArchitectureElement is Class architectureElement
+            ? architectureElement.AnalysisIsPrimaryTopLevelClassInFile
+                && architectureElement.AnalysisSourceFileTopLevelClassCount > 1
+            : context.IsPrimaryTopLevelClassInFile
+                && context.SourceFileTopLevelClassCount > 1;
+
     public IReadOnlyList<Method> GetReachableMethods(EvaluationContext context, string methodId)
     {
         Dictionary<string, Method> methodsById = GetMethodsById(context: context);

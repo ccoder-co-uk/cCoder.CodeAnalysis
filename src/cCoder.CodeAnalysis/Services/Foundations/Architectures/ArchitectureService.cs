@@ -149,7 +149,7 @@ internal sealed class ArchitectureService(IFileBroker fileBroker) : IArchitectur
     private static SyntaxTree CreateImplicitUsingsSyntaxTree() =>
 
         CSharpSyntaxTree.ParseText(
-            text: "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;"
+            text: "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Net.Http;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;"
         );
 
     private static bool IsBuildOutput(string path, string projectDirectory)

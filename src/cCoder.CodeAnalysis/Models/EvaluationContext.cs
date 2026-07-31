@@ -29,6 +29,8 @@ public sealed class EvaluationContext
     public bool ExposesExternalResource { get; set; }
     public bool UsesExternalResource { get; set; }
     public bool DeclaresDependencyIntent { get; set; }
+    public int SourceFileTopLevelClassCount { get; set; }
+    public bool IsPrimaryTopLevelClassInFile { get; set; }
     public IReadOnlyList<TypeDeclarationSyntax> Declarations { get; set; }
     public IReadOnlyList<TypeDependency> Dependencies { get; set; }
     public IReadOnlyCollection<string> LocalDependencyTypeNames { get; set; }

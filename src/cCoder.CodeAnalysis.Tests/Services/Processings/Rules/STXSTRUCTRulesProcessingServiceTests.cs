@@ -144,6 +144,13 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
             .OfType<ClassDeclarationSyntax>()
             .First();
 
+        ClassDeclarationSyntax[] topLevelClasses = syntaxTree
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .Where(candidate => !candidate.Ancestors().OfType<TypeDeclarationSyntax>().Any())
+            .ToArray();
+
         return new EvaluationContext
         {
             TypeName = typeName,
@@ -151,6 +158,8 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
             FilePath = syntaxTree.FilePath,
             SourceCode = sourceCode,
             Declarations = [declaration],
+            SourceFileTopLevelClassCount = topLevelClasses.Length,
+            IsPrimaryTopLevelClassInFile = declaration.SpanStart == topLevelClasses[0].SpanStart,
             Dependencies = [],
             ImplementedInterfaces = [],
             PublicMethodNames = [],

@@ -25,6 +25,10 @@ internal static class EvaluationContextModelAdapter
 
         architectureElement.AnalysisDependencies = context.Dependencies;
         architectureElement.AnalysisImplementedInterfaces = context.ImplementedInterfaces;
+        architectureElement.AnalysisSourceFileTopLevelClassCount =
+            context.SourceFileTopLevelClassCount;
+        architectureElement.AnalysisIsPrimaryTopLevelClassInFile =
+            context.IsPrimaryTopLevelClassInFile;
         context.ArchitectureModel = architecture;
         context.ArchitectureElement = architectureElement;
 
