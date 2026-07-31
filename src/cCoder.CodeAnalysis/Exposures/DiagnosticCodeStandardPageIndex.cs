@@ -44,8 +44,30 @@ internal static class DiagnosticCodeStandardPageIndex
     private const string WebApplicationsPage =
         "https://github.com/hassanhabib/The-Standard/blob/master/3.%20Exposers/3.2%20User%20Interfaces/3.2.1%20Web%20Applications/3.2.1%20Web%20Applications.md";
 
+    private const string HttpSemanticsPage =
+        "https://www.rfc-editor.org/rfc/rfc9110.html";
+
+    private const string ODataProtocolPage =
+        "https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html";
+
     private static readonly DiagnosticCodeStandardPage[] diagnosticCodeStandardPages =
     [
+        new(
+            diagnosticCode: "RFC0001",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.2"
+        ),
+        new(diagnosticCode: "RFC0002", standardPageUri: $"{HttpSemanticsPage}#section-15.3.5"),
+        new(
+            diagnosticCode: "RFC0003",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.1"
+        ),
+        new(
+            diagnosticCode: "RFC0004",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.1"
+        ),
         new(diagnosticCode: "STX0001", standardPageUri: $"{TheoryPage}#002-tri-nature"),
         new(diagnosticCode: "STX0002", standardPageUri: $"{ModelingPage}#01200-data-carrier-models"),
         new(diagnosticCode: "STX0003", standardPageUri: $"{ProcessingsPage}#22201-pass-through"),

@@ -46,6 +46,7 @@ public static class IServiceCollectionExtensions
         services.AddSingleton<ISTXRulesProcessingService, STXRulesProcessingService>();
         services.AddSingleton<ISTXAPPRulesProcessingService, STXAPPRulesProcessingService>();
         services.AddSingleton<ISTXAPIRulesProcessingService, STXAPIRulesProcessingService>();
+        services.AddSingleton<IRFCRulesProcessingService, RFCRulesProcessingService>();
         services.AddSingleton<ISTXBRulesProcessingService, STXBRulesProcessingService>();
         services.AddSingleton<ISTXDRulesProcessingService, STXDRulesProcessingService>();
         services.AddSingleton<ISTXERulesProcessingService, STXERulesProcessingService>();
@@ -63,6 +64,7 @@ public static class IServiceCollectionExtensions
         AddRule<ISTXRulesProcessingService>(services: services, "STX");
         AddRule<ISTXAPPRulesProcessingService>(services: services, "STXAPP");
         AddRule<ISTXAPIRulesProcessingService>(services: services, "STXAPI");
+        AddRule<IRFCRulesProcessingService>(services: services, "RFC");
         AddRule<ISTXARulesProcessingService>(services: services, "STXA");
         AddRule<ISTXBRulesProcessingService>(services: services, "STXB");
         AddRule<ISTXCRulesProcessingService>(services: services, "STXC");
@@ -148,7 +150,8 @@ public static class IServiceCollectionExtensions
             ISTXSTRUCTRulesProcessingService,
             ISTXRulesProcessingService,
             ISTXERulesProcessingService,
-            ISTXAPIRulesProcessingService
+            ISTXAPIRulesProcessingService,
+            IRFCRulesProcessingService
         >(services: services, standardElementType: StandardElementType.Exposure);
 
         AddServiceRuleHandlingServices<ISTXARulesProcessingService>(
@@ -287,6 +290,31 @@ public static class IServiceCollectionExtensions
                     serviceProvider.GetRequiredService<T3>(),
                     serviceProvider.GetRequiredService<T4>(),
                     serviceProvider.GetRequiredService<T5>(),
+                ]
+        );
+
+    private static void AddRuleHandlingServices<T1, T2, T3, T4, T5, T6>(
+        IServiceCollection services,
+        StandardElementType standardElementType
+    )
+        where T1 : class, IRuleProcessingService
+        where T2 : class, IRuleProcessingService
+        where T3 : class, IRuleProcessingService
+        where T4 : class, IRuleProcessingService
+        where T5 : class, IRuleProcessingService
+        where T6 : class, IRuleProcessingService =>
+
+        AddRuleHandlingServices(
+            services: services,
+            standardElementType: standardElementType,
+            ruleServicesFactory: (IServiceProvider serviceProvider) =>
+                [
+                    serviceProvider.GetRequiredService<T1>(),
+                    serviceProvider.GetRequiredService<T2>(),
+                    serviceProvider.GetRequiredService<T3>(),
+                    serviceProvider.GetRequiredService<T4>(),
+                    serviceProvider.GetRequiredService<T5>(),
+                    serviceProvider.GetRequiredService<T6>(),
                 ]
         );
 

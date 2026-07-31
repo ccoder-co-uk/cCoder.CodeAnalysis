@@ -4,6 +4,7 @@
 
 using System.Reflection;
 using cCoder.CodeAnalysis.Exposures;
+using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
@@ -81,13 +82,14 @@ public sealed class PublicApiTests
         services.AddCodeAnalysis();
         using ServiceProvider provider = services.BuildServiceProvider();
 
-        provider.GetServices<IRuleProcessingService>().Should().HaveCount(17, "");
+        provider.GetServices<IRuleProcessingService>().Should().HaveCount(18, "");
     }
 
     [Theory]
     [InlineData("STX", typeof(ISTXRulesProcessingService))]
     [InlineData("STXAPP", typeof(ISTXAPPRulesProcessingService))]
     [InlineData("STXAPI", typeof(ISTXAPIRulesProcessingService))]
+    [InlineData("RFC", typeof(IRFCRulesProcessingService))]
     [InlineData("STXA", typeof(ISTXARulesProcessingService))]
     [InlineData("STXB", typeof(ISTXBRulesProcessingService))]
     [InlineData("STXC", typeof(ISTXCRulesProcessingService))]
@@ -111,5 +113,21 @@ public sealed class PublicApiTests
         IRuleProcessingService rule = provider.GetRequiredKeyedService<IRuleProcessingService>(prefix);
 
         expectedServiceType.IsInstanceOfType(rule).Should().BeTrue("");
+    }
+
+    [Fact]
+    public void AddCodeAnalysisShouldEvaluateRfcRulesForExposures()
+    {
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        IEnumerable<IRuleProcessingService> exposureRules =
+            provider.GetRequiredKeyedService<
+                IEnumerable<IRuleProcessingService>>(
+                StandardElementType.Exposure.ToString());
+
+        exposureRules.Should()
+            .ContainSingle(rule => rule is IRFCRulesProcessingService);
     }
 }
