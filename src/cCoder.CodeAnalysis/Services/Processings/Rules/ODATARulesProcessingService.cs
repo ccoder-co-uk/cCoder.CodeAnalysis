@@ -38,7 +38,7 @@ internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
                     method: method);
             }
 
-            if (method.ThrowsExceptionTypes.Any(
+            if ((method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
                     exceptionType => exceptionType.EndsWith(
                         "NotImplementedException",
                         StringComparison.Ordinal))

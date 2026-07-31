@@ -117,12 +117,12 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
         Method method,
         string category) =>
 
-        method.ThrowsExceptionTypes.Any(
+        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
             exceptionType => exceptionType.Contains(category, StringComparison.Ordinal));
 
     private static bool HasConflictException(Method method) =>
 
-        method.ThrowsExceptionTypes.Any(
+        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
             exceptionType =>
                 (exceptionType.Contains("Conflict", StringComparison.Ordinal)
                     || exceptionType.Contains("Concurrency", StringComparison.Ordinal))

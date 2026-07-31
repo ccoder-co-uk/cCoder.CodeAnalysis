@@ -26,9 +26,18 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
                 StringComparer.Ordinal);
 
         Dictionary<string, IReadOnlyCollection<string>> exceptionCache = new(StringComparer.Ordinal);
+        Dictionary<string, IReadOnlyCollection<string>> possibleExceptionCache = new(StringComparer.Ordinal);
 
         foreach (Method method in methods)
         {
+            method.PossibleExceptionTypes = GetPossibleExceptionTypes(
+                    method: method,
+                    methodsById: methodsById,
+                    implementationsByContractId: implementationsByContractId,
+                    exceptionCache: possibleExceptionCache,
+                    activeMethodIds: new HashSet<string>(StringComparer.Ordinal))
+                .OrderBy(typeName => typeName, StringComparer.Ordinal)
+                .ToList();
             method.ThrowsExceptionTypes = GetEscapingExceptionTypes(
                     method: method,
                     methodsById: methodsById,
@@ -40,6 +49,52 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
         }
 
         return architectureBuild;
+    }
+
+    private static IReadOnlyCollection<string> GetPossibleExceptionTypes(
+        Method method,
+        IReadOnlyDictionary<string, Method> methodsById,
+        IReadOnlyDictionary<string, Method[]> implementationsByContractId,
+        IDictionary<string, IReadOnlyCollection<string>> exceptionCache,
+        ISet<string> activeMethodIds)
+    {
+        if (exceptionCache.TryGetValue(method.Id, out IReadOnlyCollection<string>? cached))
+        {
+            return cached;
+        }
+
+        if (!activeMethodIds.Add(method.Id))
+        {
+            return [];
+        }
+
+        HashSet<string> possibleExceptions = new(
+            method.DirectlyThrowsExceptionTypes,
+            StringComparer.Ordinal);
+
+        foreach (MethodCall call in method.DirectCalls.Where(call => !call.IsDependencyBoundary))
+        {
+            foreach (Method calledMethod in ResolveCalledMethods(
+                call: call,
+                methodsById: methodsById,
+                implementationsByContractId: implementationsByContractId))
+            {
+                possibleExceptions.UnionWith(
+                    GetPossibleExceptionTypes(
+                        method: calledMethod,
+                        methodsById: methodsById,
+                        implementationsByContractId: implementationsByContractId,
+                        exceptionCache: exceptionCache,
+                        activeMethodIds: activeMethodIds));
+            }
+        }
+
+        activeMethodIds.Remove(method.Id);
+        string[] result = possibleExceptions
+            .OrderBy(typeName => typeName, StringComparer.Ordinal)
+            .ToArray();
+        exceptionCache[method.Id] = result;
+        return result;
     }
 
     private static IReadOnlyCollection<string> GetEscapingExceptionTypes(

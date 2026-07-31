@@ -56,6 +56,30 @@ public sealed class ArchitectureGraphProcessingServiceTests
         first.ThrowsExceptionTypes.Should().Contain("ProcessingException", "");
     }
 
+    [Fact]
+    public void ProcessShouldRetainReachableExceptionsAfterTheyAreCaught()
+    {
+        Method controller = CreateMethod(
+            id: "StudentController.Put()",
+            calls: [CreateCall("StudentService.Modify()")]);
+        controller.ExceptionCatches.Add(
+            new ExceptionCatch
+            {
+                ExceptionType = "StudentValidationException",
+                ThrownExceptionTypes = [],
+            });
+        Method service = CreateMethod(
+            id: "StudentService.Modify()",
+            throwsExceptionTypes: ["StudentValidationException"]);
+        ArchitectureBuild architectureBuild = CreateBuild(controller, service);
+        ArchitectureGraphProcessingService serviceUnderTest = new();
+
+        serviceUnderTest.Process(architectureBuild);
+
+        controller.PossibleExceptionTypes.Should().Contain("StudentValidationException", "");
+        controller.ThrowsExceptionTypes.Should().NotContain("StudentValidationException", "");
+    }
+
     private static ArchitectureBuild CreateBuild(params Method[] methods) =>
 
         new()
@@ -92,6 +116,7 @@ public sealed class ArchitectureGraphProcessingServiceTests
             ReturnType = "System.Void",
             Implements = implements?.ToList() ?? [],
             Calls = calls?.ToList() ?? [],
+            PossibleExceptionTypes = throwsExceptionTypes?.ToList() ?? [],
             ThrowsExceptionTypes = throwsExceptionTypes?.ToList() ?? [],
             DirectCalls = calls?.ToList() ?? [],
             DirectlyThrowsExceptionTypes = throwsExceptionTypes?.ToList() ?? [],

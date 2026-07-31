@@ -16,6 +16,7 @@ public sealed class Method
     public string ReturnType { get; set; }
     public List<string> Implements { get; set; }
     public List<MethodCall> Calls { get; set; }
+    public List<string> PossibleExceptionTypes { get; set; }
     public List<string> ThrowsExceptionTypes { get; set; }
     public List<string> HttpMethods { get; set; }
     public List<HttpResponse> HttpResponses { get; set; }
