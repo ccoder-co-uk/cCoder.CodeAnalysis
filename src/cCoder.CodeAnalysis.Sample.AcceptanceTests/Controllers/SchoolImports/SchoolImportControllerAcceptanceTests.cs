@@ -116,7 +116,7 @@ public sealed class SchoolImportControllerAcceptanceTests : IAsyncLifetime
         >();
         await using SchoolContext context = await contextFactory.CreateDbContextAsync();
         bool schoolExists = await context.Schools.AnyAsync((School school) => school.Name == invalidSchool.Name);
-        EnumAssertionsExtensions.Should(response.StatusCode).Be(HttpStatusCode.Accepted, responseContent);
+        EnumAssertionsExtensions.Should(response.StatusCode).Be(HttpStatusCode.Accepted, "");
         schoolExists.Should().BeFalse("");
     }
 
