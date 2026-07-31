@@ -6,6 +6,7 @@ using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Foundations.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using FluentAssertions;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Moq;
 
@@ -13,6 +14,84 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Architectures;
 
 public sealed class ArchitectureProcessingServiceTests
 {
+    [Fact]
+    public void ProcessShouldCaptureMethodCallsExceptionsAndDependencyBoundaries()
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                using System;
+                namespace Example.Controllers;
+
+                public interface IStudentBroker
+                {
+                    void SelectStudent();
+                }
+
+                public sealed class StudentController(IStudentBroker studentBroker)
+                {
+                    public void GetStudent(string studentId)
+                    {
+                        ValidateStudent();
+                        studentBroker.SelectStudent();
+                        studentId.Trim();
+                        throw new StudentValidationException();
+                    }
+
+                    private static void ValidateStudent()
+                    {
+                    }
+                }
+
+                public sealed class StudentValidationException : Exception
+                {
+                }
+                """,
+            path: "StudentController.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        ArchitectureBuild build = new()
+        {
+            Compilation = compilation,
+        };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock
+            .Setup(service => service.Build(compilation))
+            .Returns(build);
+        ArchitectureProcessingService service =
+            new(architectureServiceMock.Object);
+
+        ArchitectureBuild result = service.Process(compilation);
+
+        Class controller = result.Architecture.Classes.Single(
+            element => element.Name == "Example.Controllers.StudentController");
+        controller.StandardElementType.Should().Be(StandardElementType.Exposure, "");
+        Method getStudent = controller.Methods.Single(method => method.Name == "GetStudent");
+        getStudent.Id.Should().Be("Example.Controllers.StudentController.GetStudent(System.String)", "");
+        getStudent.ThrowsExceptionTypes.Should()
+            .ContainSingle()
+            .Which.Should()
+            .Be("Example.Controllers.StudentValidationException", "");
+        getStudent.Calls.Should().Contain(
+            call => call.MethodId == "Example.Controllers.IStudentBroker.SelectStudent()"
+                && !call.IsDependencyBoundary,
+            "");
+        getStudent.Calls.Should().Contain(
+            call => call.MethodId == "System.String.Trim()"
+                && call.StandardElementType == StandardElementType.Dependency
+                && call.IsDependencyBoundary,
+            "");
+        getStudent.Calls.Should().NotContain(call => call.MethodName == "ValidateStudent", "");
+        getStudent.DirectCalls.Should().Contain(call => call.MethodName == "ValidateStudent", "");
+
+        string json = ArchitectureJsonSerializer.Serialize(result.Architecture);
+        json.Should().NotContain("AnalysisMethods", "");
+        json.Should().NotContain("DirectCalls", "");
+        json.Should().NotContain("TargetSymbol", "");
+    }
+
     [Fact]
     public void ProcessShouldExcludeGeneratedSyntaxTrees()
     {

@@ -3,16 +3,18 @@
 // ---------------------------------------------------------------
 #nullable disable
 using System.Text.Json.Serialization;
+using Microsoft.CodeAnalysis;
 
 namespace cCoder.CodeAnalysis.Models;
 
-public sealed class Class
+public sealed class MethodCall
 {
-    public string Name { get; set; }
+    public string TypeName { get; set; }
+    public string MethodName { get; set; }
+    public string MethodId { get; set; }
     public StandardElementType StandardElementType { get; set; }
-    public List<Property> Properties { get; set; }
-    public List<Method> Methods { get; set; }
+    public bool IsDependencyBoundary { get; set; }
 
     [JsonIgnore]
-    internal List<Method> AnalysisMethods { get; set; }
+    internal IMethodSymbol TargetSymbol { get; set; }
 }

@@ -59,7 +59,12 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         {
             Classes = declaredTypes
                 .Where(predicate: (INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
-            .Select(selector: CreateClass)
+            .Select(
+                selector: (INamedTypeSymbol type) =>
+                    CreateClass(
+                        type: type,
+                        compilation: compilation,
+                        declaredTypes: declaredTypes))
                 .OrderBy(keySelector: (Class item) => item.Name, comparer: StringComparer.Ordinal)
                 .ToList(),
             Links = declaredTypes
@@ -140,9 +145,26 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .OfType<INamedTypeSymbol>();
     }
 
-    private static Class CreateClass(INamedTypeSymbol type) =>
+    private static Class CreateClass(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        List<Method> analysisMethods = type
+            .GetMembers()
+            .OfType<IMethodSymbol>()
+            .Where(predicate: (IMethodSymbol method) => method.MethodKind == MethodKind.Ordinary)
+            .Select(
+                selector: (IMethodSymbol method) =>
+                    CreateMethod(
+                        method: method,
+                        compilation: compilation,
+                        declaredTypes: declaredTypes))
+            .OrderBy(keySelector: (Method method) => method.Name, comparer: StringComparer.Ordinal)
+            .ThenBy(keySelector: (Method method) => method.Id, comparer: StringComparer.Ordinal)
+            .ToList();
 
-        new Class
+        return new Class
         {
             Name = GetTypeName(type: type),
             StandardElementType = Classify(type: type),
@@ -155,29 +177,172 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 )
                 .OrderBy(keySelector: (Property property) => property.Name, comparer: StringComparer.Ordinal)
                 .ToList(),
-            Methods = type.GetMembers()
-            .OfType<IMethodSymbol>()
-                .Where(
-                    predicate: (IMethodSymbol method) =>
-                        method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public
-                )
-                .Select(
-                    selector: (IMethodSymbol method) =>
-                        new Method
-                        {
-                            Name = method.Name,
-                            ReturnType = GetTypeName(type: method.ReturnType),
-                            Inputs = method
-                                .Parameters.Select(
-                                    selector: (IParameterSymbol parameter) =>
-                                        new Input { Name = parameter.Name, Type = GetTypeName(type: parameter.Type) }
-                                )
-            .ToList(),
-                        }
-                )
-                .OrderBy(keySelector: (Method method) => method.Name, comparer: StringComparer.Ordinal)
+            Methods = analysisMethods
+                .Where(predicate: (Method method) => method.Symbol.DeclaredAccessibility == Accessibility.Public)
                 .ToList(),
+            AnalysisMethods = analysisMethods,
         };
+    }
+
+    private static Method CreateMethod(
+        IMethodSymbol method,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        List<MethodCall> directCalls = GetDirectCalls(
+            method: method,
+            compilation: compilation,
+            declaredTypes: declaredTypes);
+
+        List<string> directlyThrownExceptionTypes = GetDirectlyThrownExceptionTypes(
+            method: method,
+            compilation: compilation);
+
+        return new Method
+        {
+            Id = GetMethodId(method: method),
+            Name = method.Name,
+            ReturnType = GetTypeName(type: method.ReturnType),
+            Inputs = method
+                .Parameters.Select(
+                    selector: (IParameterSymbol parameter) =>
+                        new Input { Name = parameter.Name, Type = GetTypeName(type: parameter.Type) })
+                .ToList(),
+            Calls = directCalls
+                .Where(
+                    predicate: (MethodCall call) =>
+                        call.TargetSymbol.DeclaredAccessibility == Accessibility.Public
+                        || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)
+                .ToList(),
+            ThrowsExceptionTypes = directlyThrownExceptionTypes.ToList(),
+            Symbol = method,
+            DirectCalls = directCalls,
+            DirectlyThrowsExceptionTypes = directlyThrownExceptionTypes,
+            ExceptionCatches = GetExceptionCatches(method: method, compilation: compilation),
+        };
+    }
+
+    private static List<MethodCall> GetDirectCalls(
+        IMethodSymbol method,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        return method
+            .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
+            .SelectMany(node => node.DescendantNodes().OfType<InvocationExpressionSyntax>())
+            .Select(invocation => GetCalledMethod(compilation: compilation, invocation: invocation))
+            .Where(methodSymbol => methodSymbol is not null)
+            .Select(methodSymbol => methodSymbol!)
+            .GroupBy(GetMethodId, StringComparer.Ordinal)
+            .Select(group => group.First())
+            .Select(
+                target =>
+                {
+                    bool isDependencyBoundary = !IsDeclaredInCurrentProject(
+                        method: target,
+                        compilation: compilation);
+
+                    INamedTypeSymbol? localType = declaredTypes.FirstOrDefault(
+                        type => SymbolEqualityComparer.Default.Equals(type, target.ContainingType));
+
+                    return new MethodCall
+                    {
+                        TypeName = GetTypeName(type: target.ContainingType),
+                        MethodName = target.Name,
+                        MethodId = GetMethodId(method: target),
+                        StandardElementType = isDependencyBoundary
+                            ? StandardElementType.Dependency
+                            : localType is null
+                                ? StandardElementType.Unknown
+                                : Classify(type: localType),
+                        IsDependencyBoundary = isDependencyBoundary,
+                        TargetSymbol = target,
+                    };
+                })
+            .OrderBy(call => call.MethodId, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static IMethodSymbol? GetCalledMethod(
+        CSharpCompilation compilation,
+        InvocationExpressionSyntax invocation)
+    {
+        SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree: invocation.SyntaxTree);
+        SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(node: invocation);
+        IMethodSymbol? method = symbolInfo.Symbol as IMethodSymbol
+            ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
+
+        return method?.ReducedFrom ?? method;
+    }
+
+    private static List<string> GetDirectlyThrownExceptionTypes(
+        IMethodSymbol method,
+        CSharpCompilation compilation)
+    {
+        return method
+            .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
+            .SelectMany(node => node.DescendantNodes().OfType<ThrowStatementSyntax>())
+            .Select(statement => statement.Expression)
+            .Where(expression => expression is not null)
+            .Select(
+                expression =>
+                    compilation.GetSemanticModel(syntaxTree: expression!.SyntaxTree).GetTypeInfo(expression).Type)
+            .Where(type => type is not null)
+            .Select(type => GetTypeName(type: type!))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(typeName => typeName, StringComparer.Ordinal)
+            .ToList();
+    }
+
+    private static List<ExceptionCatch> GetExceptionCatches(
+        IMethodSymbol method,
+        CSharpCompilation compilation)
+    {
+        return method
+            .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
+            .SelectMany(node => node.DescendantNodes().OfType<CatchClauseSyntax>())
+            .Select(
+                catchClause =>
+                {
+                    SemanticModel semanticModel = compilation.GetSemanticModel(catchClause.SyntaxTree);
+                    ITypeSymbol? caughtType = catchClause.Declaration is null
+                        ? compilation.GetTypeByMetadataName(fullyQualifiedMetadataName: "System.Exception")
+                        : semanticModel.GetTypeInfo(catchClause.Declaration.Type).Type;
+
+                    List<string> thrownTypes = catchClause.Block
+                        .DescendantNodes()
+                        .OfType<ThrowStatementSyntax>()
+                        .Where(statement => statement.Expression is not null)
+                        .Select(statement => semanticModel.GetTypeInfo(statement.Expression!).Type)
+                        .Where(type => type is not null)
+                        .Select(type => GetTypeName(type: type!))
+                        .Distinct(StringComparer.Ordinal)
+                        .OrderBy(typeName => typeName, StringComparer.Ordinal)
+                        .ToList();
+
+                    return new ExceptionCatch
+                    {
+                        ExceptionType = caughtType is null ? string.Empty : GetTypeName(type: caughtType),
+                        ThrownExceptionTypes = thrownTypes,
+                        Rethrows = catchClause.Block
+                            .DescendantNodes()
+                            .OfType<ThrowStatementSyntax>()
+                            .Any(statement => statement.Expression is null),
+                    };
+                })
+            .ToList();
+    }
+
+    private static bool IsDeclaredInCurrentProject(
+        IMethodSymbol method,
+        CSharpCompilation compilation) =>
+
+        SymbolEqualityComparer.Default.Equals(x: method.ContainingAssembly, y: compilation.Assembly)
+        && method.Locations.Any(location => location.IsInSource);
+
+    private static string GetMethodId(IMethodSymbol method) =>
+
+        $"{GetTypeName(type: method.ContainingType)}.{method.Name}({string.Join(",", method.Parameters.Select(parameter => GetTypeName(type: parameter.Type)))})";
 
     private static IEnumerable<Link> CreateLinks(
         INamedTypeSymbol type,
