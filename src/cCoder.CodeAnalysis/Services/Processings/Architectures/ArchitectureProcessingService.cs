@@ -212,8 +212,12 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             Calls = directCalls
                 .Where(
                     predicate: (MethodCall call) =>
-                        call.TargetSymbol.DeclaredAccessibility == Accessibility.Public
-                        || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)
+                        call.IsDependencyBoundary
+                        || (
+                            call.TargetSymbol.MethodKind == MethodKind.Ordinary
+                            && (
+                                call.TargetSymbol.DeclaredAccessibility == Accessibility.Public
+                                || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)))
                 .ToList(),
             ThrowsExceptionTypes = directlyThrownExceptionTypes.ToList(),
             Symbol = method,
@@ -230,8 +234,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     {
         return method
             .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
-            .SelectMany(node => node.DescendantNodes().OfType<InvocationExpressionSyntax>())
-            .Select(invocation => GetCalledMethod(compilation: compilation, invocation: invocation))
+            .SelectMany(
+                node => node.DescendantNodes().Where(
+                    descendant => descendant
+                        is InvocationExpressionSyntax
+                        or ObjectCreationExpressionSyntax
+                        or ImplicitObjectCreationExpressionSyntax))
+            .Select(call => GetCalledMethod(compilation: compilation, call: call))
             .Where(methodSymbol => methodSymbol is not null)
             .Select(methodSymbol => methodSymbol!)
             .GroupBy(GetMethodId, StringComparer.Ordinal)
@@ -266,10 +275,10 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
     private static IMethodSymbol? GetCalledMethod(
         CSharpCompilation compilation,
-        InvocationExpressionSyntax invocation)
+        SyntaxNode call)
     {
-        SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree: invocation.SyntaxTree);
-        SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(node: invocation);
+        SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree: call.SyntaxTree);
+        SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(node: call);
         IMethodSymbol? method = symbolInfo.Symbol as IMethodSymbol
             ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
 
