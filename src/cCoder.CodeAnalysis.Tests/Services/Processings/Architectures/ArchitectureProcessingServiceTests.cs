@@ -211,7 +211,7 @@ public sealed class ArchitectureProcessingServiceTests
                     public object GetStudentHeaders() => Ok(new object());
 
                     [HttpGet]
-                    public object GetStudent(int studentId)
+                    public object Get(int key)
                     {
                         try
                         {
@@ -233,6 +233,12 @@ public sealed class ArchitectureProcessingServiceTests
                             return Forbid();
                         }
                     }
+
+                    [HttpGet]
+                    public object GetRootFor(int key) => Ok(new object());
+
+                    [HttpGet]
+                    public object GetAll(object queryOptions) => Ok(new object());
                 }
                 """,
             path: "StudentController.cs");
@@ -249,7 +255,7 @@ public sealed class ArchitectureProcessingServiceTests
 
         Method action = result.Architecture.Classes
             .Single(element => element.Name == "Example.Controllers.StudentController")
-            .Methods.Single(method => method.Name == "GetStudent");
+            .Methods.Single(method => method.Name == "Get");
         action.IsHttpRequestHandler.Should().BeTrue("");
         action.IsODataControllerAction.Should().BeTrue("");
         action.HasTryCatch.Should().BeTrue("");
@@ -270,6 +276,14 @@ public sealed class ArchitectureProcessingServiceTests
             response => response.StatusCode == 403
                 && response.ExceptionType == "Example.Controllers.StudentAuthorizationException",
             "");
+        result.Architecture.Classes
+            .Single(element => element.Name == "Example.Controllers.StudentController")
+            .Methods.Single(method => method.Name == "GetRootFor")
+            .HasKeyParameter.Should().BeFalse("");
+        result.Architecture.Classes
+            .Single(element => element.Name == "Example.Controllers.StudentController")
+            .Methods.Single(method => method.Name == "GetAll")
+            .HasKeyParameter.Should().BeFalse("");
         Method headAction = result.Architecture.Classes
             .Single(element => element.Name == "Example.Controllers.StudentController")
             .Methods.Single(method => method.Name == "GetStudentHeaders");

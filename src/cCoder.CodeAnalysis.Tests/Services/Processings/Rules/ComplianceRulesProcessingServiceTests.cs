@@ -9,25 +9,73 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
 public sealed class ComplianceRulesProcessingServiceTests
 {
-    [Theory]
-    [InlineData("POST", false, false, "ODATA0001")]
-    [InlineData("GET", true, false, "ODATA0002")]
-    public void ODataRulesShouldRequireCreateAndNotFoundResponses(
-        string httpMethod,
-        bool hasKeyParameter,
-        bool handlesNullWithNotFound,
-        string expectedCode)
+    [Fact]
+    public void ODataRuleShouldRequireCreatedResponseForEntityCreate()
     {
         Method method = CreateMethod();
-        method.HttpMethods.Add(httpMethod);
-        method.HasKeyParameter = hasKeyParameter;
-        method.HandlesNullWithNotFound = handlesNullWithNotFound;
+        method.Name = "Post";
+        method.HttpMethods.Add("POST");
+        method.HasFromBodyParameter = true;
         EvaluationContext context = CreateContext(method: method);
         ODATARulesProcessingService service = new();
 
         service.Evaluate(context: context)
             .Should()
-            .ContainSingle(item => item.Code == expectedCode);
+            .ContainSingle(item => item.Code == "ODATA0001");
+    }
+
+    [Theory]
+    [InlineData("PostCopyAsync", "POST", true)]
+    [InlineData("GetRender", "POST", false)]
+    [InlineData("DeleteAll", "POST", true)]
+    public void ODataRuleShouldAllowNonCreationPostActions(
+        string methodName,
+        string httpMethod,
+        bool hasFromBodyParameter)
+    {
+        Method method = CreateMethod();
+        method.Name = methodName;
+        method.HttpMethods.Add(httpMethod);
+        method.HasFromBodyParameter = hasFromBodyParameter;
+        EvaluationContext context = CreateContext(method: method);
+        ODATARulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "ODATA0001");
+    }
+
+    [Fact]
+    public void ODataRuleShouldRequireNotFoundForKeyedEntityRead()
+    {
+        Method method = CreateMethod();
+        method.Name = "Get";
+        method.HttpMethods.Add("GET");
+        method.HasKeyParameter = true;
+        EvaluationContext context = CreateContext(method: method);
+        ODATARulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "ODATA0002");
+    }
+
+    [Theory]
+    [InlineData("GetAll")]
+    [InlineData("GetRender")]
+    [InlineData("GetRootFor")]
+    public void ODataRuleShouldAllowNonEntityGetActions(string methodName)
+    {
+        Method method = CreateMethod();
+        method.Name = methodName;
+        method.HttpMethods.Add("GET");
+        method.HasKeyParameter = false;
+        EvaluationContext context = CreateContext(method: method);
+        ODATARulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "ODATA0002");
     }
 
     [Fact]

@@ -592,8 +592,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             HasFromBodyParameter = method.Parameters.Any(parameter =>
                 parameter.GetAttributes().Any(attribute =>
                     attribute.AttributeClass?.Name == "FromBodyAttribute")),
-            HasKeyParameter = httpMethods.Contains("GET", StringComparer.Ordinal)
-                && method.Parameters.Length > 0,
+            HasKeyParameter = isODataControllerAction
+                && httpMethods.Contains("GET", StringComparer.Ordinal)
+                && method.Name == "Get"
+                && method.Parameters.Any(parameter =>
+                    parameter.Name.Equals("key", StringComparison.OrdinalIgnoreCase)),
             HandlesNullWithNotFound = httpResponses.Any(
                 response => response.StatusCode == 404 && response.IsNullPath),
             HasTryCatch = exceptionCatches.Count > 0,
