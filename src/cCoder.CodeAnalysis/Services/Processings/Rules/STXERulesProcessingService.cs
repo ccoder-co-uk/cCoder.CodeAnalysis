@@ -23,14 +23,11 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             "Extensions",
             StringComparison.Ordinal))
         {
-            if (facts is null
-                || !facts.Methods.Any(method => method.IsExtensionMethod))
+            foreach (AnalysisItem item in EvaluateSTXE006(
+                context: context,
+                facts: facts))
             {
-                yield return CreateAnalysisItem(
-                    code: "STXE006",
-                    description:
-                        "A type named Extensions must declare at least one extension method.",
-                    context: context);
+                yield return item;
             }
 
             foreach (AnalysisItem item in facts is null
@@ -71,6 +68,21 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             yield return item;
         }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXE006(
+        EvaluationContext context,
+        TypeAnalysisFacts? facts) =>
+        facts is null
+        || !facts.Methods.Any(method => method.IsExtensionMethod)
+            ?
+            [
+                CreateAnalysisItem(
+                    code: "STXE006",
+                    description:
+                        "A type named Extensions must declare at least one extension method.",
+                    context: context)
+            ]
+            : [];
 
     private static AnalysisItem CreateAnalysisItem(
         string code,
