@@ -9,10 +9,7 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateOWASP0004(context))
-        {
-            yield return item;
-        }
+        return EvaluateOWASP0004(context: context);
     }
 
     private static IEnumerable<AnalysisItem> EvaluateOWASP0004(EvaluationContext context) =>

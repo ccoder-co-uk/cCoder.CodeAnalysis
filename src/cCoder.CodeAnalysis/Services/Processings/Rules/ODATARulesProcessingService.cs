@@ -9,20 +9,9 @@ internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateODATA0001(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateODATA0002(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateODATA0003(context))
-        {
-            yield return item;
-        }
+        return EvaluateODATA0001(context: context)
+            .Concat(second: EvaluateODATA0002(context: context))
+            .Concat(second: EvaluateODATA0003(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateODATA0001(EvaluationContext context) =>

@@ -23,50 +23,24 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             "Extensions",
             StringComparison.Ordinal))
         {
-            foreach (AnalysisItem item in EvaluateSTXE006(
-                context: context,
-                facts: facts))
-            {
-                yield return item;
-            }
-
-            foreach (AnalysisItem item in facts is null
+            IEnumerable<AnalysisItem> extensionContainerRules = facts is null
                 ? []
                 : EvaluateSTXE007(
                     context: context,
                     facts: facts,
-                    extensionContainerName: typeName))
-            {
-                yield return item;
-            }
+                    extensionContainerName: typeName);
 
-            yield break;
+            return EvaluateSTXE006(
+                    context: context,
+                    facts: facts)
+                .Concat(second: extensionContainerRules);
         }
 
-        foreach (AnalysisItem item in EvaluateSTXE001(context: context, facts: facts))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE002(context: context, facts: facts))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE004(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE005(context: context, facts: facts))
-        {
-            yield return item;
-        }
+        return EvaluateSTXE001(context: context, facts: facts)
+            .Concat(second: EvaluateSTXE002(context: context, facts: facts))
+            .Concat(second: EvaluateSTXE003(context: context))
+            .Concat(second: EvaluateSTXE004(context: context))
+            .Concat(second: EvaluateSTXE005(context: context, facts: facts));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE006(

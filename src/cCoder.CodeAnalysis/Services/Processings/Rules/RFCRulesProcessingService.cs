@@ -9,55 +9,16 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateRFC0001(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0002(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0003(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0004(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0005(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0006(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0007(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0008(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0009(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateRFC0010(context))
-        {
-            yield return item;
-        }
+        return EvaluateRFC0001(context: context)
+            .Concat(second: EvaluateRFC0002(context: context))
+            .Concat(second: EvaluateRFC0003(context: context))
+            .Concat(second: EvaluateRFC0004(context: context))
+            .Concat(second: EvaluateRFC0005(context: context))
+            .Concat(second: EvaluateRFC0006(context: context))
+            .Concat(second: EvaluateRFC0007(context: context))
+            .Concat(second: EvaluateRFC0008(context: context))
+            .Concat(second: EvaluateRFC0009(context: context))
+            .Concat(second: EvaluateRFC0010(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateRFC0001(EvaluationContext context) =>

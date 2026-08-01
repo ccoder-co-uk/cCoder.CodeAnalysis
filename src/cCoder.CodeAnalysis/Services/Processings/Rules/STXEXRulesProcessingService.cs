@@ -21,23 +21,12 @@ internal sealed class STXEXRulesProcessingService : ISTXEXRulesProcessingService
             ) == true
         )
         {
-            yield break;
+            return [];
         }
 
-        foreach (AnalysisItem item in EvaluateSTXEX001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXEX002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXEX003(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXEX001(context: context)
+            .Concat(second: EvaluateSTXEX002(context: context))
+            .Concat(second: EvaluateSTXEX003(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXEX001(EvaluationContext context) =>
