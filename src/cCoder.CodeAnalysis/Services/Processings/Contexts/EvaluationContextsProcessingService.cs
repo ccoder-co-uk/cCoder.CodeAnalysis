@@ -659,7 +659,8 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                             IsExternalResource(type: field.Type),
                         IPropertySymbol property =>
                             IsExternalResource(type: property.Type),
-                        IMethodSymbol method =>
+                        IMethodSymbol method when
+                            method.MethodKind != MethodKind.Constructor =>
                             IsExternalResource(type: method.ReturnType)
                             || method.Parameters.Any(
                                 predicate: (IParameterSymbol parameter) =>

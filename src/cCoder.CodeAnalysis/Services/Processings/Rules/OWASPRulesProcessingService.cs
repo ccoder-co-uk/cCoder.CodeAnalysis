@@ -40,7 +40,7 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
             context: context);
 
         if (typeName.EndsWith(
-            value: "PasswordHashingUtilityBroker",
+            value: "PasswordHashingDependency",
             comparisonType: StringComparison.Ordinal))
         {
             return [];
@@ -48,18 +48,17 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
 
         return (context.ArchitectureElement?.Methods ?? [])
             .Where(method =>
-                architectureModelQueries.CallsTypeMatching(
-                    context: context,
-                    methodId: method.Id,
-                    typeNameFragment: "PasswordHasher")
-                || architectureModelQueries.CallsTypeMatching(
-                    context: context,
-                    methodId: method.Id,
-                    typeNameFragment: "Argon2"))
+                method.DirectCalls.Any(call =>
+                    call.TypeName.Contains(
+                        value: "PasswordHasher",
+                        comparisonType: StringComparison.Ordinal)
+                    || call.TypeName.Contains(
+                        value: "Argon2",
+                        comparisonType: StringComparison.Ordinal)))
             .Select(method => new AnalysisItem
             {
                 Code = "OWASP0002",
-                Description = "Password derivation must be isolated behind a PasswordHashingUtilityBroker.",
+                Description = "Password derivation must be isolated in a PasswordHashingDependency behind a standard broker.",
                 Severity = AnalysisSeverity.Warning,
                 Type = typeName,
                 LineNumber = method.LineNumber > 0

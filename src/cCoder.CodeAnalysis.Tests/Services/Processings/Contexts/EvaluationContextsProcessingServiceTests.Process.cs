@@ -307,6 +307,36 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldNotTreatWrappedConstructorDependencyAsLeakedResource()
+    {
+        const string source =
+            """
+            namespace Example.Dependencies;
+
+            internal sealed class HttpClientDependency(
+                System.Net.Http.HttpClient httpClient)
+            {
+                private readonly System.Net.Http.HttpClient client = httpClient;
+
+                internal string GetStatus() =>
+                    client.BaseAddress?.ToString() ?? string.Empty;
+            }
+            """;
+
+        EvaluationContext context = service
+            .Process(
+                architectureBuild:
+                    CreateArchitectureBuild(source: source))
+            .Single();
+
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.Dependency);
+
+        context.ArchitectureElement.AnalysisExposesExternalResource.Should()
+            .BeFalse();
+    }
+
+    [Fact]
     public void ProcessShouldTreatAwaitedDisposableAsLeakedExternalResource()
     {
         const string source =
