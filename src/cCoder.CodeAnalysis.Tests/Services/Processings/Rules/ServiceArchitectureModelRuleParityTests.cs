@@ -15,11 +15,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentAggregationService",
-            legacyDependencies:
-            [
-                CreateDependency(StandardElementType.FoundationService),
-                CreateDependency(StandardElementType.ProcessingService),
-            ],
             modelDependencies:
             [
                 CreateDependency(StandardElementType.FoundationService),
@@ -35,7 +30,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentCoordinationService",
-            legacyDependencies: [],
             modelDependencies:
             [
                 CreateDependency(StandardElementType.OrchestrationService),
@@ -51,7 +45,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentService",
-            legacyDependencies: [CreateDependency(StandardElementType.ProcessingService)],
             modelDependencies: [CreateDependency(StandardElementType.Broker)]);
 
         new STXFRulesProcessingService().Evaluate(context: context)
@@ -63,7 +56,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentOrchestrationService",
-            legacyDependencies: [],
             modelDependencies:
             [
                 CreateDependency(StandardElementType.FoundationService),
@@ -79,11 +71,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentProcessingService",
-            legacyDependencies:
-            [
-                CreateDependency(StandardElementType.FoundationService),
-                CreateDependency(StandardElementType.FoundationService),
-            ],
             modelDependencies:
             [
                 CreateDependency(
@@ -100,7 +87,6 @@ public sealed class ServiceArchitectureModelRuleParityTests
     {
         EvaluationContext context = CreateContext(
             typeName: "StudentManagementService",
-            legacyDependencies: [],
             modelDependencies:
             [
                 CreateDependency(StandardElementType.CoordinationService),
@@ -113,20 +99,26 @@ public sealed class ServiceArchitectureModelRuleParityTests
 
     private static EvaluationContext CreateContext(
         string typeName,
-        IReadOnlyList<TypeDependency> legacyDependencies,
-        IReadOnlyList<TypeDependency> modelDependencies) =>
-        new()
+        IReadOnlyList<TypeDependency> modelDependencies)
+    {
+        Class architectureElement = new()
         {
-            TypeName = typeName,
-            Dependencies = legacyDependencies,
-            Declarations = [],
-            PublicApiModelTypes = [],
-            ArchitectureElement = new Class
+            Name = typeName,
+            AnalysisDependencies = modelDependencies,
+            AnalysisDeclarations = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisPublicApiModelTypes = [],
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
             {
-                AnalysisDependencies = modelDependencies,
-                AnalysisImplementedInterfaces = [],
+                Classes = [architectureElement],
             },
         };
+    }
 
     private static TypeDependency CreateDependency(
         StandardElementType standardElementType,

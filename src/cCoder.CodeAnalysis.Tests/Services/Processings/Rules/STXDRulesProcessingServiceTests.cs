@@ -13,16 +13,16 @@ public sealed class STXDRulesProcessingServiceTests
     [Fact]
     public void EvaluateShouldRejectExternalResourceInBroker()
     {
-        EvaluationContext context = new()
+        Class architectureElement = new()
         {
-            TypeName = "Example.Brokers.MailBroker",
+            Name = "Example.Brokers.MailBroker",
             StandardElementType = StandardElementType.Broker,
-            Declarations = [],
-            Dependencies = [],
-            LocalDependencyTypeNames = [],
-            ImplementedInterfaces = ["Example.Brokers.IMailBroker"],
-            UsesExternalResource = true
+            AnalysisDeclarations = [],
+            AnalysisDependencies = [],
+            AnalysisImplementedInterfaces = ["Example.Brokers.IMailBroker"],
+            AnalysisUsesExternalResource = true,
         };
+        EvaluationContext context = CreateContext(architectureElement);
 
         STXDRulesProcessingService service = new();
 
@@ -35,18 +35,29 @@ public sealed class STXDRulesProcessingServiceTests
     [Fact]
     public void EvaluateShouldRejectExternalResourceInHttpExposure()
     {
-        EvaluationContext context = new()
+        Class architectureElement = new()
         {
-            TypeName = "Example.Controllers.StudentController",
+            Name = "Example.Controllers.StudentController",
             StandardElementType = StandardElementType.HttpExposure,
-            Declarations = [],
-            Dependencies = [],
-            LocalDependencyTypeNames = [],
-            ImplementedInterfaces = [],
-            UsesExternalResource = true
+            AnalysisDeclarations = [],
+            AnalysisDependencies = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisUsesExternalResource = true,
         };
+        EvaluationContext context = CreateContext(architectureElement);
 
         new STXDRulesProcessingService().Evaluate(context)
             .Should().ContainSingle(item => item.Code == "STXD004");
     }
+
+    private static EvaluationContext CreateContext(Class architectureElement) =>
+        new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+                AnalysisLocalDependencyTypeNames = [],
+            },
+        };
 }
