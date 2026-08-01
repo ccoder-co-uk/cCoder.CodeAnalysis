@@ -15,35 +15,25 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         architectureModelQueries = new ArchitectureModelQueriesProcessingService();
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTX0024(
-            context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTX0024(context: context)
+            .Concat(second: ImplementsInfrastructureService(context: context)
+                ? []
+                : EvaluateSTX0001(context: context)
+                    .Concat(second: EvaluateStandardElementTypeRules(context: context)));
+    }
 
-        if (ImplementsInfrastructureService(context: context))
+    private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
+        EvaluationContext context) =>
+        context.StandardElementType switch
         {
-            yield break;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTX0001(context: context))
-        {
-            yield return item;
-        }
-
-        if (
-            context.StandardElementType
-            is StandardElementType.FoundationService
+            StandardElementType.FoundationService
                 or StandardElementType.ProcessingService
                 or StandardElementType.OrchestrationService
                 or StandardElementType.CoordinationService
                 or StandardElementType.ManagementService
-                or StandardElementType.AggregationService
-        )
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
-                .Concat(second: EvaluateSTX0003(context: context))
+                or StandardElementType.AggregationService =>
+                EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0003(context: context))
                     .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateSTX0005(context: context))
                     .Concat(second: EvaluateSTX0006(context: context))
@@ -63,41 +53,23 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     .Concat(second: EvaluateSTX0022(context: context))
                     .Concat(second: EvaluateSTX0019(context: context))
                     .Concat(second: EvaluateSTX0020(context: context))
-                    .Concat(second: EvaluateSTX0021(context: context))
-            )
-            {
-                yield return item;
-            }
-        }
-        else if (context.StandardElementType == StandardElementType.Broker)
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            StandardElementType.Broker =>
+                EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0006(context: context))
                     .Concat(second: EvaluateSTX0017(context: context))
                     .Concat(second: EvaluateSTX0019(context: context))
                     .Concat(second: EvaluateSTX0020(context: context))
-                    .Concat(second: EvaluateSTX0021(context: context))
-            )
-            {
-                yield return item;
-            }
-        }
-        else if (context.StandardElementType == StandardElementType.Exposure)
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            StandardElementType.Exposure =>
+                EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0017(context: context))
                     .Concat(second: EvaluateSTX0022(context: context))
                     .Concat(second: EvaluateSTX0019(context: context))
                     .Concat(second: EvaluateSTX0020(context: context))
-                    .Concat(second: EvaluateSTX0021(context: context))
-            )
-            {
-                yield return item;
-            }
-        }
-    }
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            _ => [],
+        };
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0001(
         EvaluationContext context) =>

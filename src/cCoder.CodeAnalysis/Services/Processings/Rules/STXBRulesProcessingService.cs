@@ -15,40 +15,13 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXB001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB004(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB005(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB006(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXB007(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXB001(context: context)
+            .Concat(second: EvaluateSTXB002(context: context))
+            .Concat(second: EvaluateSTXB003(context: context))
+            .Concat(second: EvaluateSTXB004(context: context))
+            .Concat(second: EvaluateSTXB005(context: context))
+            .Concat(second: EvaluateSTXB006(context: context))
+            .Concat(second: EvaluateSTXB007(context: context));
     }
 
     private IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
