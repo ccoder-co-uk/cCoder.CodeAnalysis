@@ -26,6 +26,11 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
     {
+        if (IsUtilityBroker(context: context))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         int dependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: delegate (TypeDependency dependency)
             {
@@ -122,6 +127,11 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private IEnumerable<AnalysisItem> EvaluateSTXB006(EvaluationContext context)
     {
+        if (IsUtilityBroker(context: context))
+        {
+            return Array.Empty<AnalysisItem>();
+        }
+
         return (
             !architectureModelQueries.GetDependencies(context: context).Any(
                 predicate: delegate (TypeDependency dependency)
@@ -150,6 +160,19 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
         && dependency.TypeName.EndsWith(
             value: "Configuration",
             comparisonType: StringComparison.Ordinal);
+
+    private static bool IsUtilityBroker(EvaluationContext context)
+    {
+        string typeName = architectureModelQueries.GetTypeName(
+            context: context);
+
+        return typeName.Contains(
+                value: ".Brokers.Utility.",
+                comparisonType: StringComparison.Ordinal)
+            && typeName.EndsWith(
+                value: "UtilityBroker",
+                comparisonType: StringComparison.Ordinal);
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB007(EvaluationContext context)
     {

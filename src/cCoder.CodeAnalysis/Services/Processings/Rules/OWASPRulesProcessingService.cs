@@ -13,7 +13,9 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        return EvaluateOWASP0001(context: context);
+        return EvaluateOWASP0001(context: context)
+            .Concat(second: EvaluateOWASP0002(context: context))
+            .Concat(second: EvaluateOWASP0003(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateOWASP0001(EvaluationContext context) =>
@@ -29,5 +31,71 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
                 LineNumber = method.LineNumber > 0
                     ? method.LineNumber
                     : architectureModelQueries.GetLineNumber(context),
+            });
+
+    private static IEnumerable<AnalysisItem> EvaluateOWASP0002(
+        EvaluationContext context)
+    {
+        string typeName = architectureModelQueries.GetTypeName(
+            context: context);
+
+        if (typeName.EndsWith(
+            value: "PasswordHashingUtilityBroker",
+            comparisonType: StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        return (context.ArchitectureElement?.Methods ?? [])
+            .Where(method =>
+                architectureModelQueries.CallsTypeMatching(
+                    context: context,
+                    methodId: method.Id,
+                    typeNameFragment: "PasswordHasher")
+                || architectureModelQueries.CallsTypeMatching(
+                    context: context,
+                    methodId: method.Id,
+                    typeNameFragment: "Argon2"))
+            .Select(method => new AnalysisItem
+            {
+                Code = "OWASP0002",
+                Description = "Password derivation must be isolated behind a PasswordHashingUtilityBroker.",
+                Severity = AnalysisSeverity.Warning,
+                Type = typeName,
+                LineNumber = method.LineNumber > 0
+                    ? method.LineNumber
+                    : architectureModelQueries.GetLineNumber(context: context)
+            });
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateOWASP0003(
+        EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method =>
+                method.Name.Contains(
+                    value: "Token",
+                    comparisonType: StringComparison.Ordinal)
+                && (method.Name.StartsWith(
+                        value: "Generate",
+                        comparisonType: StringComparison.Ordinal)
+                    || method.Name.StartsWith(
+                        value: "Create",
+                        comparisonType: StringComparison.Ordinal)
+                    || method.Name.StartsWith(
+                        value: "Issue",
+                        comparisonType: StringComparison.Ordinal))
+                && architectureModelQueries.CallsTypeMatching(
+                    context: context,
+                    methodId: method.Id,
+                    typeNameFragment: "System.Guid"))
+            .Select(method => new AnalysisItem
+            {
+                Code = "OWASP0003",
+                Description = "Security tokens must use a cryptographically secure random-number generator rather than Guid.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = method.LineNumber > 0
+                    ? method.LineNumber
+                    : architectureModelQueries.GetLineNumber(context: context)
             });
 }
