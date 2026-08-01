@@ -38,10 +38,10 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         EvaluationContext[] contexts = service.Process(architectureBuild).ToArray();
 
         // Then
-        contexts.Single(context => context.TypeName == "Example.RequestMiddleware")
-            .StandardElementType.Should().Be(StandardElementType.HttpExposure);
-        contexts.Single(context => context.TypeName == "Example.UnrelatedHandler")
-            .StandardElementType.Should().Be(StandardElementType.Unknown);
+        contexts.Single(context => context.ArchitectureElement.Name == "Example.RequestMiddleware")
+            .ArchitectureElement.StandardElementType.Should().Be(StandardElementType.HttpExposure);
+        contexts.Single(context => context.ArchitectureElement.Name == "Example.UnrelatedHandler")
+            .ArchitectureElement.StandardElementType.Should().Be(StandardElementType.Unknown);
     }
 
     [Fact]
@@ -76,7 +76,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Process(architectureBuild: architectureBuild)
             .Single(item => item.TypeName == "Example.Brokers.EventBroker");
 
-        context.Dependencies
+        context.ArchitectureElement.AnalysisDependencies
             .Should()
             .ContainSingle()
             .Which.TypeName.Should()
@@ -106,7 +106,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        TypeDependency dependency = context.Dependencies
+        TypeDependency dependency = context.ArchitectureElement.AnalysisDependencies
             .Should()
             .ContainSingle()
             .Which;
@@ -137,7 +137,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.StandardElementType.Should()
+        context.ArchitectureElement.StandardElementType.Should()
             .Be(expected: StandardElementType.Activity);
     }
 
@@ -166,7 +166,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        TypeDependency dependency = context.Dependencies
+        TypeDependency dependency = context.ArchitectureElement.AnalysisDependencies
             .Should()
             .ContainSingle()
             .Which;
@@ -215,7 +215,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        TypeDependency dependency = context.Dependencies
+        TypeDependency dependency = context.ArchitectureElement.AnalysisDependencies
             .Should()
             .ContainSingle()
             .Which;
@@ -246,7 +246,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.StandardElementType.Should()
+        context.ArchitectureElement.StandardElementType.Should()
             .Be(expected: StandardElementType.App);
     }
 
@@ -277,7 +277,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.StandardElementType.Should()
+        context.ArchitectureElement.StandardElementType.Should()
             .Be(expected: StandardElementType.Dependency);
     }
 
@@ -302,7 +302,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
                     CreateArchitectureBuild(source: source))
             .Single();
 
-        context.ExposesExternalResource.Should()
+        context.ArchitectureElement.AnalysisExposesExternalResource.Should()
             .BeFalse();
     }
 
@@ -329,7 +329,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
                     CreateArchitectureBuild(source: source))
             .Single();
 
-        context.ExposesExternalResource.Should()
+        context.ArchitectureElement.AnalysisExposesExternalResource.Should()
             .BeTrue();
     }
 
@@ -355,7 +355,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.StandardElementType.Should()
+        context.ArchitectureElement.StandardElementType.Should()
             .Be(expected: StandardElementType.App);
     }
 
@@ -381,7 +381,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.StandardElementType.Should()
+        context.ArchitectureElement.StandardElementType.Should()
             .Be(expected: StandardElementType.App);
     }
 
@@ -414,12 +414,12 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         EvaluationContext context = service
             .Process(architectureBuild: architectureBuild)
             .Single(predicate: context =>
-                context.TypeName.EndsWith(
+                context.ArchitectureElement.Name.EndsWith(
                     value: ".HomeController",
                     comparisonType: StringComparison.Ordinal));
 
         // Then
-        context.IsApiController.Should()
+        context.ArchitectureElement.AnalysisIsApiController.Should()
             .BeFalse();
     }
 
@@ -452,12 +452,12 @@ public sealed partial class EvaluationContextsProcessingServiceTests
         EvaluationContext context = service
             .Process(architectureBuild: architectureBuild)
             .Single(predicate: context =>
-                context.TypeName.EndsWith(
+                context.ArchitectureElement.Name.EndsWith(
                     value: ".StudentsController",
                     comparisonType: StringComparison.Ordinal));
 
         // Then
-        context.IsApiController.Should()
+        context.ArchitectureElement.AnalysisIsApiController.Should()
             .BeTrue();
     }
 
@@ -484,7 +484,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         // Then
-        context.IsApiController.Should()
+        context.ArchitectureElement.AnalysisIsApiController.Should()
             .BeTrue();
     }
 }

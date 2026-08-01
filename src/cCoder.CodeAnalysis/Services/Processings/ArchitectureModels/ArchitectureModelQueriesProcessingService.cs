@@ -10,41 +10,90 @@ namespace cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 internal sealed class ArchitectureModelQueriesProcessingService
     : IArchitectureModelQueriesProcessingService
 {
+    public string GetTypeName(EvaluationContext context) =>
+        context.ArchitectureElement.Name;
+
+    public StandardElementType GetStandardElementType(EvaluationContext context) =>
+        context.ArchitectureElement.StandardElementType;
+
+    public int GetLineNumber(EvaluationContext context) =>
+        context.ArchitectureElement.LineNumber;
+
+    public bool IsPublic(EvaluationContext context) =>
+        context.ArchitectureElement.IsPublic;
+
+    public TypeReference? GetBaseType(EvaluationContext context) =>
+        context.ArchitectureElement.BaseType;
+
+    public bool HasExternalBaseType(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisHasExternalBaseType;
+
+    public bool ImplementsExternalInterface(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisImplementsExternalInterface;
+
+    public bool HasExternalStateDependency(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisHasExternalStateDependency;
+
+    public bool ExposesExternalResource(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisExposesExternalResource;
+
+    public bool UsesExternalResource(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisUsesExternalResource;
+
+    public bool DeclaresDependencyIntent(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisDeclaresDependencyIntent;
+
     public IReadOnlyList<TypeDependency> GetDependencies(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisDependencies ?? context.Dependencies ?? [];
+        context.ArchitectureElement.AnalysisDependencies ?? [];
+
+    public IReadOnlyCollection<string> GetLocalDependencyTypeNames(EvaluationContext context) =>
+        context.ArchitectureModel.AnalysisLocalDependencyTypeNames;
 
     public bool ImplementsContract(EvaluationContext context) =>
-        (context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces ?? []).Count != 0;
+        context.ArchitectureElement.AnalysisImplementedInterfaces.Count != 0;
 
     public bool HasMultipleTopLevelClasses(EvaluationContext context) =>
-        context.ArchitectureElement is Class architectureElement
-            ? architectureElement.AnalysisIsPrimaryTopLevelClassInFile
-                && architectureElement.AnalysisSourceFileTopLevelClassCount > 1
-            : context.IsPrimaryTopLevelClassInFile
-                && context.SourceFileTopLevelClassCount > 1;
+        context.ArchitectureElement.AnalysisIsPrimaryTopLevelClassInFile
+        && context.ArchitectureElement.AnalysisSourceFileTopLevelClassCount > 1;
 
     public bool IsApiController(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisIsApiController ?? context.IsApiController;
+        context.ArchitectureElement.AnalysisIsApiController;
 
     public IReadOnlyList<string> GetPublicApiModelTypes(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisPublicApiModelTypes ?? context.PublicApiModelTypes ?? [];
+        context.ArchitectureElement.AnalysisPublicApiModelTypes ?? [];
 
     public IReadOnlyList<string> GetImplementedInterfaces(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisImplementedInterfaces ?? context.ImplementedInterfaces ?? [];
+        context.ArchitectureElement.AnalysisImplementedInterfaces ?? [];
+
+    public IReadOnlyList<string> GetPublicMethodNames(EvaluationContext context) =>
+        context.ArchitectureElement.Methods
+            .Select(method => method.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+    public IReadOnlyList<string> GetContractMethodNames(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisContractMethodNames ?? [];
+
+    public IReadOnlyList<int> GetPublicMethodCallLineNumbers(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisPublicMethodCallLineNumbers ?? [];
+
+    public IReadOnlyCollection<string> GetProjectTypeNames(EvaluationContext context) =>
+        context.ArchitectureModel.Classes.Select(element => element.Name).ToArray();
+
+    public string GetProjectName(EvaluationContext context) =>
+        context.ArchitectureModel.Project.AssemblyName;
 
     public IReadOnlyList<TypeDeclarationSyntax> GetDeclarations(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisDeclarations ?? context.Declarations ?? [];
+        context.ArchitectureElement.AnalysisDeclarations ?? [];
 
     public string GetFilePath(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisFilePath ?? context.FilePath ?? string.Empty;
+        context.ArchitectureElement.AnalysisFilePath ?? string.Empty;
 
     public string GetSourceCode(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisSourceCode ?? context.SourceCode ?? string.Empty;
+        context.ArchitectureElement.AnalysisSourceCode ?? string.Empty;
 
     public string GetProjectLineEnding(EvaluationContext context) =>
-        context.ArchitectureElement?.AnalysisProjectLineEnding
-            ?? context.ProjectLineEnding
-            ?? string.Empty;
+        context.ArchitectureModel.AnalysisProjectLineEnding;
 
     public IReadOnlyList<Method> GetReachableMethods(EvaluationContext context, string methodId)
     {

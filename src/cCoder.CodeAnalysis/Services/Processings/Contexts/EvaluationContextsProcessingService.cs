@@ -35,37 +35,59 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             comparer: StringComparer.Ordinal
         );
 
+        Architecture architecture = architectureBuild.Architecture
+            ?? CreateArchitectureShell(
+                declaredTypes: architectureBuild.DeclaredTypes,
+                compilation: architectureBuild.Compilation);
+        architecture.AnalysisProjectLineEnding = architectureBuild.ProjectLineEnding;
+        architecture.AnalysisLocalDependencyTypeNames = localDependencyTypeNames;
+
         return architectureBuild
             .DeclaredTypes.Where(
                 predicate: (INamedTypeSymbol type) =>
                     type.TypeKind is TypeKind.Class or TypeKind.Interface)
             .Select(
                 selector: (INamedTypeSymbol type) =>
-                    AttachArchitectureModel(
-                        context: CreateEvaluationContext(
-                            type: type,
-                            declaredTypes: architectureBuild.DeclaredTypes,
-                            compilation: architectureBuild.Compilation,
-                            projectLineEnding: architectureBuild.ProjectLineEnding,
-                            localDependencyTypeNames: localDependencyTypeNames),
-                        architecture: architectureBuild.Architecture
-                    )
+                    CreateEvaluationContext(
+                        type: type,
+                        declaredTypes: architectureBuild.DeclaredTypes,
+                        compilation: architectureBuild.Compilation,
+                        architecture: architecture)
             );
     }
 
-    private static EvaluationContext AttachArchitectureModel(
-        EvaluationContext context,
-        Architecture? architecture) =>
-        architecture is null
-            ? context
-            : EvaluationContextModelAdapter.Attach(context: context, architecture: architecture);
+    private static Architecture CreateArchitectureShell(
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes,
+        CSharpCompilation compilation) =>
+        new()
+        {
+            Project = new ProjectMetadata
+            {
+                Id = compilation.AssemblyName ?? string.Empty,
+                Name = compilation.AssemblyName ?? string.Empty,
+                AssemblyName = compilation.AssemblyName ?? string.Empty,
+            },
+            Classes = declaredTypes
+                .Where(type => type.TypeKind is TypeKind.Class or TypeKind.Interface)
+                .Select(type => new Class
+                {
+                    Name = GetTypeName(type),
+                    StandardElementType = Classify(type),
+                    LineNumber = type.Locations.FirstOrDefault(location => location.IsInSource)?
+                        .GetLineSpan().StartLinePosition.Line + 1 ?? 0,
+                    IsPublic = type.DeclaredAccessibility == Accessibility.Public,
+                    Kind = type.TypeKind == TypeKind.Interface
+                        ? ArchitectureTypeKind.Interface
+                        : ArchitectureTypeKind.Class,
+                })
+                .ToList(),
+        };
 
     private static EvaluationContext CreateEvaluationContext(
         INamedTypeSymbol type,
         IReadOnlyCollection<INamedTypeSymbol> declaredTypes,
         CSharpCompilation compilation,
-        string projectLineEnding,
-        IReadOnlyCollection<string> localDependencyTypeNames
+        Architecture architecture
     )
     {
         TypeDeclarationSyntax? declaration = type
@@ -84,81 +106,49 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     : null
             );
 
+        Class architectureElement = architecture.Classes.Single(element =>
+            string.Equals(element.Name, GetTypeName(type), StringComparison.Ordinal));
+        architectureElement.AnalysisIsApiController = IsApiController(type);
+        architectureElement.AnalysisHasExternalBaseType = InheritsFromExternalType(type);
+        architectureElement.AnalysisImplementsExternalInterface = ImplementsExternalInterface(type);
+        architectureElement.AnalysisHasExternalStateDependency = HasExternalStateDependency(type);
+        architectureElement.AnalysisExposesExternalResource = ExposesExternalResource(type);
+        architectureElement.AnalysisUsesExternalResource = UsesExternalResource(type, compilation);
+        architectureElement.AnalysisDeclaresDependencyIntent = DeclaresDependencyIntent(type);
+        architectureElement.AnalysisSourceFileTopLevelClassCount = GetTopLevelClasses(declaration).Count;
+        architectureElement.AnalysisIsPrimaryTopLevelClassInFile = IsPrimaryTopLevelClass(declaration);
+        architectureElement.AnalysisDeclarations = type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .ToArray();
+        architectureElement.AnalysisFilePath = sourceTree?.FilePath ?? string.Empty;
+        architectureElement.AnalysisSourceCode = sourceTree?.GetText().ToString() ?? string.Empty;
+        architectureElement.AnalysisProjectLineEnding = architecture.AnalysisProjectLineEnding;
+        architectureElement.AnalysisDependencies = type.InstanceConstructors
+            .SelectMany(constructor => constructor.Parameters)
+            .Select(
+                parameter => CreateTypeDependency(parameter.Type, declaredTypes))
+            .Where(dependency => !dependency.IsConfigurationModel)
+            .GroupBy(dependency => dependency.TypeName, StringComparer.Ordinal)
+            .Select(dependencies => dependencies.First())
+            .ToArray();
+        architectureElement.AnalysisImplementedInterfaces = type.AllInterfaces
+            .Select(GetTypeName)
+            .ToArray();
+        architectureElement.AnalysisContractMethodNames = type.AllInterfaces
+            .SelectMany(contract => contract.GetMembers())
+            .OfType<IMethodSymbol>()
+            .Select(method => method.Name)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        architectureElement.AnalysisPublicMethodCallLineNumbers =
+            GetPublicMethodCallLineNumbers(type, compilation);
+        architectureElement.AnalysisPublicApiModelTypes = GetPublicApiModelTypes(type);
+
         return new EvaluationContext
         {
-            TypeName = GetTypeName(type: type),
-            ProjectName = type.ContainingAssembly.Name,
-            StandardElementType = Classify(type: type),
-            LineNumber = declaration is null ? 0 : declaration.GetLocation()
-            .GetLineSpan().StartLinePosition.Line + 1,
-            IsPublic = type.DeclaredAccessibility == Accessibility.Public,
-            IsConsoleApplication = compilation.Options.OutputKind == OutputKind.ConsoleApplication,
-            IsApiController = IsApiController(type: type),
-            HasBaseClass = type.BaseType != null && type.BaseType.SpecialType != SpecialType.System_Object,
-            HasExternalBaseType = InheritsFromExternalType(type: type),
-            ImplementsExternalInterface = ImplementsExternalInterface(type: type),
-            ImplementsContract = type.AllInterfaces.Any(),
-            HasExternalStateDependency = HasExternalStateDependency(type: type),
-            ExposesExternalResource = ExposesExternalResource(type: type),
-            UsesExternalResource = UsesExternalResource(
-                type: type,
-                compilation: compilation),
-            DeclaresDependencyIntent = DeclaresDependencyIntent(type: type),
-            SourceFileTopLevelClassCount = GetTopLevelClasses(declaration: declaration).Count,
-            IsPrimaryTopLevelClassInFile = IsPrimaryTopLevelClass(declaration: declaration),
-            Declarations = type
-                .DeclaringSyntaxReferences.Select(selector: (SyntaxReference reference) => reference.GetSyntax())
-            .OfType<TypeDeclarationSyntax>()
-                .ToArray(),
-            FilePath = sourceTree?.FilePath ?? string.Empty,
-            SourceCode = sourceTree?.GetText()
-            .ToString() ?? string.Empty,
-            ProjectLineEnding = projectLineEnding,
-            UsingNamespaces =
-                sourceTree
-                    ?.GetRoot()
-            .DescendantNodes()
-                    .OfType<UsingDirectiveSyntax>()
-                    .Select(selector: (UsingDirectiveSyntax item) => item.Name?.ToString() ?? string.Empty)
-                    .Where(predicate: (string item) => item.Length != 0)
-                    .ToArray()
-                ?? [],
-            Dependencies = type
-                .InstanceConstructors.SelectMany(selector: (IMethodSymbol constructor) => constructor.Parameters)
-            .Select(
-                    selector: (IParameterSymbol parameter) =>
-                        CreateTypeDependency(dependency: parameter.Type, declaredTypes: declaredTypes)
-                )
-                .Where(
-                    predicate: (TypeDependency dependency) =>
-                        !dependency.IsConfigurationModel)
-                .GroupBy(
-                    keySelector: (TypeDependency dependency) => dependency.TypeName,
-                    comparer: StringComparer.Ordinal
-                )
-                .Select(selector: (IGrouping<string, TypeDependency> dependencies) => dependencies.First())
-                .ToArray(),
-            LocalDependencyTypeNames = localDependencyTypeNames,
-            ImplementedInterfaces = type.AllInterfaces.Select(selector: GetTypeName)
-            .ToArray(),
-            PublicMethodNames = type.GetMembers()
-            .OfType<IMethodSymbol>()
-                .Where(
-                    predicate: (IMethodSymbol method) =>
-                        method.MethodKind == MethodKind.Ordinary && method.DeclaredAccessibility == Accessibility.Public
-                )
-                .Select(selector: (IMethodSymbol method) => method.Name)
-                .Distinct(comparer: StringComparer.Ordinal)
-                .ToArray(),
-            ContractMethodNames = type
-                .AllInterfaces.SelectMany(selector: (INamedTypeSymbol contract) => contract.GetMembers())
-            .OfType<IMethodSymbol>()
-                .Select(selector: (IMethodSymbol method) => method.Name)
-                .Distinct(comparer: StringComparer.Ordinal)
-                .ToArray(),
-            PublicMethodCallLineNumbers = GetPublicMethodCallLineNumbers(type: type, compilation: compilation),
-            PublicApiModelTypes = GetPublicApiModelTypes(type: type),
-            ProjectTypeNames = declaredTypes.Select(selector: GetTypeName).ToArray(),
+            ArchitectureModel = architecture,
+            ArchitectureElement = architectureElement,
         };
     }
 

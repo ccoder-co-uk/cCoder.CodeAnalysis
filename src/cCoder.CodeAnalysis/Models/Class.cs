@@ -54,4 +54,28 @@ public sealed class Class
 
     [JsonIgnore]
     internal TypeAnalysisFacts AnalysisTypeFacts { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisHasExternalBaseType { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisImplementsExternalInterface { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisHasExternalStateDependency { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisExposesExternalResource { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisUsesExternalResource { get; set; }
+
+    [JsonIgnore]
+    internal bool AnalysisDeclaresDependencyIntent { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<string> AnalysisContractMethodNames { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<int> AnalysisPublicMethodCallLineNumbers { get; set; }
 }

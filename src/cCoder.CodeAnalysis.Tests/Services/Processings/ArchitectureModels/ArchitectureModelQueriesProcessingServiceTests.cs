@@ -15,13 +15,11 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
     private readonly ArchitectureModelQueriesProcessingService service = new();
 
     [Fact]
-    public void GetDependenciesShouldPreferAttachedModelFacts()
+    public void GetDependenciesShouldReturnModelFacts()
     {
-        TypeDependency legacyDependency = new() { TypeName = "Legacy" };
         TypeDependency modelDependency = new() { TypeName = "Model" };
         EvaluationContext context = new()
         {
-            Dependencies = [legacyDependency],
             ArchitectureElement = new Class
             {
                 AnalysisDependencies = [modelDependency],
@@ -33,32 +31,20 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
     }
 
     [Fact]
-    public void GetDependenciesShouldSupportLegacyContextDuringMigration()
-    {
-        TypeDependency dependency = new() { TypeName = "Legacy" };
-        EvaluationContext context = new() { Dependencies = [dependency] };
-
-        service.GetDependencies(context: context).Should().ContainSingle()
-            .Which.Should().BeSameAs(dependency);
-    }
-
-    [Fact]
-    public void SourceQueriesShouldPreferAttachedModelFacts()
+    public void SourceQueriesShouldReturnModelFacts()
     {
         TypeDeclarationSyntax modelDeclaration = CreateDeclaration(source: "class Model { }");
-        TypeDeclarationSyntax legacyDeclaration = CreateDeclaration(source: "class Legacy { }");
         EvaluationContext context = new()
         {
-            Declarations = [legacyDeclaration],
-            FilePath = "Legacy.cs",
-            SourceCode = "legacy",
-            ProjectLineEnding = "\n",
+            ArchitectureModel = new Architecture
+            {
+                AnalysisProjectLineEnding = "\r\n",
+            },
             ArchitectureElement = new Class
             {
                 AnalysisDeclarations = [modelDeclaration],
                 AnalysisFilePath = "Model.cs",
                 AnalysisSourceCode = "model",
-                AnalysisProjectLineEnding = "\r\n",
             },
         };
 
@@ -67,25 +53,6 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
         service.GetFilePath(context: context).Should().Be(expected: "Model.cs");
         service.GetSourceCode(context: context).Should().Be(expected: "model");
         service.GetProjectLineEnding(context: context).Should().Be(expected: "\r\n");
-    }
-
-    [Fact]
-    public void SourceQueriesShouldSupportLegacyContextDuringMigration()
-    {
-        TypeDeclarationSyntax declaration = CreateDeclaration(source: "class Legacy { }");
-        EvaluationContext context = new()
-        {
-            Declarations = [declaration],
-            FilePath = "Legacy.cs",
-            SourceCode = "legacy",
-            ProjectLineEnding = "\n",
-        };
-
-        service.GetDeclarations(context: context).Should().ContainSingle()
-            .Which.Should().BeSameAs(declaration);
-        service.GetFilePath(context: context).Should().Be(expected: "Legacy.cs");
-        service.GetSourceCode(context: context).Should().Be(expected: "legacy");
-        service.GetProjectLineEnding(context: context).Should().Be(expected: "\n");
     }
 
     [Fact]
