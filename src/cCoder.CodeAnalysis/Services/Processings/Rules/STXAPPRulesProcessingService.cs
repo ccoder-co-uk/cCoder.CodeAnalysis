@@ -15,149 +15,237 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        TypeAnalysisFacts? facts = context.ArchitectureElement?.AnalysisTypeFacts;
-
-        if (facts is null)
+        if (context.ArchitectureElement?.AnalysisTypeFacts is null)
         {
             yield break;
         }
 
-        string typeName = GetTypeName(context.TypeName);
-        string projectName = facts.ProjectName;
-        bool isApplicationElement = context.StandardElementType == StandardElementType.App;
-
-        if (isApplicationElement
-            && !LivesAtProjectRoot(typeName, projectName, facts.FilePath))
+        foreach (AnalysisItem item in EvaluateSTXAPP001(context))
         {
-            yield return Create("STXAPP001", "Application composition helpers must live at the project root.", context);
+            yield return item;
         }
 
-        if (isApplicationElement && typeName == "IServiceCollectionExtensions")
+        foreach (AnalysisItem item in EvaluateSTXAPP002(context))
         {
-            if (!ExposesDomainRegistration(facts.Methods, projectName))
-            {
-                yield return Create("STXAPP002", "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.", context);
-            }
-
-            MethodAnalysisFacts? invalidLifetime = facts.Methods.FirstOrDefault(
-                method => method.HasScopedOrTransientConfigurationRegistration);
-
-            if (invalidLifetime is not null)
-            {
-                yield return Create("STXAPP003", "Configuration objects should be registered as singletons.", context, invalidLifetime.LineNumber);
-            }
-
-            MethodAnalysisFacts? chained = facts.Methods.FirstOrDefault(
-                method => method.HasChainedServiceCollectionRegistration);
-
-            if (chained is not null)
-            {
-                yield return Create("STXAPP008", "IServiceCollection registrations must be declared as individual statements rather than fluent chains.", context, chained.LineNumber);
-            }
-
-            MethodAnalysisFacts[] methods = facts.Methods.ToArray();
-            MethodAnalysisFacts? invalidLayering = methods
-                .Where(IsDomainRegistrationMethod)
-                .Where(method => method.HasInvocations)
-                .FirstOrDefault(method => !DelegatesRegistrationByLayer(method, methods));
-
-            if (invalidLayering is not null)
-            {
-                yield return Create("STXAPP009", "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.", context, invalidLayering.LineNumber);
-            }
-
-            MethodAnalysisFacts? nonExtension = methods.FirstOrDefault(
-                method => !method.FirstParameterIsServiceCollectionExtension);
-
-            if (nonExtension is not null)
-            {
-                yield return Create("STXAPP010", "IServiceCollectionExtensions may contain only IServiceCollection extension methods.", context, nonExtension.LineNumber);
-            }
-
-            if (!projectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase))
-            {
-                MethodAnalysisFacts? entryPoint = methods.FirstOrDefault(
-                    method => method.IsPublic && IsApplicationEntryPoint(method, projectName));
-
-                if (entryPoint is null)
-                {
-                    yield return Create("STXAPP011", "Application IServiceCollectionExtensions must expose Add{AppName}.", context);
-                }
-
-                MethodAnalysisFacts? configurationEntryPoint = methods.FirstOrDefault(
-                    method => method.IsPublic && method.HasConfigurationParameter);
-
-                if (configurationEntryPoint is not null
-                    && string.IsNullOrWhiteSpace(configurationEntryPoint.ConfigurationCallbackType))
-                {
-                    yield return Create("STXAPP012", "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.", context, configurationEntryPoint.LineNumber);
-                }
-            }
+            yield return item;
         }
 
-        if (isApplicationElement && typeName == "WebApplicationExtensions"
-            && !facts.Methods.Any(method => method.ResolvesServiceFromProvider))
+        foreach (AnalysisItem item in EvaluateSTXAPP003(context))
         {
-            yield return Create("STXAPP004", "WebApplicationExtensions must consume the service provider to start application services.", context);
+            yield return item;
         }
 
-        if (isApplicationElement && typeName == "Program"
-            && IsCommandApplication(facts.SourceCode)
-            && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal)))
+        foreach (AnalysisItem item in EvaluateSTXAPP004(context))
         {
-            yield return Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context);
+            yield return item;
         }
 
-        if (isApplicationElement && typeName == "IHostExtensions"
-            && !facts.Methods.Any(method => method.HasCommandDetailsParameter
-                && method.ResolvesServiceFromProvider
-                && method.PassesCommandDetails))
+        foreach (AnalysisItem item in EvaluateSTXAPP006(context))
         {
-            yield return Create("STXAPP007", "IHostExtensions must route requested command details to a handling service resolved from the service provider.", context);
+            yield return item;
         }
 
-        if (typeName.EndsWith("Configuration", StringComparison.Ordinal))
+        foreach (AnalysisItem item in EvaluateSTXAPP007(context))
         {
-            PropertyAnalysisFacts? invalidProperty = facts.Properties.FirstOrDefault(property =>
-                !property.IsPublic || !property.HasGetter || !property.HasSetter
-                || property.TypeName == "dynamic"
-                || property.TypeName.Contains("Dictionary", StringComparison.Ordinal));
-
-            if (invalidProperty is not null)
-            {
-                yield return Create("STXAPP013", "Configuration properties must be public, strongly typed, and bindable with get and set accessors.", context, invalidProperty.LineNumber);
-            }
+            yield return item;
         }
 
-        if (isApplicationElement
-            && typeName == "Program"
-            && !facts.IsConsoleApplication
-            && !IsCommandApplication(facts.SourceCode))
+        foreach (AnalysisItem item in EvaluateSTXAPP008(context))
         {
-            bool bindsConfiguration = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
-            bool passesConfiguration = facts.SourceCode.Contains(".Configuration", StringComparison.Ordinal)
-                && facts.SourceCode.Contains(".Services.Add", StringComparison.Ordinal);
-
-            if (bindsConfiguration || !passesConfiguration)
-            {
-                yield return Create("STXAPP014", "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.", context);
-            }
+            yield return item;
         }
 
-        string projectConfigurationName = string.Concat(projectName.Split(
-            ['.', '-'], StringSplitOptions.RemoveEmptyEntries)) + "Configuration";
-
-        if (typeName == projectConfigurationName)
+        foreach (AnalysisItem item in EvaluateSTXAPP009(context))
         {
-            PropertyAnalysisFacts? scalar = facts.Properties.FirstOrDefault(
-                property => !property.TypeName.EndsWith("Configuration", StringComparison.Ordinal));
+            yield return item;
+        }
 
-            if (scalar is not null)
-            {
-                yield return Create("STXAPP015", "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.", context, scalar.LineNumber);
-            }
+        foreach (AnalysisItem item in EvaluateSTXAPP010(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP011(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP012(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP013(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP014(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateSTXAPP015(context))
+        {
+            yield return item;
         }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP001(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        return IsApplicationElement(context)
+            && !LivesAtProjectRoot(GetTypeName(context.TypeName), facts.ProjectName, facts.FilePath)
+                ? [Create("STXAPP001", "Application composition helpers must live at the project root.", context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP002(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        return IsServiceCollectionExtensions(context)
+            && !ExposesDomainRegistration(facts.Methods, facts.ProjectName)
+                ? [Create("STXAPP002", "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.", context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP003(EvaluationContext context)
+    {
+        MethodAnalysisFacts? method = IsServiceCollectionExtensions(context)
+            ? GetFacts(context).Methods.FirstOrDefault(candidate =>
+                candidate.HasScopedOrTransientConfigurationRegistration)
+            : null;
+        return method is null ? [] : [Create("STXAPP003", "Configuration objects should be registered as singletons.", context, method.LineNumber)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP004(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        return IsApplicationElement(context)
+            && GetTypeName(context.TypeName) == "WebApplicationExtensions"
+            && !facts.Methods.Any(method => method.ResolvesServiceFromProvider)
+                ? [Create("STXAPP004", "WebApplicationExtensions must consume the service provider to start application services.", context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP006(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        return IsApplicationElement(context)
+            && GetTypeName(context.TypeName) == "Program"
+            && IsCommandApplication(facts.SourceCode)
+            && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal))
+                ? [Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP007(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        return IsApplicationElement(context)
+            && GetTypeName(context.TypeName) == "IHostExtensions"
+            && !facts.Methods.Any(method => method.HasCommandDetailsParameter
+                && method.ResolvesServiceFromProvider
+                && method.PassesCommandDetails)
+                ? [Create("STXAPP007", "IHostExtensions must route requested command details to a handling service resolved from the service provider.", context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP008(EvaluationContext context)
+    {
+        MethodAnalysisFacts? method = IsServiceCollectionExtensions(context)
+            ? GetFacts(context).Methods.FirstOrDefault(candidate => candidate.HasChainedServiceCollectionRegistration)
+            : null;
+        return method is null ? [] : [Create("STXAPP008", "IServiceCollection registrations must be declared as individual statements rather than fluent chains.", context, method.LineNumber)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP009(EvaluationContext context)
+    {
+        if (!IsServiceCollectionExtensions(context)) return [];
+        MethodAnalysisFacts[] methods = GetFacts(context).Methods.ToArray();
+        MethodAnalysisFacts? method = methods.Where(IsDomainRegistrationMethod)
+            .Where(candidate => candidate.HasInvocations)
+            .FirstOrDefault(candidate => !DelegatesRegistrationByLayer(candidate, methods));
+        return method is null ? [] : [Create("STXAPP009", "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.", context, method.LineNumber)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP010(EvaluationContext context)
+    {
+        MethodAnalysisFacts? method = IsServiceCollectionExtensions(context)
+            ? GetFacts(context).Methods.FirstOrDefault(candidate => !candidate.FirstParameterIsServiceCollectionExtension)
+            : null;
+        return method is null ? [] : [Create("STXAPP010", "IServiceCollectionExtensions may contain only IServiceCollection extension methods.", context, method.LineNumber)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP011(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        bool applies = IsServiceCollectionExtensions(context)
+            && !facts.ProjectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase);
+        bool hasEntryPoint = facts.Methods.Any(method =>
+            method.IsPublic && IsApplicationEntryPoint(method, facts.ProjectName));
+        return applies && !hasEntryPoint
+            ? [Create("STXAPP011", "Application IServiceCollectionExtensions must expose Add{AppName}.", context)]
+            : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP012(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        if (!IsServiceCollectionExtensions(context)
+            || facts.ProjectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase)) return [];
+        MethodAnalysisFacts? method = facts.Methods.FirstOrDefault(candidate =>
+            candidate.IsPublic && candidate.HasConfigurationParameter);
+        return method is not null && string.IsNullOrWhiteSpace(method.ConfigurationCallbackType)
+            ? [Create("STXAPP012", "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.", context, method.LineNumber)]
+            : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(EvaluationContext context)
+    {
+        if (!GetTypeName(context.TypeName).EndsWith("Configuration", StringComparison.Ordinal)) return [];
+        PropertyAnalysisFacts? property = GetFacts(context).Properties.FirstOrDefault(candidate =>
+            !candidate.IsPublic || !candidate.HasGetter || !candidate.HasSetter
+            || candidate.TypeName == "dynamic"
+            || candidate.TypeName.Contains("Dictionary", StringComparison.Ordinal));
+        return property is null ? [] : [Create("STXAPP013", "Configuration properties must be public, strongly typed, and bindable with get and set accessors.", context, property.LineNumber)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP014(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        if (!IsApplicationElement(context)
+            || GetTypeName(context.TypeName) != "Program"
+            || facts.IsConsoleApplication
+            || IsCommandApplication(facts.SourceCode)) return [];
+        bool binds = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
+        bool passes = facts.SourceCode.Contains(".Configuration", StringComparison.Ordinal)
+            && facts.SourceCode.Contains(".Services.Add", StringComparison.Ordinal);
+        return binds || !passes
+            ? [Create("STXAPP014", "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.", context)]
+            : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPP015(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+        string expectedName = string.Concat(facts.ProjectName.Split(
+            ['.', '-'], StringSplitOptions.RemoveEmptyEntries)) + "Configuration";
+        if (GetTypeName(context.TypeName) != expectedName) return [];
+        PropertyAnalysisFacts? property = facts.Properties.FirstOrDefault(candidate =>
+            !candidate.TypeName.EndsWith("Configuration", StringComparison.Ordinal));
+        return property is null ? [] : [Create("STXAPP015", "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.", context, property.LineNumber)];
+    }
+
+    private static TypeAnalysisFacts GetFacts(EvaluationContext context) =>
+        context.ArchitectureElement!.AnalysisTypeFacts;
+
+    private static bool IsApplicationElement(EvaluationContext context) =>
+        context.StandardElementType == StandardElementType.App;
+
+    private static bool IsServiceCollectionExtensions(EvaluationContext context) =>
+        IsApplicationElement(context)
+        && GetTypeName(context.TypeName) == "IServiceCollectionExtensions";
 
     private static bool LivesAtProjectRoot(string typeName, string projectName, string filePath)
     {
