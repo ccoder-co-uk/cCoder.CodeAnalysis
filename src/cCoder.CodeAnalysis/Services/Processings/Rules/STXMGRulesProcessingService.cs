@@ -8,7 +8,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -29,8 +29,10 @@ internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
@@ -60,7 +62,7 @@ internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXMG002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Management", comparisonType: StringComparison.Ordinal)

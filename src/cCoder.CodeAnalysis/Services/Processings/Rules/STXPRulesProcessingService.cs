@@ -8,7 +8,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -30,8 +30,10 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
@@ -48,7 +50,11 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 3) <= 4u;
+                return standardElementType
+                    is StandardElementType.OrchestrationService
+                    or StandardElementType.CoordinationService
+                    or StandardElementType.ManagementService
+                    or StandardElementType.AggregationService;
             }
         );
 
@@ -66,7 +72,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXP002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Processing", comparisonType: StringComparison.Ordinal)
@@ -96,7 +102,8 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             return Array.Empty<AnalysisItem>();
         }
 
-        string serviceName = RemoveGenericTypeArguments(typeName: context.TypeName.Split(separator: ['.'])
+        string serviceName = RemoveGenericTypeArguments(typeName: architectureModelQueries
+            .GetTypeName(context: context).Split(separator: ['.'])
             .Last());
 
         string foundationName = RemoveGenericTypeArguments(

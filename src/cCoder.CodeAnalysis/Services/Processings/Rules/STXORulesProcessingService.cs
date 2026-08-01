@@ -8,7 +8,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -39,7 +39,9 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 2) <= 1u;
+                return standardElementType
+                    is StandardElementType.FoundationService
+                    or StandardElementType.ProcessingService;
             }
         );
 
@@ -55,15 +57,15 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
                     Description =
                         "An orchestration must have two or three foundation or processing dependencies and must not mix them.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXO002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Orchestration", comparisonType: StringComparison.Ordinal)
@@ -75,8 +77,8 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
                     Code = "STXO002",
                     Description = "An orchestration service name must contain the Orchestration identifier.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }

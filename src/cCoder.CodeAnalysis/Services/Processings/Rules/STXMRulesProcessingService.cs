@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,6 +11,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTXM001(context: context)
@@ -29,15 +33,18 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXM001(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -57,8 +64,9 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXM002(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<PropertyDeclarationSyntax>()
             .Where(predicate: (PropertyDeclarationSyntax property) => property.Initializer is not null)
             .Select(
@@ -91,8 +99,9 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
             "Validation",
         ];
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<PropertyDeclarationSyntax>()
             .Where(
                 predicate: (PropertyDeclarationSyntax property) =>

@@ -10,7 +10,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -32,15 +32,18 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXF001(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .Where(
                 predicate: (SyntaxNode node) =>
                     (node is ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax)
@@ -48,7 +51,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                         value: ".Validations.cs",
                         comparisonType: StringComparison.Ordinal
                     )
-                    && context.PublicApiModelTypes.Any(
+                    && architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                         predicate: (string modelType) =>
                             node.DescendantNodes()
             .OfType<IdentifierNameSyntax>()
@@ -66,7 +69,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                         Code = "STXF001",
                         Description = "A foundation service must not loop over its service model type.",
                         Severity = AnalysisSeverity.Warning,
-                        Type = context.TypeName,
+                        Type = architectureModelQueries.GetTypeName(context: context),
                         LineNumber = node.GetLocation()
             .GetLineSpan().StartLinePosition.Line + 1,
                     }
@@ -94,8 +97,8 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                     Code = "STXF002",
                     Description = "A foundation service may only depend on brokers, exposures, or nothing.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }
@@ -107,15 +110,16 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXF003(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .SelectMany(
                 selector: (MethodDeclarationSyntax method) =>
                     method
                         .ParameterList.Parameters.Where(
                             predicate: (ParameterSyntax parameter) =>
-                                context.PublicApiModelTypes.Any(
+                                architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                                     predicate: (string modelType) =>
                                         modelType.EndsWith(
                                             value: $".{parameter.Type}",
