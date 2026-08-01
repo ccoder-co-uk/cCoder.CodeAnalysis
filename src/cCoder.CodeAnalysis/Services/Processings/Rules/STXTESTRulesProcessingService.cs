@@ -101,6 +101,7 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
         }
 
         string[] requiredOperations = ["Get", "Post", "Put", "Delete"];
+
         bool coversCrud = requiredOperations.All(operation => facts.Methods.Any(
             method => method.IsFact
                 && method.Name.StartsWith(operation, StringComparison.Ordinal)));

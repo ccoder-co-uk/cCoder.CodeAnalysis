@@ -100,7 +100,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfExposures()
     {
-        Count(StandardElementType.Exposure).Should().Be(20, "");
+        Count(StandardElementType.Exposure).Should().Be(15, "");
     }
 
     [Fact]

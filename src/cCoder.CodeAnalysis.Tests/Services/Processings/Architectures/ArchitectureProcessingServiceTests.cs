@@ -49,7 +49,7 @@ public sealed class ArchitectureProcessingServiceTests
         result.Architecture.Project.Id.Should().Be("Example", "");
         result.Architecture.Project.Name.Should().Be("Example", "");
         result.Architecture.Project.AssemblyName.Should().Be("Example", "");
-        result.Architecture.Classes.Should().Contain(
+        result.Architecture.Interfaces.Should().Contain(
             element => element.Name == "Example.IStudent"
                 && element.Kind == ArchitectureTypeKind.Interface,
             "");
@@ -72,7 +72,7 @@ public sealed class ArchitectureProcessingServiceTests
         localContract.Kind.Should().Be(ArchitectureTypeKind.Interface, "");
         localContract.IsInCurrentProject.Should().BeTrue("");
         localContract.StandardElementType.Should().Be(
-            result.Architecture.Classes.Single(element => element.Name == "Example.IStudent")
+            result.Architecture.Interfaces.Single(element => element.Name == "Example.IStudent")
                 .StandardElementType,
             "");
         student.Interfaces.Single(reference => reference.Name == "IDisposable")

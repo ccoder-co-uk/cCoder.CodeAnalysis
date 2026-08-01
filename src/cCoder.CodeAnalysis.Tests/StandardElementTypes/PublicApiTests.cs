@@ -130,7 +130,7 @@ public sealed class PublicApiTests
                 StandardElementType.Exposure.ToString());
 
         exposureRules.Should()
-            .HaveCount(4)
+            .HaveCount(5)
             .And.NotContain(rule => rule is IRFCRulesProcessingService)
             .And.NotContain(rule => rule is ISTXAPIRulesProcessingService);
     }
@@ -147,7 +147,7 @@ public sealed class PublicApiTests
                 IEnumerable<IRuleProcessingService>>(
                 StandardElementType.HttpExposure.ToString());
 
-        exposureRules.Should().HaveCount(8);
+        exposureRules.Should().HaveCount(9);
         exposureRules.Should().ContainSingle(rule => rule is ISTXAPIRulesProcessingService);
         exposureRules.Should().ContainSingle(rule => rule is IRFCRulesProcessingService);
         exposureRules.Should().ContainSingle(rule => rule is IODATARulesProcessingService);

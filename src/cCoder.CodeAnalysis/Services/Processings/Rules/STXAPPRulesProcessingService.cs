@@ -43,6 +43,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP001(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         return IsApplicationElement(context)
             && !LivesAtProjectRoot(GetTypeName(context), facts.ProjectName, facts.FilePath)
                 ? [Create("STXAPP001", "Application composition helpers must live at the project root.", context)]
@@ -52,6 +53,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP002(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         return IsServiceCollectionExtensions(context)
             && !ExposesDomainRegistration(facts.Methods, facts.ProjectName)
                 ? [Create("STXAPP002", "Libraries must expose Add{Domain}Web or Add{Domain}HostedServices, provider libraries expose Add{Domain}Providers, supporting data libraries expose Add{Domain}Data, and apps expose Add{AppName}.", context)]
@@ -64,12 +66,14 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             ? GetFacts(context).Methods.FirstOrDefault(candidate =>
                 candidate.HasScopedOrTransientConfigurationRegistration)
             : null;
+
         return method is null ? [] : [Create("STXAPP003", "Configuration objects should be registered as singletons.", context, method.LineNumber)];
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP004(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         return IsApplicationElement(context)
             && GetTypeName(context) == "WebApplicationExtensions"
             && !facts.Methods.Any(method => method.ResolvesServiceFromProvider)
@@ -80,6 +84,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP006(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         return IsApplicationElement(context)
             && GetTypeName(context) == "Program"
             && IsCommandApplication(facts.SourceCode)
@@ -91,6 +96,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP007(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         return IsApplicationElement(context)
             && GetTypeName(context) == "IHostExtensions"
             && !facts.Methods.Any(method => method.HasCommandDetailsParameter
@@ -105,16 +111,20 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         MethodAnalysisFacts? method = IsServiceCollectionExtensions(context)
             ? GetFacts(context).Methods.FirstOrDefault(candidate => candidate.HasChainedServiceCollectionRegistration)
             : null;
+
         return method is null ? [] : [Create("STXAPP008", "IServiceCollection registrations must be declared as individual statements rather than fluent chains.", context, method.LineNumber)];
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP009(EvaluationContext context)
     {
         if (!IsServiceCollectionExtensions(context)) return [];
+
         MethodAnalysisFacts[] methods = GetFacts(context).Methods.ToArray();
+
         MethodAnalysisFacts? method = methods.Where(IsDomainRegistrationMethod)
             .Where(candidate => candidate.HasInvocations)
             .FirstOrDefault(candidate => !DelegatesRegistrationByLayer(candidate, methods));
+
         return method is null ? [] : [Create("STXAPP009", "Application registration must delegate app-owned services to private architectural-layer IServiceCollection extensions.", context, method.LineNumber)];
     }
 
@@ -123,16 +133,20 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         MethodAnalysisFacts? method = IsServiceCollectionExtensions(context)
             ? GetFacts(context).Methods.FirstOrDefault(candidate => !candidate.FirstParameterIsServiceCollectionExtension)
             : null;
+
         return method is null ? [] : [Create("STXAPP010", "IServiceCollectionExtensions may contain only IServiceCollection extension methods.", context, method.LineNumber)];
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP011(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         bool applies = IsServiceCollectionExtensions(context)
             && !facts.ProjectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase);
+
         bool hasEntryPoint = facts.Methods.Any(method =>
             method.IsPublic && IsApplicationEntryPoint(method, facts.ProjectName));
+
         return applies && !hasEntryPoint
             ? [Create("STXAPP011", "Application IServiceCollectionExtensions must expose Add{AppName}.", context)]
             : [];
@@ -141,10 +155,13 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP012(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         if (!IsServiceCollectionExtensions(context)
             || facts.ProjectName.StartsWith("cCoder.", StringComparison.OrdinalIgnoreCase)) return [];
+
         MethodAnalysisFacts? method = facts.Methods.FirstOrDefault(candidate =>
             candidate.IsPublic && candidate.HasConfigurationParameter);
+
         return method is not null && string.IsNullOrWhiteSpace(method.ConfigurationCallbackType)
             ? [Create("STXAPP012", "Application registration must accept IConfiguration, bind its root configuration, and expose an Action<TConfiguration> adjustment callback.", context, method.LineNumber)]
             : [];
@@ -153,23 +170,29 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(EvaluationContext context)
     {
         if (!GetTypeName(context).EndsWith("Configuration", StringComparison.Ordinal)) return [];
+
         PropertyAnalysisFacts? property = GetFacts(context).Properties.FirstOrDefault(candidate =>
             !candidate.IsPublic || !candidate.HasGetter || !candidate.HasSetter
             || candidate.TypeName == "dynamic"
             || candidate.TypeName.Contains("Dictionary", StringComparison.Ordinal));
+
         return property is null ? [] : [Create("STXAPP013", "Configuration properties must be public, strongly typed, and bindable with get and set accessors.", context, property.LineNumber)];
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP014(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         if (!IsApplicationElement(context)
             || GetTypeName(context) != "Program"
             || facts.IsConsoleApplication
             || IsCommandApplication(facts.SourceCode)) return [];
+
         bool binds = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
+
         bool passes = facts.SourceCode.Contains(".Configuration", StringComparison.Ordinal)
             && facts.SourceCode.Contains(".Services.Add", StringComparison.Ordinal);
+
         return binds || !passes
             ? [Create("STXAPP014", "Program must pass IConfiguration to app registration; the app extension owns root configuration creation and binding.", context)]
             : [];
@@ -178,11 +201,15 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP015(EvaluationContext context)
     {
         TypeAnalysisFacts facts = GetFacts(context);
+
         string expectedName = string.Concat(facts.ProjectName.Split(
             ['.', '-'], StringSplitOptions.RemoveEmptyEntries)) + "Configuration";
+
         if (GetTypeName(context) != expectedName) return [];
+
         PropertyAnalysisFacts? property = facts.Properties.FirstOrDefault(candidate =>
             !candidate.TypeName.EndsWith("Configuration", StringComparison.Ordinal));
+
         return property is null ? [] : [Create("STXAPP015", "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.", context, property.LineNumber)];
     }
 
@@ -201,6 +228,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         string[] parts = filePath.Replace('\\', '/').Split('/');
         string fileName = parts.LastOrDefault() ?? string.Empty;
         string parent = parts.Length > 1 ? parts[parts.Length - 2] : string.Empty;
+
         bool conventional = fileName == $"{typeName}.cs"
             || fileName.StartsWith($"{typeName}.", StringComparison.Ordinal)
                 && fileName.EndsWith(".cs", StringComparison.Ordinal);
@@ -256,6 +284,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         string prefix = callbackType.Substring(
             startIndex: 0,
             length: callbackType.Length - "Configuration".Length);
+
         string suffix = projectName.Split('.').Last();
 
         if (!prefix.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
@@ -297,6 +326,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static string GetProviderRegistrationName(string projectName)
     {
         string[] segments = projectName.Split('.');
+
         return segments.Length >= 3 && segments[segments.Length - 1].Equals("Providers", StringComparison.OrdinalIgnoreCase)
             ? $"Add{segments[segments.Length - 2]}Providers"
             : string.Empty;
@@ -305,6 +335,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     private static string GetSupportingDataRegistrationName(string projectName)
     {
         string[] segments = projectName.Split(['.', '-'], StringSplitOptions.RemoveEmptyEntries);
+
         return segments.Length < 2 || !segments[segments.Length - 1].Equals("Data", StringComparison.OrdinalIgnoreCase)
             ? string.Empty
             : segments.Length == 2 ? "AddData" : $"Add{segments[segments.Length - 2]}Data";

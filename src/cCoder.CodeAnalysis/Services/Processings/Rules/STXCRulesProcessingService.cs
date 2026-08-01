@@ -38,6 +38,7 @@ internal sealed class STXCRulesProcessingService : ISTXCRulesProcessingService
     {
         IReadOnlyList<TypeDependency> dependencies =
             architectureModelQueries.GetDependencies(context: context);
+
         int dependencyCount = dependencies.Count;
         bool hasValidCount = dependencyCount is 2 or 3;
 

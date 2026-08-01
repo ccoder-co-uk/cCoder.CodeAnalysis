@@ -64,8 +64,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 AssemblyName = compilation.AssemblyName ?? string.Empty,
             },
             Classes = declaredTypes
-                .Where(predicate: (INamedTypeSymbol type) =>
-                    type.TypeKind is TypeKind.Class or TypeKind.Interface)
+                .Where(predicate: (INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
+            .Select(
+                selector: (INamedTypeSymbol type) =>
+                    CreateClass(
+                        type: type,
+                        compilation: compilation,
+                        declaredTypes: declaredTypes))
+                .OrderBy(keySelector: (Class item) => item.Name, comparer: StringComparer.Ordinal)
+                .ToList(),
+            Interfaces = declaredTypes
+                .Where(predicate: (INamedTypeSymbol type) => type.TypeKind == TypeKind.Interface)
             .Select(
                 selector: (INamedTypeSymbol type) =>
                     CreateClass(
@@ -218,12 +227,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     }
 
     private static int GetDeclarationLineNumber(INamedTypeSymbol type) =>
-        type.Locations
-            .Where(predicate: location => location.IsInSource)
-            .Select(selector: location =>
-                location.GetLineSpan().StartLinePosition.Line + 1)
-            .DefaultIfEmpty()
-            .Min();
+        type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .FirstOrDefault()?
+            .GetLocation()
+            .GetLineSpan().StartLinePosition.Line + 1
+        ?? 0;
 
     private static ArchitectureTypeKind GetArchitectureTypeKind(
         INamedTypeSymbol type) =>
@@ -238,9 +248,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     {
         string assemblyName = type.ContainingAssembly?.Name ?? string.Empty;
         string fullName = GetTypeName(type: type);
+
         bool isInCurrentProject = SymbolEqualityComparer.Default.Equals(
             x: type.ContainingAssembly,
             y: compilation.Assembly);
+
         INamedTypeSymbol? declaredType = declaredTypes.FirstOrDefault(
             predicate: candidate =>
                 SymbolEqualityComparer.Default.Equals(
@@ -278,11 +290,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         SyntaxTree? syntaxTree = type.DeclaringSyntaxReferences
             .Select(reference => reference.SyntaxTree)
             .FirstOrDefault();
+
         facts.ProjectName = compilation.AssemblyName ?? string.Empty;
         facts.FilePath = syntaxTree?.FilePath ?? string.Empty;
         facts.SourceCode = syntaxTree?.GetText().ToString() ?? string.Empty;
+
         facts.IsConsoleApplication = compilation.Options.OutputKind
             is OutputKind.ConsoleApplication or OutputKind.WindowsApplication;
+
         facts.ProjectTypeNames = declaredTypes.Select(GetTypeName).ToArray();
 
         return facts;
@@ -315,6 +330,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         TypeDeclarationSyntax? firstWithBaseType = declarations.FirstOrDefault(
             declaration => declaration.BaseList is not null);
+
         TypeDeclarationSyntax? firstNonPartial = declarations.FirstOrDefault(
             declaration => !declaration.Modifiers.Any(SyntaxKind.PartialKeyword));
 
@@ -365,17 +381,21 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         InvocationExpressionSyntax[] invocations = method.DescendantNodes()
             .OfType<InvocationExpressionSyntax>()
             .ToArray();
+
         ParameterSyntax? commandParameter = method.ParameterList.Parameters
             .FirstOrDefault(parameter =>
                 parameter.Type?.ToString() is "string" or "string[]" or "IReadOnlyList<string>");
+
         string source = method.ToFullString();
         int given = source.IndexOf("// Given", StringComparison.Ordinal);
         int when = source.IndexOf("// When", StringComparison.Ordinal);
         int then = source.IndexOf("// Then", StringComparison.Ordinal);
+
         string[] attributes = method.AttributeLists
             .SelectMany(attributes => attributes.Attributes)
             .Select(attribute => attribute.Name.ToString())
             .ToArray();
+
         ParameterSyntax? extensionParameter = method.ParameterList.Parameters.FirstOrDefault();
         bool isMvcActionResponse = IsMvcActionResponseMethod(method: method);
 
@@ -507,13 +527,16 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             compilation: compilation);
 
         List<string> httpMethods = GetHttpMethods(method: method);
+
         bool isODataControllerAction = InheritsFromTypeNamed(
             type: method.ContainingType,
             typeName: "ODataController");
+
         bool isHttpRequestHandler = httpMethods.Count > 0
             || isODataControllerAction
             || IsHttpController(type: method.ContainingType)
             || IsConventionalMiddlewareMethod(method: method);
+
         List<HttpResponse> httpResponses = isHttpRequestHandler
             ? GetHttpResponses(method: method, compilation: compilation)
             : [];
@@ -616,6 +639,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     {
         SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree: call.SyntaxTree);
         SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(node: call);
+
         IMethodSymbol? method = symbolInfo.Symbol as IMethodSymbol
             ?? symbolInfo.CandidateSymbols.OfType<IMethodSymbol>().FirstOrDefault();
 
@@ -658,6 +682,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 catchClause =>
                 {
                     SemanticModel semanticModel = compilation.GetSemanticModel(catchClause.SyntaxTree);
+
                     ITypeSymbol? caughtType = catchClause.Declaration is null
                         ? compilation.GetTypeByMetadataName(fullyQualifiedMetadataName: "System.Exception")
                         : semanticModel.GetTypeInfo(catchClause.Declaration.Type).Type;
@@ -758,6 +783,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     .OfType<InvocationExpressionSyntax>())
                 {
                     string resultMethod = GetInvocationName(invocation: invocation);
+
                     int? statusCode = GetStatusCode(
                         resultMethod: resultMethod,
                         invocation: invocation,
@@ -772,12 +798,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         .Ancestors()
                         .OfType<CatchClauseSyntax>()
                         .FirstOrDefault();
+
                     IfStatementSyntax? nullBranch = invocation
                         .Ancestors()
                         .OfType<IfStatementSyntax>()
                         .FirstOrDefault(
                             statement => statement.Condition.ToString()
                                 .Contains("null", StringComparison.Ordinal));
+
                     ConditionalExpressionSyntax? nullConditional = invocation
                         .Ancestors()
                         .OfType<ConditionalExpressionSyntax>()

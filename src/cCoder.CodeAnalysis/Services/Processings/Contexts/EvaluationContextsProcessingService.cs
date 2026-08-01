@@ -39,6 +39,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             ?? CreateArchitectureShell(
                 declaredTypes: architectureBuild.DeclaredTypes,
                 compilation: architectureBuild.Compilation);
+
         architecture.AnalysisProjectLineEnding = architectureBuild.ProjectLineEnding;
         architecture.AnalysisLocalDependencyTypeNames = localDependencyTypeNames;
 
@@ -68,19 +69,31 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 AssemblyName = compilation.AssemblyName ?? string.Empty,
             },
             Classes = declaredTypes
-                .Where(type => type.TypeKind is TypeKind.Class or TypeKind.Interface)
-                .Select(type => new Class
-                {
-                    Name = GetTypeName(type),
-                    StandardElementType = Classify(type),
-                    LineNumber = type.Locations.FirstOrDefault(location => location.IsInSource)?
-                        .GetLineSpan().StartLinePosition.Line + 1 ?? 0,
-                    IsPublic = type.DeclaredAccessibility == Accessibility.Public,
-                    Kind = type.TypeKind == TypeKind.Interface
-                        ? ArchitectureTypeKind.Interface
-                        : ArchitectureTypeKind.Class,
-                })
+                .Where(type => type.TypeKind == TypeKind.Class)
+                .Select(CreateArchitectureElement)
                 .ToList(),
+            Interfaces = declaredTypes
+                .Where(type => type.TypeKind == TypeKind.Interface)
+                .Select(CreateArchitectureElement)
+                .ToList(),
+        };
+
+    private static Class CreateArchitectureElement(INamedTypeSymbol type) =>
+        new()
+        {
+            Name = GetTypeName(type),
+            StandardElementType = Classify(type),
+            LineNumber = type.DeclaringSyntaxReferences
+                .Select(reference => reference.GetSyntax())
+                .OfType<TypeDeclarationSyntax>()
+                .FirstOrDefault()?
+                .GetLocation()
+                .GetLineSpan().StartLinePosition.Line + 1
+            ?? 0,
+            IsPublic = type.DeclaredAccessibility == Accessibility.Public,
+            Kind = type.TypeKind == TypeKind.Interface
+                ? ArchitectureTypeKind.Interface
+                : ArchitectureTypeKind.Class,
         };
 
     private static EvaluationContext CreateEvaluationContext(
@@ -106,8 +119,13 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     : null
             );
 
-        Class architectureElement = architecture.Classes.Single(element =>
-            string.Equals(element.Name, GetTypeName(type), StringComparison.Ordinal));
+        Class architectureElement = architecture.Classes
+            .Concat(architecture.Interfaces)
+            .Single(element => string.Equals(
+                element.Name,
+                GetTypeName(type),
+                StringComparison.Ordinal));
+
         architectureElement.AnalysisIsApiController = IsApiController(type);
         architectureElement.AnalysisHasExternalBaseType = InheritsFromExternalType(type);
         architectureElement.AnalysisImplementsExternalInterface = ImplementsExternalInterface(type);
@@ -117,13 +135,16 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         architectureElement.AnalysisDeclaresDependencyIntent = DeclaresDependencyIntent(type);
         architectureElement.AnalysisSourceFileTopLevelClassCount = GetTopLevelClasses(declaration).Count;
         architectureElement.AnalysisIsPrimaryTopLevelClassInFile = IsPrimaryTopLevelClass(declaration);
+
         architectureElement.AnalysisDeclarations = type.DeclaringSyntaxReferences
             .Select(reference => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
             .ToArray();
+
         architectureElement.AnalysisFilePath = sourceTree?.FilePath ?? string.Empty;
         architectureElement.AnalysisSourceCode = sourceTree?.GetText().ToString() ?? string.Empty;
         architectureElement.AnalysisProjectLineEnding = architecture.AnalysisProjectLineEnding;
+
         architectureElement.AnalysisDependencies = type.InstanceConstructors
             .SelectMany(constructor => constructor.Parameters)
             .Select(
@@ -132,17 +153,21 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .GroupBy(dependency => dependency.TypeName, StringComparer.Ordinal)
             .Select(dependencies => dependencies.First())
             .ToArray();
+
         architectureElement.AnalysisImplementedInterfaces = type.AllInterfaces
             .Select(GetTypeName)
             .ToArray();
+
         architectureElement.AnalysisContractMethodNames = type.AllInterfaces
             .SelectMany(contract => contract.GetMembers())
             .OfType<IMethodSymbol>()
             .Select(method => method.Name)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+
         architectureElement.AnalysisPublicMethodCallLineNumbers =
             GetPublicMethodCallLineNumbers(type, compilation);
+
         architectureElement.AnalysisPublicApiModelTypes = GetPublicApiModelTypes(type);
 
         return new EvaluationContext
@@ -308,6 +333,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         ITypeSymbol type)
     {
         string typeName = type.Name;
+
         string containingNamespace =
             type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
 
@@ -364,6 +390,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
     private static StandardElementType Classify(INamedTypeSymbol type)
     {
         string containingNamespace = type.ContainingNamespace.ToDisplayString();
+
         string containingAssemblyName =
             type.ContainingAssembly?.Name ?? string.Empty;
 

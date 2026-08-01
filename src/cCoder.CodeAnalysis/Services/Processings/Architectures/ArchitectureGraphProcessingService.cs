@@ -38,6 +38,7 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
                     activeMethodIds: new HashSet<string>(StringComparer.Ordinal))
                 .OrderBy(typeName => typeName, StringComparer.Ordinal)
                 .ToList();
+
             method.ThrowsExceptionTypes = GetEscapingExceptionTypes(
                     method: method,
                     methodsById: methodsById,
@@ -90,9 +91,11 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
         }
 
         activeMethodIds.Remove(method.Id);
+
         string[] result = possibleExceptions
             .OrderBy(typeName => typeName, StringComparer.Ordinal)
             .ToArray();
+
         exceptionCache[method.Id] = result;
         return result;
     }
@@ -152,6 +155,7 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
         string[] result = propagatedExceptions
             .OrderBy(typeName => typeName, StringComparer.Ordinal)
             .ToArray();
+
         exceptionCache[method.Id] = result;
         return result;
     }

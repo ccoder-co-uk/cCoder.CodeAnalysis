@@ -40,6 +40,7 @@ internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
     {
         IReadOnlyList<TypeDependency> dependencies =
             architectureModelQueries.GetDependencies(context: context);
+
         int dependencyCount = dependencies.Count;
         bool hasValidCount = dependencyCount is 2 or 3;
 

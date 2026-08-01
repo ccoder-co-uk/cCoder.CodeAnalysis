@@ -41,6 +41,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
     {
         IReadOnlyList<TypeDependency> dependencies =
             architectureModelQueries.GetDependencies(context: context);
+
         int foundationCount = dependencies.Count(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.FoundationService
@@ -50,6 +51,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
+
                 return standardElementType
                     is StandardElementType.OrchestrationService
                     or StandardElementType.CoordinationService

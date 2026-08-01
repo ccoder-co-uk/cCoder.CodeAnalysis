@@ -78,7 +78,10 @@ internal sealed class ArchitectureModelQueriesProcessingService
         context.ArchitectureElement.AnalysisPublicMethodCallLineNumbers ?? [];
 
     public IReadOnlyCollection<string> GetProjectTypeNames(EvaluationContext context) =>
-        context.ArchitectureModel.Classes.Select(element => element.Name).ToArray();
+        context.ArchitectureModel.Classes
+            .Concat(context.ArchitectureModel.Interfaces)
+            .Select(element => element.Name)
+            .ToArray();
 
     public string GetProjectName(EvaluationContext context) =>
         context.ArchitectureModel.Project.AssemblyName;
@@ -98,6 +101,7 @@ internal sealed class ArchitectureModelQueriesProcessingService
     public IReadOnlyList<Method> GetReachableMethods(EvaluationContext context, string methodId)
     {
         Dictionary<string, Method> methodsById = GetMethodsById(context: context);
+
         Dictionary<string, Method[]> implementationsByContractId = methodsById.Values
             .SelectMany(selector: method => (method.Implements ?? []).Select(
                 selector: contractId => (contractId, method)))
@@ -171,6 +175,7 @@ internal sealed class ArchitectureModelQueriesProcessingService
 
     private static Dictionary<string, Method> GetMethodsById(EvaluationContext context) =>
         (context.ArchitectureModel?.Classes ?? [])
+            .Concat(context.ArchitectureModel?.Interfaces ?? [])
             .SelectMany(selector: element => element.AnalysisMethods ?? [])
             .ToDictionary(keySelector: method => method.Id, comparer: StringComparer.Ordinal);
 }

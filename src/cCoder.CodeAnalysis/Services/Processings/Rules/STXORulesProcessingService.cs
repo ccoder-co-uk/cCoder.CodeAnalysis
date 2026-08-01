@@ -21,6 +21,7 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
     {
         IReadOnlyList<TypeDependency> dependencies =
             architectureModelQueries.GetDependencies(context: context);
+
         int count = dependencies.Count;
         bool flag = (uint)(count - 2) <= 1u;
         bool hasValidCount = flag;
@@ -39,6 +40,7 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
+
                 return standardElementType
                     is StandardElementType.FoundationService
                     or StandardElementType.ProcessingService;
