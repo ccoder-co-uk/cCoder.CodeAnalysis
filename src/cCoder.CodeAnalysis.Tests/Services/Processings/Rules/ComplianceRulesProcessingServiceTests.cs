@@ -112,11 +112,74 @@ public sealed class ComplianceRulesProcessingServiceTests
             .ContainSingle(item => item.Code == "OWASP0001");
     }
 
-    private static EvaluationContext CreateContext(Method method)
+    [Fact]
+    public void OwaspRuleShouldIsolatePasswordHashingImplementations()
+    {
+        Method method = CreateMethod();
+        method.DirectCalls.Add(item: new MethodCall
+        {
+            TypeName = "Konscious.Security.Cryptography.Argon2id",
+            MethodName = "GetBytes",
+            MethodId = "Argon2id.GetBytes(System.Int32)"
+        });
+
+        EvaluationContext context = CreateContext(method: method);
+        OWASPRulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "OWASP0002");
+    }
+
+    [Fact]
+    public void OwaspRuleShouldAllowPasswordHashingUtilityBroker()
+    {
+        Method method = CreateMethod();
+        method.DirectCalls.Add(item: new MethodCall
+        {
+            TypeName = "Konscious.Security.Cryptography.Argon2id",
+            MethodName = "GetBytes",
+            MethodId = "Argon2id.GetBytes(System.Int32)"
+        });
+
+        EvaluationContext context = CreateContext(
+            method: method,
+            typeName: "Example.Brokers.Utility.PasswordHashingUtilityBroker");
+
+        OWASPRulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "OWASP0002");
+    }
+
+    [Fact]
+    public void OwaspRuleShouldRejectGuidSecurityTokens()
+    {
+        Method method = CreateMethod();
+        method.Name = "GeneratePasswordResetToken";
+        method.DirectCalls.Add(item: new MethodCall
+        {
+            TypeName = "System.Guid",
+            MethodName = "NewGuid",
+            MethodId = "System.Guid.NewGuid()"
+        });
+
+        EvaluationContext context = CreateContext(method: method);
+        OWASPRulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "OWASP0003");
+    }
+
+    private static EvaluationContext CreateContext(
+        Method method,
+        string typeName = "Example.AppController")
     {
         Class element = new()
         {
-            Name = "Example.AppController",
+            Name = typeName,
             StandardElementType = StandardElementType.HttpExposure,
             LineNumber = 1,
             Properties = [],
