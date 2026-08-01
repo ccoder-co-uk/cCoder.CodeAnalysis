@@ -185,6 +185,41 @@ public sealed class ArchitectureProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyFrameworkControllerWrapperAsDependency()
+    {
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                namespace Example.Dependencies.Framework;
+
+                internal sealed class ControllerDependency
+                    : Microsoft.AspNetCore.Mvc.Controller
+                {
+                }
+                """,
+            path: "ControllerDependency.cs");
+
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references:
+            [
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(
+                    typeof(Microsoft.AspNetCore.Mvc.Controller).Assembly.Location)
+            ]);
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+        ArchitectureProcessingService service = new(architectureServiceMock.Object);
+
+        Architecture architecture = service.Process(compilation).Architecture;
+
+        architecture.Classes.Single(element => element.Name.EndsWith("ControllerDependency"))
+            .StandardElementType.Should().Be(StandardElementType.Dependency, "");
+    }
+
+    [Fact]
     public void ProcessShouldCaptureHttpResponseAndExceptionPaths()
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(

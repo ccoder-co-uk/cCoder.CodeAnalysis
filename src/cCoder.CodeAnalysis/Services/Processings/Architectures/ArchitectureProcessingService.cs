@@ -1195,6 +1195,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.App;
         }
 
+        if (DeclaresDependencyIntent(type: type)
+            && (InheritsFromExternalType(type: type)
+                || ImplementsExternalInterface(type: type)
+                || HasExternalStateDependency(type: type)))
+        {
+            return StandardElementType.Dependency;
+        }
+
         if (
             IsHttpController(type: type)
             || IsHttpMiddleware(type: type)
@@ -1274,6 +1282,22 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         return StandardElementType.Unknown;
     }
+
+    private static bool HasExternalStateDependency(INamedTypeSymbol type) =>
+
+        type.GetMembers()
+            .OfType<IFieldSymbol>()
+            .Any(
+                predicate: (IFieldSymbol field) =>
+                    field.Type.SpecialType == SpecialType.None
+                    && !field.Type.Locations.Any(
+                        predicate: (Location location) => location.IsInSource));
+
+    private static bool DeclaresDependencyIntent(INamedTypeSymbol type) =>
+
+        type.ContainingNamespace.ToDisplayString()
+            .Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
+        || type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal);
 
     private static bool IsHttpController(INamedTypeSymbol type) =>
         type.ContainingNamespace.ToDisplayString().Contains(
