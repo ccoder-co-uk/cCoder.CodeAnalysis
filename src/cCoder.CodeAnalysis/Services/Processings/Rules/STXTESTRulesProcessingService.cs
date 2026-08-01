@@ -11,38 +11,15 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
     {
         if (context.ArchitectureElement?.AnalysisTypeFacts is null)
         {
-            yield break;
+            return [];
         }
 
-        foreach (AnalysisItem item in EvaluateSTXTEST001(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST002(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST003(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST004(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST005(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST006(context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXTEST001(context: context)
+            .Concat(second: EvaluateSTXTEST002(context: context))
+            .Concat(second: EvaluateSTXTEST003(context: context))
+            .Concat(second: EvaluateSTXTEST004(context: context))
+            .Concat(second: EvaluateSTXTEST005(context: context))
+            .Concat(second: EvaluateSTXTEST006(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXTEST001(

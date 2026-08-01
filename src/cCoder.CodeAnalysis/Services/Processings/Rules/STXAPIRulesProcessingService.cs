@@ -15,25 +15,10 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXAPI001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI004(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXAPI001(context: context)
+            .Concat(second: EvaluateSTXAPI002(context: context))
+            .Concat(second: EvaluateSTXAPI003(context: context))
+            .Concat(second: EvaluateSTXAPI004(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(

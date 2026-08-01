@@ -16,70 +16,19 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
         architectureModelQueries = new ArchitectureModelQueriesProcessingService();
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXFORMAT011(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT008(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT004(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT005(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT006(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT007(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT009(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT010(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT012(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXFORMAT013(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXFORMAT011(context: context)
+            .Concat(second: EvaluateSTXFORMAT001(context: context))
+            .Concat(second: EvaluateSTXFORMAT002(context: context))
+            .Concat(second: EvaluateSTXFORMAT003(context: context))
+            .Concat(second: EvaluateSTXFORMAT008(context: context))
+            .Concat(second: EvaluateSTXFORMAT004(context: context))
+            .Concat(second: EvaluateSTXFORMAT005(context: context))
+            .Concat(second: EvaluateSTXFORMAT006(context: context))
+            .Concat(second: EvaluateSTXFORMAT007(context: context))
+            .Concat(second: EvaluateSTXFORMAT009(context: context))
+            .Concat(second: EvaluateSTXFORMAT010(context: context))
+            .Concat(second: EvaluateSTXFORMAT012(context: context))
+            .Concat(second: EvaluateSTXFORMAT013(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT013(EvaluationContext context) =>

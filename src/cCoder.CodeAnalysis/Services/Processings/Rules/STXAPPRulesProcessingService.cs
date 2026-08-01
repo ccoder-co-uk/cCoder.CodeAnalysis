@@ -17,78 +17,23 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         if (context.ArchitectureElement?.AnalysisTypeFacts is null)
         {
-            yield break;
+            return [];
         }
 
-        foreach (AnalysisItem item in EvaluateSTXAPP001(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP002(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP003(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP004(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP006(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP007(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP008(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP009(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP010(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP011(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP012(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP013(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP014(context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPP015(context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXAPP001(context: context)
+            .Concat(second: EvaluateSTXAPP002(context: context))
+            .Concat(second: EvaluateSTXAPP003(context: context))
+            .Concat(second: EvaluateSTXAPP004(context: context))
+            .Concat(second: EvaluateSTXAPP006(context: context))
+            .Concat(second: EvaluateSTXAPP007(context: context))
+            .Concat(second: EvaluateSTXAPP008(context: context))
+            .Concat(second: EvaluateSTXAPP009(context: context))
+            .Concat(second: EvaluateSTXAPP010(context: context))
+            .Concat(second: EvaluateSTXAPP011(context: context))
+            .Concat(second: EvaluateSTXAPP012(context: context))
+            .Concat(second: EvaluateSTXAPP013(context: context))
+            .Concat(second: EvaluateSTXAPP014(context: context))
+            .Concat(second: EvaluateSTXAPP015(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP001(EvaluationContext context)
