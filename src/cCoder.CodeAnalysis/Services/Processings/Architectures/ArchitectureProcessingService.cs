@@ -57,8 +57,15 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         Architecture architecture = new Architecture
         {
+            Project = new ProjectMetadata
+            {
+                Id = compilation.AssemblyName ?? string.Empty,
+                Name = compilation.AssemblyName ?? string.Empty,
+                AssemblyName = compilation.AssemblyName ?? string.Empty,
+            },
             Classes = declaredTypes
-                .Where(predicate: (INamedTypeSymbol type) => type.TypeKind == TypeKind.Class)
+                .Where(predicate: (INamedTypeSymbol type) =>
+                    type.TypeKind is TypeKind.Class or TypeKind.Interface)
             .Select(
                 selector: (INamedTypeSymbol type) =>
                     CreateClass(
@@ -168,6 +175,24 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         {
             Name = GetTypeName(type: type),
             StandardElementType = Classify(type: type),
+            LineNumber = GetDeclarationLineNumber(type: type),
+            IsPublic = type.DeclaredAccessibility == Accessibility.Public,
+            Kind = GetArchitectureTypeKind(type: type),
+            BaseType = type.BaseType is not null
+                && type.BaseType.SpecialType != SpecialType.System_Object
+                    ? CreateTypeReference(
+                        type: type.BaseType,
+                        compilation: compilation,
+                        declaredTypes: declaredTypes)
+                    : null,
+            Interfaces = type.Interfaces
+                .Select(selector: contract =>
+                    CreateTypeReference(
+                        type: contract,
+                        compilation: compilation,
+                        declaredTypes: declaredTypes))
+                .OrderBy(keySelector: reference => reference.Id, comparer: StringComparer.Ordinal)
+                .ToList(),
             Properties = type.GetMembers()
             .OfType<IPropertySymbol>()
                 .Where(predicate: (IPropertySymbol property) => property.DeclaredAccessibility == Accessibility.Public)
@@ -181,10 +206,62 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .Where(predicate: (Method method) => method.Symbol.DeclaredAccessibility == Accessibility.Public)
                 .ToList(),
             AnalysisMethods = analysisMethods,
+            AnalysisImplementedInterfaces = type.AllInterfaces
+                .Select(selector: GetTypeName)
+                .OrderBy(keySelector: interfaceName => interfaceName, comparer: StringComparer.Ordinal)
+                .ToArray(),
             AnalysisTypeFacts = CreateTypeAnalysisFacts(
                 type: type,
                 compilation: compilation,
                 declaredTypes: declaredTypes),
+        };
+    }
+
+    private static int GetDeclarationLineNumber(INamedTypeSymbol type) =>
+        type.Locations
+            .Where(predicate: location => location.IsInSource)
+            .Select(selector: location =>
+                location.GetLineSpan().StartLinePosition.Line + 1)
+            .DefaultIfEmpty()
+            .Min();
+
+    private static ArchitectureTypeKind GetArchitectureTypeKind(
+        INamedTypeSymbol type) =>
+        type.TypeKind == TypeKind.Interface
+            ? ArchitectureTypeKind.Interface
+            : ArchitectureTypeKind.Class;
+
+    private static TypeReference CreateTypeReference(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        string assemblyName = type.ContainingAssembly?.Name ?? string.Empty;
+        string fullName = GetTypeName(type: type);
+        bool isInCurrentProject = SymbolEqualityComparer.Default.Equals(
+            x: type.ContainingAssembly,
+            y: compilation.Assembly);
+        INamedTypeSymbol? declaredType = declaredTypes.FirstOrDefault(
+            predicate: candidate =>
+                SymbolEqualityComparer.Default.Equals(
+                    x: candidate,
+                    y: type)
+                || SymbolEqualityComparer.Default.Equals(
+                    x: candidate,
+                    y: type.OriginalDefinition));
+
+        return new TypeReference
+        {
+            Id = $"{assemblyName}:{fullName}",
+            FullName = fullName,
+            Name = type.Name,
+            Namespace = type.ContainingNamespace?.ToDisplayString() ?? string.Empty,
+            AssemblyName = assemblyName,
+            Kind = GetArchitectureTypeKind(type: type),
+            IsInCurrentProject = isInCurrentProject,
+            StandardElementType = declaredType is null
+                ? StandardElementType.Dependency
+                : Classify(type: declaredType),
         };
     }
 
