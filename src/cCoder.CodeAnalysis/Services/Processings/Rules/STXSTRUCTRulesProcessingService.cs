@@ -118,6 +118,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             StandardElementType.Broker => ["/Brokers/"],
             StandardElementType.Dependency => ["/Brokers/", "/Dependencies/", "/Exposures/"],
             StandardElementType.Exposure => ["/Exposures/", "/Controllers/", "/Extensions/"],
+            StandardElementType.HttpExposure =>
+                ["/Controllers/", "/Middleware/", "/Middlewares/", "/Exposures/"],
             StandardElementType.Model => ["/Models/"],
             StandardElementType.FoundationService => ["/Services/Foundations/"],
             StandardElementType.ProcessingService => ["/Services/Processings/"],

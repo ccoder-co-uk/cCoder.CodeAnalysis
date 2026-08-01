@@ -61,7 +61,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     .Concat(second: EvaluateSTX0019(context: context))
                     .Concat(second: EvaluateSTX0020(context: context))
                     .Concat(second: EvaluateSTX0021(context: context)),
-            StandardElementType.Exposure =>
+            StandardElementType.Exposure or StandardElementType.HttpExposure =>
                 EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0017(context: context))
                     .Concat(second: EvaluateSTX0022(context: context))

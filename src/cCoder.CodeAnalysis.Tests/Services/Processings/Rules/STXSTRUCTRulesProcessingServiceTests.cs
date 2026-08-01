@@ -130,13 +130,45 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
                 because: "");
     }
 
+    [Theory]
+    [InlineData("Project/Controllers/StudentController.cs")]
+    [InlineData("Project/Middleware/ErrorMiddleware.cs")]
+    [InlineData("Project/Middlewares/ErrorMiddleware.cs")]
+    [InlineData("Project/Exposures/HttpEndpoint.cs")]
+    public void HttpExposureShouldAllowHttpBoundaryFolders(string filePath)
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "Example.HttpEndpoint",
+            sourceCode: "public sealed class HttpEndpoint { }",
+            filePath: filePath,
+            standardElementType: StandardElementType.HttpExposure);
+
+        service.Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXSTRUCT001");
+    }
+
+    [Fact]
+    public void HttpExposureShouldRejectNonHttpFolder()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "Example.HttpEndpoint",
+            sourceCode: "public sealed class HttpEndpoint { }",
+            filePath: "Models/HttpEndpoint.cs",
+            standardElementType: StandardElementType.HttpExposure);
+
+        service.Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXSTRUCT001");
+    }
+
     private static EvaluationContext CreateContext(
         string typeName,
-        string sourceCode)
+        string sourceCode,
+        string filePath = "Models/Example.cs",
+        StandardElementType standardElementType = StandardElementType.Model)
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
             text: sourceCode,
-            path: "Models/Example.cs");
+            path: filePath);
 
         ClassDeclarationSyntax declaration = syntaxTree
             .GetRoot()
@@ -154,7 +186,7 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
         return new EvaluationContext
         {
             TypeName = typeName,
-            StandardElementType = StandardElementType.Model,
+            StandardElementType = standardElementType,
             FilePath = syntaxTree.FilePath,
             SourceCode = sourceCode,
             Declarations = [declaration],

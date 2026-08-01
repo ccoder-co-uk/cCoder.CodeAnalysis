@@ -95,12 +95,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTXD004(
         EvaluationContext context)
     {
-        bool isBusinessElement =
-            context.StandardElementType
-                is StandardElementType.Broker
-                or StandardElementType.Exposure
-                or >= StandardElementType.FoundationService
-                    and <= StandardElementType.AggregationService;
+        bool isBusinessElement = IsBusinessElement(context.StandardElementType);
 
         if (isBusinessElement
             && context.UsesExternalResource)
@@ -116,4 +111,15 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             };
         }
     }
+
+    private static bool IsBusinessElement(StandardElementType elementType) =>
+        elementType is StandardElementType.Broker
+            or StandardElementType.Exposure
+            or StandardElementType.HttpExposure
+            or StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
 }

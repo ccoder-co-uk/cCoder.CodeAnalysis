@@ -47,10 +47,7 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
 
         int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
-                dependency.StandardElementType
-                    is >= StandardElementType.Exposure
-                        and <= StandardElementType.AggregationService
-                || dependency.TypeName.EndsWith(value: "Service", comparisonType: StringComparison.Ordinal)
+                IsBusinessDependency(dependency.StandardElementType)
         );
 
         return serviceDependencyCount == 1
@@ -64,6 +61,15 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                 ),
             ];
     }
+
+    private static bool IsBusinessDependency(StandardElementType elementType) =>
+        elementType is StandardElementType.Exposure
+            or StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
 
     private IEnumerable<AnalysisItem> EvaluateSTXAPI002(EvaluationContext context)
     {

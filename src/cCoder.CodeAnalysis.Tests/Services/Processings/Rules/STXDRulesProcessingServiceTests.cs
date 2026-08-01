@@ -31,4 +31,22 @@ public sealed class STXDRulesProcessingServiceTests
             .ContainSingle(
                 predicate: item => item.Code == "STXD004");
     }
+
+    [Fact]
+    public void EvaluateShouldRejectExternalResourceInHttpExposure()
+    {
+        EvaluationContext context = new()
+        {
+            TypeName = "Example.Controllers.StudentController",
+            StandardElementType = StandardElementType.HttpExposure,
+            Declarations = [],
+            Dependencies = [],
+            LocalDependencyTypeNames = [],
+            ImplementedInterfaces = [],
+            UsesExternalResource = true
+        };
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXD004");
+    }
 }

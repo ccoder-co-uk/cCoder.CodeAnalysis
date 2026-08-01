@@ -204,9 +204,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
         int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
-                dependency.StandardElementType
-                    is >= StandardElementType.FoundationService
-                        and <= StandardElementType.AggregationService
+                IsBusinessService(dependency.StandardElementType)
         );
 
         return serviceDependencyCount <= 1
@@ -220,6 +218,14 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 ),
             ];
     }
+
+    private static bool IsBusinessService(StandardElementType elementType) =>
+        elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
 
     private bool IsStandardizedProviderClient(
         EvaluationContext context) =>
