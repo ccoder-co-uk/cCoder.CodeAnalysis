@@ -10,7 +10,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -54,8 +54,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB002(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .Where(
                 predicate: (SyntaxNode node) =>
                     node is IfStatementSyntax or SwitchStatementSyntax or ConditionalExpressionSyntax
@@ -73,8 +73,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB003(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .Where(
                 predicate: (SyntaxNode node) =>
                     node is ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax
@@ -106,8 +106,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB005(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .OfType<TryStatementSyntax>()
             .Select(
                 selector: (TryStatementSyntax node) =>
@@ -153,15 +153,15 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB007(EvaluationContext context)
     {
-        if (!context.TypeName.Contains(value: ".Brokers.Storage.", comparisonType: StringComparison.Ordinal))
+        if (!architectureModelQueries.GetTypeName(context: context).Contains(value: ".Brokers.Storage.", comparisonType: StringComparison.Ordinal))
         {
             return Array.Empty<AnalysisItem>();
         }
 
         string[] verbs = new string[4] { "Select", "Insert", "Update", "Delete" };
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -198,8 +198,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = (lineNumber ?? context.LineNumber),
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = (lineNumber ?? architectureModelQueries.GetLineNumber(context: context)),
         };
     }
 }

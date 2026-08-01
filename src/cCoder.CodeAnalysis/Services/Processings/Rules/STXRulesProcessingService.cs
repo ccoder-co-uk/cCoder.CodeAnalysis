@@ -24,7 +24,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
         EvaluationContext context) =>
-        context.StandardElementType switch
+        architectureModelQueries.GetStandardElementType(context: context) switch
         {
             StandardElementType.FoundationService
                 or StandardElementType.ProcessingService
@@ -73,8 +73,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0001(
         EvaluationContext context) =>
-        context.StandardElementType == StandardElementType.Unknown
-        && !context.DeclaresDependencyIntent
+        architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Unknown
+        && !architectureModelQueries.DeclaresDependencyIntent(context: context)
             ?
             [
                 CreateAnalysisItem(
@@ -173,7 +173,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ImplementsInfrastructureService(EvaluationContext context) =>
 
-        context.ImplementedInterfaces?.Any(
+        architectureModelQueries.GetImplementedInterfaces(context: context)?.Any(
             predicate: (string interfaceName) =>
                 interfaceName.EndsWith(value: ".IRuleProcessingService", comparisonType: StringComparison.Ordinal)
                 || interfaceName.EndsWith(
@@ -200,7 +200,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool IsEventProviderContract(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.']).Last();
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.']).Last();
 
         return typeName is "EventProvider" or "BulkEventProvider"
             || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
@@ -243,11 +243,11 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         string code
     )
     {
-        int count = context.Dependencies.Count;
+        int count = architectureModelQueries.GetDependencies(context: context).Count;
         bool flag = (uint)(count - 2) <= 1u;
         bool hasValidCount = flag;
 
-        bool containsOnlyExpectedDependencies = context.Dependencies.All(
+        bool containsOnlyExpectedDependencies = architectureModelQueries.GetDependencies(context: context).All(
             predicate: (TypeDependency dependency) => dependency.StandardElementType == expectedDependencyType
         );
 
@@ -266,8 +266,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTX0004(EvaluationContext context)
     {
         return (
-            !context.Dependencies.Any(
-                predicate: (TypeDependency dependency) => dependency.StandardElementType == context.StandardElementType
+            !architectureModelQueries.GetDependencies(context: context).Any(
+                predicate: (TypeDependency dependency) => dependency.StandardElementType == architectureModelQueries.GetStandardElementType(context: context)
             )
         )
             ? Array.Empty<AnalysisItem>()
@@ -283,21 +283,21 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 
-        context.PublicMethodCallLineNumbers.Select(
+        architectureModelQueries.GetPublicMethodCallLineNumbers(context: context).Select(
             selector: (int lineNumber) =>
                 new AnalysisItem
                 {
                     Code = "STX0005",
                     Description = "A public service method must not call another public method on the same service.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
+                    Type = architectureModelQueries.GetTypeName(context: context),
                     LineNumber = lineNumber,
                 }
         );
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0006(EvaluationContext context)
     {
-        return (!context.IsPublic)
+        return (!architectureModelQueries.IsPublic(context: context))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -311,7 +311,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0007(EvaluationContext context)
     {
-        return (context.PublicApiModelTypes.Count <= 1)
+        return (architectureModelQueries.GetPublicApiModelTypes(context: context).Count <= 1)
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -353,7 +353,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0012(EvaluationContext context)
     {
-        if (context.StandardElementType != StandardElementType.FoundationService)
+        if (architectureModelQueries.GetStandardElementType(context: context) != StandardElementType.FoundationService)
         {
             return [];
         }
@@ -396,7 +396,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0013(EvaluationContext context) =>
         CreateWhenInvalid(
-            isInvalid: context.ImplementedInterfaces.Count == 0,
+            isInvalid: architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0,
             code: "STX0013",
             description: "A service must implement a local interface.",
             context: context);
@@ -417,7 +417,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0023(EvaluationContext context) =>
         CreateWhenInvalid(
-            isInvalid: context.StandardElementType == StandardElementType.FoundationService
+            isInvalid: architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.FoundationService
                 && !GetPublicMethods(context: context).All(predicate: UsesOperationSpecificValidation),
             code: "STX0023",
             description: "Each business operation must call its operation-specific validation method.",
@@ -563,7 +563,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         string expectedPrefix,
         string code)
     {
-        if (context.TypeName.EndsWith(value: ".IServiceCollectionExtensions", comparisonType: StringComparison.Ordinal))
+        if (architectureModelQueries.GetTypeName(context: context).EndsWith(value: ".IServiceCollectionExtensions", comparisonType: StringComparison.Ordinal))
         {
             return Array.Empty<AnalysisItem>();
         }
@@ -740,7 +740,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
         return candidateNames.FirstOrDefault(
             predicate: (string candidate) =>
-                context.PublicApiModelTypes.Any(
+                architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                     predicate: (string modelType) =>
                         modelType.EndsWith(value: "." + candidate, comparisonType: StringComparison.Ordinal)
                 )
@@ -749,17 +749,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ImplementsMatchingInterface(EvaluationContext context)
     {
-        if (context.ImplementedInterfaces.Count == 0)
+        if (architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0)
         {
             return true;
         }
 
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         string expectedInterfaceName = "I" + typeName;
 
-        return context.ImplementedInterfaces.Any(
+        return architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: (string interfaceName) => interfaceName.Split(separator: ['.'])
             .Last() == expectedInterfaceName
         );
@@ -767,9 +767,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ContractContainsPublicMethods(EvaluationContext context)
     {
-        return context.ImplementedInterfaces.Count == 0
-            || context.PublicMethodNames.All(
-                predicate: ((IEnumerable<string>)context.ContractMethodNames).Contains<string>
+        return architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0
+            || architectureModelQueries.GetPublicMethodNames(context: context).All(
+                predicate: ((IEnumerable<string>)architectureModelQueries.GetContractMethodNames(context: context)).Contains<string>
             );
     }
 
@@ -914,9 +914,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
+            Type = architectureModelQueries.GetTypeName(context: context),
             LineNumber = (
-                location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : context.LineNumber
+                location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : architectureModelQueries.GetLineNumber(context: context)
             ),
         };
     }
