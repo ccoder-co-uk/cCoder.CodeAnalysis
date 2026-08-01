@@ -4,16 +4,16 @@
 
 Publication and verification date: 1 August 2026.
 
-The live `Documentation/CodeAnalysis` tree on `https://ccoder.co.uk` now documents every diagnostic registered in `DiagnosticCodeStandardPageIndex`:
+The live `Documentation/CodeAnalysis` tree on `https://ccoder.co.uk` documented every diagnostic registered in `DiagnosticCodeStandardPageIndex` at publication time. A subsequent local OWASP renumbering is intentionally awaiting a separately authorized live-site update:
 
 | Set | Count |
 |---|---:|
 | Registered diagnostics | 116 |
-| Matching live rule pages | 116 |
-| Registered diagnostics without a live page | 0 |
-| Historical live pages not currently registered | 1 |
+| Matching live rule pages | 115 |
+| Registered diagnostics without a live page | 1 (`OWASP0001`) |
+| Historical live pages not currently registered | 2 (`STXAPP005`, `OWASP0004`) |
 
-`STXAPP005` remains at `Documentation/CodeAnalysis/STXAPP/STXAPP005`. It was deliberately preserved as historical documentation and was not renamed, redirected, or deleted.
+`STXAPP005` remains at `Documentation/CodeAnalysis/STXAPP/STXAPP005`. It was deliberately preserved as historical documentation and was not renamed, redirected, or deleted. The current `OWASP0004` page is temporarily historical until the authorized live renumbering to `OWASP0001` occurs.
 
 ## Pages added
 
@@ -41,7 +41,7 @@ The final implemented compliance inventory was added:
 |---|---|
 | 13219–13228 | `RFC0001`–`RFC0010` |
 | 13229–13231 | `ODATA0001`–`ODATA0003` |
-| 13232 | `OWASP0004` |
+| 13232 | `OWASP0004` (published value; locally renumbered target is `OWASP0001`) |
 
 All paths use the canonical pattern `Documentation/CodeAnalysis/{Family}/{Code}`.
 
@@ -74,9 +74,13 @@ Representative routes verified include:
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/RFC`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/RFC/RFC0006`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/ODATA/ODATA0003`
-- `https://ccoder.co.uk/Documentation/CodeAnalysis/OWASP/OWASP0004`
+- `https://ccoder.co.uk/Documentation/CodeAnalysis/OWASP/OWASP0004` (the originally verified route; live renumbering is intentionally deferred)
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/STXAPP/STXAPP015`
 
 ## Deferred families
 
 No ISO family or rule page was created. An ISO-labelled diagnostic should be published only after the project adopts a licensed, machine-verifiable requirement and implements a corresponding analyzer rule. Research-only OData and OWASP candidates were likewise not documented as implemented diagnostics.
+
+## Post-publication numbering correction
+
+The implemented OWASP diagnostic was renumbered in analyzer source and local documentation from `OWASP0004` to `OWASP0001`, because unpublished research candidates do not reserve diagnostic numbers. The live page remains at the originally verified `OWASP0004` route until a separately authorized website update is performed. `STXAPP005` remains a retired, reserved historical code and is not available for reuse.

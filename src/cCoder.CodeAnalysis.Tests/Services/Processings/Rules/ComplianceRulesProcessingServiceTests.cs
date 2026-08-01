@@ -61,7 +61,7 @@ public sealed class ComplianceRulesProcessingServiceTests
 
         service.Evaluate(context: context)
             .Should()
-            .ContainSingle(item => item.Code == "OWASP0004");
+            .ContainSingle(item => item.Code == "OWASP0001");
     }
 
     private static EvaluationContext CreateContext(Method method) =>

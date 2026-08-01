@@ -84,7 +84,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "ODATA0001", standardPageUri: $"{ODataProtocolPage}#sec_CreateanEntity"),
         new(diagnosticCode: "ODATA0002", standardPageUri: $"{ODataProtocolPage}#sec_RetrieveanEntity"),
         new(diagnosticCode: "ODATA0003", standardPageUri: $"{ODataProtocolPage}#sec_UnsupportedFunctionality"),
-        new(diagnosticCode: "OWASP0004", standardPageUri: OwaspApiSecurityPage),
+        new(diagnosticCode: "OWASP0001", standardPageUri: OwaspApiSecurityPage),
         new(diagnosticCode: "STX0001", standardPageUri: $"{TheoryPage}#002-tri-nature"),
         new(diagnosticCode: "STX0002", standardPageUri: $"{ModelingPage}#01200-data-carrier-models"),
         new(diagnosticCode: "STX0003", standardPageUri: $"{ProcessingsPage}#22201-pass-through"),

@@ -9,16 +9,16 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        return EvaluateOWASP0004(context: context);
+        return EvaluateOWASP0001(context: context);
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateOWASP0004(EvaluationContext context) =>
+    private static IEnumerable<AnalysisItem> EvaluateOWASP0001(EvaluationContext context) =>
         (context.ArchitectureElement?.Methods ?? [])
             .Where(method => method.IsHttpRequestHandler
                 && method.HttpResponses.Any(response => response.ExposesExceptionDetails))
             .Select(method => new AnalysisItem
             {
-                Code = "OWASP0004",
+                Code = "OWASP0001",
                 Description = "API error responses must not disclose exception messages, stack traces, or internal exception objects.",
                 Severity = AnalysisSeverity.Warning,
                 Type = context.TypeName,
