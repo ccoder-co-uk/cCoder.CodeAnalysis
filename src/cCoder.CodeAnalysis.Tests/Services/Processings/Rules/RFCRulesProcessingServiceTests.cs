@@ -75,19 +75,9 @@ public sealed class RFCRulesProcessingServiceTests
     [Fact]
     public void EvaluateShouldIgnoreNonODataController()
     {
-        TypeDeclarationSyntax declaration = ParseDeclaration(
-            """
-            public class AppController : Controller
-            {
-                public IActionResult Post([FromBody] App app) => Ok(app);
-            }
-            """);
-
-        EvaluationContext context = new()
-        {
-            TypeName = "Example.AppController",
-            Declarations = [declaration],
-        };
+        Method modelMethod = CreateHttpMethod();
+        modelMethod.Name = "Post";
+        EvaluationContext context = CreateModelContext(modelMethod);
 
         service.Evaluate(context: context)
             .Should()
@@ -237,21 +227,28 @@ public sealed class RFCRulesProcessingServiceTests
         return CreateModelContext(method: modelMethod);
     }
 
-    private static EvaluationContext CreateModelContext(Method method) =>
-
-        new()
+    private static EvaluationContext CreateModelContext(Method method)
+    {
+        Class element = new()
         {
-            TypeName = "Example.AppController",
-            Declarations = [],
-            ArchitectureElement = new Class
+            Name = "Example.AppController",
+            StandardElementType = StandardElementType.HttpExposure,
+            LineNumber = 1,
+            Properties = [],
+            Methods = [method],
+            AnalysisMethods = [method],
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = element,
+            ArchitectureModel = new Architecture
             {
-                Name = "Example.AppController",
-                StandardElementType = StandardElementType.Exposure,
-                Properties = [],
-                Methods = [method],
-                AnalysisMethods = [method],
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [element],
             },
         };
+    }
 
     private static Method CreateHttpMethod() =>
 

@@ -8,14 +8,14 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         TypeAnalysisFacts? facts = context.ArchitectureElement?.AnalysisTypeFacts;
 
-        string typeName = context.TypeName
+        string typeName = architectureModelQueries.GetTypeName(context)
             .Split(separator: ['.'])
             .Last();
 
@@ -70,8 +70,10 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = lineNumber > 0 ? lineNumber : context.LineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = lineNumber > 0
+                ? lineNumber
+                : architectureModelQueries.GetLineNumber(context),
         };
     }
 
@@ -80,7 +82,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
         TypeAnalysisFacts? facts)
     {
         return architectureModelQueries.IsApiController(context: context)
-            || context.TypeName.Split(separator: ['.']).Last() == "Program"
+            || architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
             || IsEventProviderContract(context: context)
             ? []
             : (facts?.BranchingLineNumbers ?? [])
@@ -114,7 +116,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
     private static bool IsEventProviderContract(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.']).Last();
+        string typeName = architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last();
 
         return typeName is "EventProvider" or "BulkEventProvider"
             || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
@@ -229,10 +231,10 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
     private bool IsStandardizedProviderClient(
         EvaluationContext context) =>
-        context.ProjectName?.EndsWith(
+        architectureModelQueries.GetProjectName(context).EndsWith(
             value: ".Providers",
             comparisonType: StringComparison.OrdinalIgnoreCase) == true
-        && context.TypeName.Split(separator: ['.'])
+        && architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last()
             .EndsWith(
                 value: "Client",
@@ -267,7 +269,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
     {
         return architectureModelQueries.IsApiController(context: context)
             || IsHostedService(context: context)
-            || context.TypeName.Split(separator: ['.']).Last() == "Program"
+            || architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
             ? []
             : (facts?.Methods ?? [])
                 .Where(method => method.HasMultipleRoutineCallStatements)

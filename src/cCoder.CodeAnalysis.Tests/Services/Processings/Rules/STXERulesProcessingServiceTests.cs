@@ -150,9 +150,9 @@ public sealed class STXERulesProcessingServiceTests
             typeName:
                 "cCoder.Mail.Providers.Exposures.MicrosoftGraphMailClient");
 
-        context.ProjectName = "cCoder.Mail.Providers";
-        context.ImplementedInterfaces = ["IMailClient"];
-        context.Dependencies =
+        context.ArchitectureModel.Project.AssemblyName = "cCoder.Mail.Providers";
+        context.ArchitectureElement.AnalysisImplementedInterfaces = ["IMailClient"];
+        context.ArchitectureElement.AnalysisDependencies =
         [
             new TypeDependency
             {
@@ -167,8 +167,6 @@ public sealed class STXERulesProcessingServiceTests
                     StandardElementType.FoundationService
             }
         ];
-        context.ArchitectureElement!.AnalysisImplementedInterfaces = context.ImplementedInterfaces;
-        context.ArchitectureElement.AnalysisDependencies = context.Dependencies;
 
         STXERulesProcessingService service = new();
 
@@ -192,9 +190,9 @@ public sealed class STXERulesProcessingServiceTests
             declaration: declaration,
             typeName: "cCoder.Mail.Exposures.MailExposure");
 
-        context.ProjectName = "cCoder.Mail";
-        context.ImplementedInterfaces = [];
-        context.Dependencies =
+        context.ArchitectureModel.Project.AssemblyName = "cCoder.Mail";
+        context.ArchitectureElement.AnalysisImplementedInterfaces = [];
+        context.ArchitectureElement.AnalysisDependencies =
         [
             new TypeDependency
             {
@@ -209,8 +207,6 @@ public sealed class STXERulesProcessingServiceTests
                     StandardElementType.FoundationService
             }
         ];
-        context.ArchitectureElement!.AnalysisImplementedInterfaces = context.ImplementedInterfaces;
-        context.ArchitectureElement.AnalysisDependencies = context.Dependencies;
 
         STXERulesProcessingService service = new();
 
@@ -315,10 +311,12 @@ public sealed class STXERulesProcessingServiceTests
 
         return new EvaluationContext
         {
-            TypeName = typeName,
-            StandardElementType = StandardElementType.Exposure,
             ArchitectureElement = architectureElement,
-            Dependencies = [],
+            ArchitectureModel = new Architecture
+            {
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [architectureElement],
+            },
         };
     }
 

@@ -64,21 +64,28 @@ public sealed class ComplianceRulesProcessingServiceTests
             .ContainSingle(item => item.Code == "OWASP0001");
     }
 
-    private static EvaluationContext CreateContext(Method method) =>
-
-        new()
+    private static EvaluationContext CreateContext(Method method)
+    {
+        Class element = new()
         {
-            TypeName = "Example.AppController",
-            Declarations = [],
-            ArchitectureElement = new Class
+            Name = "Example.AppController",
+            StandardElementType = StandardElementType.HttpExposure,
+            LineNumber = 1,
+            Properties = [],
+            Methods = [method],
+            AnalysisMethods = [method],
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = element,
+            ArchitectureModel = new Architecture
             {
-                Name = "Example.AppController",
-                StandardElementType = StandardElementType.Exposure,
-                Properties = [],
-                Methods = [method],
-                AnalysisMethods = [method],
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [element],
             },
         };
+    }
 
     private static Method CreateMethod() =>
 

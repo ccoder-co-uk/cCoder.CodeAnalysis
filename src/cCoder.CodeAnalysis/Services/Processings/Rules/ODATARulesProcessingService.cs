@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateODATA0001(context: context)
@@ -60,7 +64,9 @@ internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = method.LineNumber > 0 ? method.LineNumber : context.LineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = method.LineNumber > 0
+                ? method.LineNumber
+                : architectureModelQueries.GetLineNumber(context),
         };
 }

@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateRFC0001(context: context)
@@ -172,7 +176,9 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = method.LineNumber > 0 ? method.LineNumber : context.LineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = method.LineNumber > 0
+                ? method.LineNumber
+                : architectureModelQueries.GetLineNumber(context),
         };
 }
