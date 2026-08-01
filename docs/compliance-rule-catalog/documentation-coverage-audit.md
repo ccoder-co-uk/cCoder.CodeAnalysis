@@ -4,16 +4,16 @@
 
 Publication and verification date: 1 August 2026.
 
-The live `Documentation/CodeAnalysis` tree on `https://ccoder.co.uk` documented every diagnostic registered in `DiagnosticCodeStandardPageIndex` at publication time. A subsequent local OWASP renumbering is intentionally awaiting a separately authorized live-site update:
+The live `Documentation/CodeAnalysis` tree on `https://ccoder.co.uk` documents every diagnostic registered in `DiagnosticCodeStandardPageIndex`:
 
 | Set | Count |
 |---|---:|
 | Registered diagnostics | 116 |
-| Matching live rule pages | 115 |
-| Registered diagnostics without a live page | 1 (`OWASP0001`) |
-| Historical live pages not currently registered | 2 (`STXAPP005`, `OWASP0004`) |
+| Matching live rule pages | 116 |
+| Registered diagnostics without a live page | 0 |
+| Historical live pages not currently registered | 1 (`STXAPP005`) |
 
-`STXAPP005` remains at `Documentation/CodeAnalysis/STXAPP/STXAPP005`. It was deliberately preserved as historical documentation and was not renamed, redirected, or deleted. The current `OWASP0004` page is temporarily historical until the authorized live renumbering to `OWASP0001` occurs.
+`STXAPP005` remains at `Documentation/CodeAnalysis/STXAPP/STXAPP005`. It was deliberately preserved as historical documentation and was not renamed, redirected, or deleted.
 
 ## Pages added
 
@@ -41,7 +41,7 @@ The final implemented compliance inventory was added:
 |---|---|
 | 13219–13228 | `RFC0001`–`RFC0010` |
 | 13229–13231 | `ODATA0001`–`ODATA0003` |
-| 13232 | `OWASP0004` (published value; locally renumbered target is `OWASP0001`) |
+| 13232 | `OWASP0001` |
 
 All paths use the canonical pattern `Documentation/CodeAnalysis/{Family}/{Code}`.
 
@@ -51,7 +51,7 @@ All paths use the canonical pattern `Documentation/CodeAnalysis/{Family}/{Code}`
 - Every page was posted as a complete graph containing invariant `PageInfo` and invariant `body` content.
 - Each page was re-fetched from its keyed API endpoint after creation.
 - The current App 1 Guests role (`1596ce23-b9e7-4a81-6f24-08d70c49f59a`) was applied through `Api/ContentManagement/PageRole` during creation.
-- No existing page or content record was updated or deleted.
+- Page 13232, its invariant PageInfo, and its invariant body were later updated in place to correct `OWASP0004` to `OWASP0001`; stable identity, parent, order, layout, role assignments, and article structure were preserved.
 - Credentials and bearer tokens remained inside the approved runtime helper and were not persisted.
 
 ## Stored-content verification
@@ -74,7 +74,7 @@ Representative routes verified include:
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/RFC`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/RFC/RFC0006`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/ODATA/ODATA0003`
-- `https://ccoder.co.uk/Documentation/CodeAnalysis/OWASP/OWASP0004` (the originally verified route; live renumbering is intentionally deferred)
+- `https://ccoder.co.uk/Documentation/CodeAnalysis/OWASP/OWASP0001`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/STXAPP/STXAPP015`
 
 ## Deferred families
@@ -83,4 +83,4 @@ No ISO family or rule page was created. An ISO-labelled diagnostic should be pub
 
 ## Post-publication numbering correction
 
-The implemented OWASP diagnostic was renumbered in analyzer source and local documentation from `OWASP0004` to `OWASP0001`, because unpublished research candidates do not reserve diagnostic numbers. The live page remains at the originally verified `OWASP0004` route until a separately authorized website update is performed. `STXAPP005` remains a retired, reserved historical code and is not available for reuse.
+The implemented OWASP diagnostic and its live page were renumbered from `OWASP0004` to `OWASP0001`, because unpublished research candidates do not reserve diagnostic numbers. The updated canonical route returned HTTP 200 anonymously with the corrected title and article references; the obsolete `OWASP0004` route returned HTTP 404. `STXAPP005` remains a retired, reserved historical code and is not available for reuse.
