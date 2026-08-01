@@ -9,25 +9,22 @@ internal sealed class OWASPRulesProcessingService : IOWASPRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        if (context.ArchitectureElement is null)
+        foreach (AnalysisItem item in EvaluateOWASP0004(context))
         {
-            yield break;
-        }
-
-        foreach (Method method in context.ArchitectureElement.Methods
-            .Where(method => method.IsHttpRequestHandler))
-        {
-            if (method.HttpResponses.Any(response => response.ExposesExceptionDetails))
-            {
-                yield return new AnalysisItem
-                {
-                    Code = "OWASP0004",
-                    Description = "API error responses must not disclose exception messages, stack traces, or internal exception objects.",
-                    Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = method.LineNumber > 0 ? method.LineNumber : context.LineNumber,
-                };
-            }
+            yield return item;
         }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateOWASP0004(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsHttpRequestHandler
+                && method.HttpResponses.Any(response => response.ExposesExceptionDetails))
+            .Select(method => new AnalysisItem
+            {
+                Code = "OWASP0004",
+                Description = "API error responses must not disclose exception messages, stack traces, or internal exception objects.",
+                Severity = AnalysisSeverity.Warning,
+                Type = context.TypeName,
+                LineNumber = method.LineNumber > 0 ? method.LineNumber : context.LineNumber,
+            });
 }

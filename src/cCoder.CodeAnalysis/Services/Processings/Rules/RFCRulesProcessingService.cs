@@ -9,201 +9,203 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        if (context.ArchitectureElement is null)
+        foreach (AnalysisItem item in EvaluateRFC0001(context))
         {
-            yield break;
+            yield return item;
         }
 
-        foreach (Method method in context.ArchitectureElement.Methods
-            .Where(method => method.IsODataControllerAction))
+        foreach (AnalysisItem item in EvaluateRFC0002(context))
         {
-            AnalysisItem? item = EvaluateCrudSuccessResponse(
-                context: context,
-                method: method);
-
-            if (item is not null)
-            {
-                yield return item;
-            }
+            yield return item;
         }
 
-        foreach (AnalysisItem item in EvaluateModelRules(context: context))
+        foreach (AnalysisItem item in EvaluateRFC0003(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0004(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0005(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0006(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0007(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0008(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0009(context))
+        {
+            yield return item;
+        }
+
+        foreach (AnalysisItem item in EvaluateRFC0010(context))
         {
             yield return item;
         }
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateModelRules(
-        EvaluationContext context)
-    {
-        foreach (Method method in context.ArchitectureElement.Methods
-            .Where(method => method.IsHttpRequestHandler))
-        {
-            if (HasEscapingException(method: method, category: "Validation")
-                && !HasExceptionResponse(method: method, category: "Validation", 400, 422))
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0005",
-                    description: "An HTTP validation failure must return 400 Bad Request or the adopted 422 semantic-validation response.",
-                    context: context,
-                    method: method);
-            }
+    private static IEnumerable<AnalysisItem> EvaluateRFC0001(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => method.HttpMethods.Contains("POST", StringComparer.Ordinal)
+                && method.Name == "Post"
+                && method.HasFromBodyParameter
+                && !HasSuccessResponse(method, 201))
+            .Select(method => CreateAnalysisItem(
+                "RFC0001",
+                "An OData CRUD Post action must return 201 Created with the created representation.",
+                context,
+                method));
 
-            if (HasEscapingException(method: method, category: "Authentication")
-                && !method.HttpResponses.Any(
-                    response => response.IsExceptionPath
-                        && response.ExceptionType.Contains("Authentication", StringComparison.Ordinal)
-                        && response.StatusCode == 401
-                        && response.ResultMethod == "Challenge"))
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0006",
-                    description: "An authentication failure must return 401 Unauthorized with an authentication challenge.",
-                    context: context,
-                    method: method);
-            }
+    private static IEnumerable<AnalysisItem> EvaluateRFC0002(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => method.HttpMethods.Contains("DELETE", StringComparer.Ordinal)
+                && method.Name == "Delete"
+                && !HasSuccessResponse(method, 204))
+            .Select(method => CreateAnalysisItem(
+                "RFC0002",
+                "An OData CRUD Delete action must return 204 No Content when deletion succeeds.",
+                context,
+                method));
 
-            if (HasEscapingException(method: method, category: "Authorization")
-                && !HasExceptionResponse(method: method, category: "Authorization", 403))
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0007",
-                    description: "An authenticated caller denied an operation must receive 403 Forbidden.",
-                    context: context,
-                    method: method);
-            }
+    private static IEnumerable<AnalysisItem> EvaluateRFC0003(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => method.HttpMethods.Contains("GET", StringComparer.Ordinal)
+                && method.Name is "Get" or "GetAll"
+                && !HasSuccessResponse(method, 200))
+            .Select(method => CreateAnalysisItem(
+                "RFC0003",
+                "An OData CRUD Get action must return 200 OK with the requested representation.",
+                context,
+                method));
 
-            if (method.IsODataControllerAction
+    private static IEnumerable<AnalysisItem> EvaluateRFC0004(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => (method.HttpMethods.Contains("PUT", StringComparer.Ordinal)
+                    || method.HttpMethods.Contains("PATCH", StringComparer.Ordinal))
+                && method.Name is "Put" or "Patch"
+                && !HasSuccessResponse(method, 200))
+            .Select(method => CreateAnalysisItem(
+                "RFC0004",
+                "An OData CRUD Put or Patch action that returns the updated representation must return 200 OK.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0005(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasEscapingException(method, "Validation")
+                && !HasExceptionResponse(method, "Validation", 400, 422))
+            .Select(method => CreateAnalysisItem(
+                "RFC0005",
+                "An HTTP validation failure must return 400 Bad Request or the adopted 422 semantic-validation response.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0006(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasEscapingException(method, "Authentication")
+                && !method.HttpResponses.Any(response => response.IsExceptionPath
+                    && response.ExceptionType.Contains("Authentication", StringComparison.Ordinal)
+                    && response.StatusCode == 401
+                    && response.ResultMethod == "Challenge"))
+            .Select(method => CreateAnalysisItem(
+                "RFC0006",
+                "An authentication failure must return 401 Unauthorized with an authentication challenge.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0007(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasEscapingException(method, "Authorization")
+                && !HasExceptionResponse(method, "Authorization", 403))
+            .Select(method => CreateAnalysisItem(
+                "RFC0007",
+                "An authenticated caller denied an operation must receive 403 Forbidden.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0008(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => method.IsODataControllerAction
                 && method.HttpMethods.Contains("GET", StringComparer.Ordinal)
                 && method.HasKeyParameter
                 && !method.HandlesNullWithNotFound)
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0008",
-                    description: "A keyed OData retrieval must return 404 Not Found when no entity exists.",
-                    context: context,
-                    method: method);
-            }
+            .Select(method => CreateAnalysisItem(
+                "RFC0008",
+                "A keyed OData retrieval must return 404 Not Found when no entity exists.",
+                context,
+                method));
 
-            if (HasConflictException(method: method)
-                && !HasExceptionResponse(method: method, category: "Conflict", 409)
-                && !HasExceptionResponse(method: method, category: "Concurrency", 409))
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0009",
-                    description: "A non-precondition state or concurrency conflict must return 409 Conflict.",
-                    context: context,
-                    method: method);
-            }
+    private static IEnumerable<AnalysisItem> EvaluateRFC0009(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasConflictException(method)
+                && !HasExceptionResponse(method, "Conflict", 409)
+                && !HasExceptionResponse(method, "Concurrency", 409))
+            .Select(method => CreateAnalysisItem(
+                "RFC0009",
+                "A non-precondition state or concurrency conflict must return 409 Conflict.",
+                context,
+                method));
 
-            if (method.HttpResponses.Any(
-                response => response.IsExceptionPath
-                    && response.ExceptionType == "System.Exception"
-                    && response.StatusCode != 500))
-            {
-                yield return CreateModelAnalysisItem(
-                    code: "RFC0010",
-                    description: "An unclassified HTTP failure must be rethrown to approved terminal handling or return 500, never a successful or client-error response.",
-                    context: context,
-                    method: method);
-            }
-        }
-    }
+    private static IEnumerable<AnalysisItem> EvaluateRFC0010(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => method.HttpResponses.Any(response => response.IsExceptionPath
+                && response.ExceptionType == "System.Exception"
+                && response.StatusCode != 500))
+            .Select(method => CreateAnalysisItem(
+                "RFC0010",
+                "An unclassified HTTP failure must be rethrown to approved terminal handling or return 500, never a successful or client-error response.",
+                context,
+                method));
 
-    private static bool HasEscapingException(
-        Method method,
-        string category) =>
+    private static IEnumerable<Method> GetODataMethods(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsODataControllerAction);
 
+    private static IEnumerable<Method> GetHttpMethods(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsHttpRequestHandler);
+
+    private static bool HasEscapingException(Method method, string category) =>
         (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
             exceptionType => exceptionType.Contains(category, StringComparison.Ordinal));
 
     private static bool HasConflictException(Method method) =>
+        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
+            (exceptionType.Contains("Conflict", StringComparison.Ordinal)
+                || exceptionType.Contains("Concurrency", StringComparison.Ordinal))
+            && !exceptionType.Contains("Precondition", StringComparison.Ordinal)
+            && !exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
 
-        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
-            exceptionType =>
-                (exceptionType.Contains("Conflict", StringComparison.Ordinal)
-                    || exceptionType.Contains("Concurrency", StringComparison.Ordinal))
-                && !exceptionType.Contains("Precondition", StringComparison.Ordinal)
-                && !exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
-
-    private static bool HasExceptionResponse(
-        Method method,
-        string category,
-        params int[] statusCodes) =>
-
-        method.HttpResponses.Any(
-            response => response.IsExceptionPath
-                && response.ExceptionType.Contains(category, StringComparison.Ordinal)
-                && statusCodes.Contains(response.StatusCode));
-
-    private static AnalysisItem? EvaluateCrudSuccessResponse(
-        EvaluationContext context,
-        Method method)
-    {
-        if (method.HttpMethods.Contains("POST", StringComparer.Ordinal)
-            && method.Name == "Post"
-            && method.HasFromBodyParameter)
-        {
-            return HasSuccessResponse(method: method, 201)
-                ? null
-                : CreateModelAnalysisItem(
-                    code: "RFC0001",
-                    description: "An OData CRUD Post action must return 201 Created with the created representation.",
-                    context: context,
-                    method: method);
-        }
-
-        if (method.HttpMethods.Contains("DELETE", StringComparer.Ordinal)
-            && method.Name == "Delete")
-        {
-            return HasSuccessResponse(method: method, 204)
-                ? null
-                : CreateModelAnalysisItem(
-                    code: "RFC0002",
-                    description: "An OData CRUD Delete action must return 204 No Content when deletion succeeds.",
-                    context: context,
-                    method: method);
-        }
-
-        if (method.HttpMethods.Contains("GET", StringComparer.Ordinal)
-            && method.Name is "Get" or "GetAll")
-        {
-            return HasSuccessResponse(method: method, 200)
-                ? null
-                : CreateModelAnalysisItem(
-                    code: "RFC0003",
-                    description: "An OData CRUD Get action must return 200 OK with the requested representation.",
-                    context: context,
-                    method: method);
-        }
-
-        if ((method.HttpMethods.Contains("PUT", StringComparer.Ordinal)
-                || method.HttpMethods.Contains("PATCH", StringComparer.Ordinal))
-            && method.Name is "Put" or "Patch")
-        {
-            return HasSuccessResponse(method: method, 200)
-                ? null
-                : CreateModelAnalysisItem(
-                    code: "RFC0004",
-                    description: "An OData CRUD Put or Patch action that returns the updated representation must return 200 OK.",
-                    context: context,
-                    method: method);
-        }
-
-        return null;
-    }
+    private static bool HasExceptionResponse(Method method, string category, params int[] statusCodes) =>
+        method.HttpResponses.Any(response => response.IsExceptionPath
+            && response.ExceptionType.Contains(category, StringComparison.Ordinal)
+            && statusCodes.Contains(response.StatusCode));
 
     private static bool HasSuccessResponse(Method method, int statusCode) =>
-        method.HttpResponses.Any(response =>
-            !response.IsExceptionPath
+        method.HttpResponses.Any(response => !response.IsExceptionPath
             && response.StatusCode == statusCode);
 
-    private static AnalysisItem CreateModelAnalysisItem(
+    private static AnalysisItem CreateAnalysisItem(
         string code,
         string description,
         EvaluationContext context,
         Method method) =>
-
         new()
         {
             Code = code,

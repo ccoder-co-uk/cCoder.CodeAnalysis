@@ -9,56 +9,63 @@ internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        if (context.ArchitectureElement is null)
+        foreach (AnalysisItem item in EvaluateODATA0001(context))
         {
-            yield break;
+            yield return item;
         }
 
-        foreach (Method method in context.ArchitectureElement.Methods
-            .Where(method => method.IsODataControllerAction))
+        foreach (AnalysisItem item in EvaluateODATA0002(context))
         {
-            if (method.HttpMethods.Contains("POST", StringComparer.Ordinal)
-                && !method.HttpResponses.Any(response => response.StatusCode == 201))
-            {
-                yield return CreateAnalysisItem(
-                    code: "ODATA0001",
-                    description: "An OData entity creation must return the created resource in a 201 response.",
-                    context: context,
-                    method: method);
-            }
+            yield return item;
+        }
 
-            if (method.HttpMethods.Contains("GET", StringComparer.Ordinal)
-                && method.HasKeyParameter
-                && !method.HandlesNullWithNotFound)
-            {
-                yield return CreateAnalysisItem(
-                    code: "ODATA0002",
-                    description: "A request for a non-existent OData entity URL must return 404 Not Found.",
-                    context: context,
-                    method: method);
-            }
-
-            if ((method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
-                    exceptionType => exceptionType.EndsWith(
-                        "NotImplementedException",
-                        StringComparison.Ordinal))
-                && !method.HttpResponses.Any(response => response.StatusCode == 501))
-            {
-                yield return CreateAnalysisItem(
-                    code: "ODATA0003",
-                    description: "Recognized but unsupported OData functionality must return 501 Not Implemented.",
-                    context: context,
-                    method: method);
-            }
+        foreach (AnalysisItem item in EvaluateODATA0003(context))
+        {
+            yield return item;
         }
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateODATA0001(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => method.HttpMethods.Contains("POST", StringComparer.Ordinal)
+                && !method.HttpResponses.Any(response => response.StatusCode == 201))
+            .Select(method => CreateAnalysisItem(
+                "ODATA0001",
+                "An OData entity creation must return the created resource in a 201 response.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateODATA0002(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => method.HttpMethods.Contains("GET", StringComparer.Ordinal)
+                && method.HasKeyParameter
+                && !method.HandlesNullWithNotFound)
+            .Select(method => CreateAnalysisItem(
+                "ODATA0002",
+                "A request for a non-existent OData entity URL must return 404 Not Found.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateODATA0003(EvaluationContext context) =>
+        GetODataMethods(context)
+            .Where(method => (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
+                    exceptionType => exceptionType.EndsWith("NotImplementedException", StringComparison.Ordinal))
+                && !method.HttpResponses.Any(response => response.StatusCode == 501))
+            .Select(method => CreateAnalysisItem(
+                "ODATA0003",
+                "Recognized but unsupported OData functionality must return 501 Not Implemented.",
+                context,
+                method));
+
+    private static IEnumerable<Method> GetODataMethods(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsODataControllerAction);
 
     private static AnalysisItem CreateAnalysisItem(
         string code,
         string description,
         EvaluationContext context,
         Method method) =>
-
         new()
         {
             Code = code,
