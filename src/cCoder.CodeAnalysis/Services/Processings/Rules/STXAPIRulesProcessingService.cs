@@ -10,7 +10,7 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingService
 {
-    private readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
         new ArchitectureModelQueriesProcessingService();
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
@@ -33,8 +33,10 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
@@ -88,7 +90,7 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
 
     private IEnumerable<AnalysisItem> EvaluateSTXAPI003(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last();
 
         return
@@ -114,8 +116,8 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
 
         string[] verbs = ["Get", "Post", "Put", "Delete"];
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries.GetDeclarations(context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>

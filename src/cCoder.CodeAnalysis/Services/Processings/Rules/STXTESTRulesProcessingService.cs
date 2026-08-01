@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         if (context.ArchitectureElement?.AnalysisTypeFacts is null)
@@ -52,7 +56,7 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
         TypeAnalysisFacts facts = GetFacts(context);
 
         return IsTestSuite(context, facts)
-            && !context.TypeName.EndsWith("Tests", StringComparison.Ordinal)
+            && !architectureModelQueries.GetTypeName(context).EndsWith("Tests", StringComparison.Ordinal)
                 ? [Create(
                     "STXTEST003",
                     "A test suite must be named for its target type using the {TargetType}Tests convention.",
@@ -90,8 +94,8 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
         TypeAnalysisFacts facts = GetFacts(context);
 
         if (!IsTestSuite(context, facts)
-            || !context.TypeName.EndsWith("ControllerAcceptanceTests", StringComparison.Ordinal)
-            || context.TypeName.EndsWith("ImportControllerAcceptanceTests", StringComparison.Ordinal))
+            || !architectureModelQueries.GetTypeName(context).EndsWith("ControllerAcceptanceTests", StringComparison.Ordinal)
+            || architectureModelQueries.GetTypeName(context).EndsWith("ImportControllerAcceptanceTests", StringComparison.Ordinal))
         {
             return [];
         }
@@ -115,7 +119,7 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
     private static bool IsTestSuite(
         EvaluationContext context,
         TypeAnalysisFacts facts) =>
-        context.TypeName.EndsWith("Tests", StringComparison.Ordinal)
+        architectureModelQueries.GetTypeName(context).EndsWith("Tests", StringComparison.Ordinal)
         || facts.Methods.Any(method => method.IsTest);
 
     private static AnalysisItem Create(
@@ -127,7 +131,9 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = lineNumber == 0 ? context.LineNumber : lineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = lineNumber == 0
+                ? architectureModelQueries.GetLineNumber(context)
+                : lineNumber,
         };
 }

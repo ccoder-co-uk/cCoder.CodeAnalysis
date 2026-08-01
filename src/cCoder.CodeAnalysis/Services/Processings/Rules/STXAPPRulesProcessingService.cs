@@ -2,11 +2,15 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     private static readonly string[] layerNames =
     [
         "Dependencies", "Brokers", "Foundations", "Processings", "Orchestrations",
@@ -40,7 +44,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         TypeAnalysisFacts facts = GetFacts(context);
         return IsApplicationElement(context)
-            && !LivesAtProjectRoot(GetTypeName(context.TypeName), facts.ProjectName, facts.FilePath)
+            && !LivesAtProjectRoot(GetTypeName(context), facts.ProjectName, facts.FilePath)
                 ? [Create("STXAPP001", "Application composition helpers must live at the project root.", context)]
                 : [];
     }
@@ -67,7 +71,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         TypeAnalysisFacts facts = GetFacts(context);
         return IsApplicationElement(context)
-            && GetTypeName(context.TypeName) == "WebApplicationExtensions"
+            && GetTypeName(context) == "WebApplicationExtensions"
             && !facts.Methods.Any(method => method.ResolvesServiceFromProvider)
                 ? [Create("STXAPP004", "WebApplicationExtensions must consume the service provider to start application services.", context)]
                 : [];
@@ -77,7 +81,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         TypeAnalysisFacts facts = GetFacts(context);
         return IsApplicationElement(context)
-            && GetTypeName(context.TypeName) == "Program"
+            && GetTypeName(context) == "Program"
             && IsCommandApplication(facts.SourceCode)
             && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal))
                 ? [Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context)]
@@ -88,7 +92,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         TypeAnalysisFacts facts = GetFacts(context);
         return IsApplicationElement(context)
-            && GetTypeName(context.TypeName) == "IHostExtensions"
+            && GetTypeName(context) == "IHostExtensions"
             && !facts.Methods.Any(method => method.HasCommandDetailsParameter
                 && method.ResolvesServiceFromProvider
                 && method.PassesCommandDetails)
@@ -148,7 +152,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP013(EvaluationContext context)
     {
-        if (!GetTypeName(context.TypeName).EndsWith("Configuration", StringComparison.Ordinal)) return [];
+        if (!GetTypeName(context).EndsWith("Configuration", StringComparison.Ordinal)) return [];
         PropertyAnalysisFacts? property = GetFacts(context).Properties.FirstOrDefault(candidate =>
             !candidate.IsPublic || !candidate.HasGetter || !candidate.HasSetter
             || candidate.TypeName == "dynamic"
@@ -160,7 +164,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
     {
         TypeAnalysisFacts facts = GetFacts(context);
         if (!IsApplicationElement(context)
-            || GetTypeName(context.TypeName) != "Program"
+            || GetTypeName(context) != "Program"
             || facts.IsConsoleApplication
             || IsCommandApplication(facts.SourceCode)) return [];
         bool binds = facts.SourceCode.Contains(".Bind", StringComparison.Ordinal);
@@ -176,7 +180,7 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         TypeAnalysisFacts facts = GetFacts(context);
         string expectedName = string.Concat(facts.ProjectName.Split(
             ['.', '-'], StringSplitOptions.RemoveEmptyEntries)) + "Configuration";
-        if (GetTypeName(context.TypeName) != expectedName) return [];
+        if (GetTypeName(context) != expectedName) return [];
         PropertyAnalysisFacts? property = facts.Properties.FirstOrDefault(candidate =>
             !candidate.TypeName.EndsWith("Configuration", StringComparison.Ordinal));
         return property is null ? [] : [Create("STXAPP015", "Application root configuration properties must be domain or complex configuration objects; scalar values belong to a domain.", context, property.LineNumber)];
@@ -186,11 +190,11 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         context.ArchitectureElement!.AnalysisTypeFacts;
 
     private static bool IsApplicationElement(EvaluationContext context) =>
-        context.StandardElementType == StandardElementType.App;
+        architectureModelQueries.GetStandardElementType(context) == StandardElementType.App;
 
     private static bool IsServiceCollectionExtensions(EvaluationContext context) =>
         IsApplicationElement(context)
-        && GetTypeName(context.TypeName) == "IServiceCollectionExtensions";
+        && GetTypeName(context) == "IServiceCollectionExtensions";
 
     private static bool LivesAtProjectRoot(string typeName, string projectName, string filePath)
     {
@@ -306,7 +310,8 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             : segments.Length == 2 ? "AddData" : $"Add{segments[segments.Length - 2]}Data";
     }
 
-    private static string GetTypeName(string fullName) => fullName.Split('.').Last();
+    private static string GetTypeName(EvaluationContext context) =>
+        architectureModelQueries.GetTypeName(context).Split('.').Last();
 
     private static AnalysisItem Create(
         string code,
@@ -317,7 +322,9 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = lineNumber == 0 ? context.LineNumber : lineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = lineNumber == 0
+                ? architectureModelQueries.GetLineNumber(context)
+                : lineNumber,
         };
 }

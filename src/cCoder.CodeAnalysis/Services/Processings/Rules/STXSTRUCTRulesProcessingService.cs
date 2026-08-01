@@ -22,7 +22,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT001(EvaluationContext context)
     {
-        if (context.TypeName.Split(separator: ['.'])
+        if (architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last() == "Program")
         {
             return [];
@@ -33,7 +33,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
                 predicate: (Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax declaration) =>
                     !IsInStandardFolder(
                         filePath: declaration.SyntaxTree.FilePath,
-                        elementType: context.StandardElementType
+                        elementType: architectureModelQueries.GetStandardElementType(context)
                     )
             )
             .Select(
@@ -73,7 +73,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT003(
         EvaluationContext context)
     {
-        if (!IsService(elementType: context.StandardElementType))
+        if (!IsService(elementType: architectureModelQueries.GetStandardElementType(context)))
         {
             return [];
         }
@@ -148,7 +148,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
+            Type = architectureModelQueries.GetTypeName(context),
             LineNumber = location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }

@@ -26,8 +26,10 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : context.LineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = location is not null
+                ? location.GetLineSpan().StartLinePosition.Line + 1
+                : architectureModelQueries.GetLineNumber(context),
         };
     }
 
@@ -319,7 +321,7 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT010(EvaluationContext context)
     {
-        return (context.StandardElementType == StandardElementType.Test)
+        return (architectureModelQueries.GetStandardElementType(context) == StandardElementType.Test)
             ? Array.Empty<AnalysisItem>()
             : architectureModelQueries
                 .GetDeclarations(context: context).SelectMany(
