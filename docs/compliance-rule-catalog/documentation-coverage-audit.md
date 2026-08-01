@@ -8,8 +8,8 @@ The live `Documentation/CodeAnalysis` tree on `https://ccoder.co.uk` documents e
 
 | Set | Count |
 |---|---:|
-| Registered diagnostics | 121 |
-| Matching live rule pages | 121 |
+| Registered diagnostics | 123 |
+| Matching live rule pages | 123 |
 | Registered diagnostics without a live page | 0 |
 | Historical live pages not currently registered | 1 (`STXAPP005`) |
 
@@ -34,6 +34,8 @@ The following previously missing Standard rule pages were added:
 | 13213–13214 | `STXD003`–`STXD004` |
 | 13215–13216 | `STXE006`–`STXE007` |
 | 13217–13218 | `STXSTRUCT002`–`STXSTRUCT003` |
+| 13238 | `STXAPI005` |
+| 13239 | `STXF004` |
 
 The final implemented compliance inventory was added:
 
@@ -57,18 +59,18 @@ All paths use the canonical pattern `Documentation/CodeAnalysis/{Family}/{Code}`
 
 ## Stored-content verification
 
-The post-publication API read returned 35 new pages with IDs 13203–13237. Structural checks passed:
+The post-publication API read returned 37 new pages with IDs 13203–13239. Structural checks passed:
 
 - each new family has exactly one `[component[DetailedNav]]`;
 - every new rule has `What the Standard says` and `Why it matters` headings;
 - every new rule has bad and good `<pre><code class="language-csharp">` examples;
 - no new rule contains `public-actions`, `docs-rule-actions`, or `DetailedNav`;
-- the final live rule set contains all 121 registered codes;
+- the final live rule set contains all 123 registered codes;
 - `STXAPP005` is still present.
 
 ## Anonymous rendering verification
 
-Every new canonical route was fetched without authentication and with a cache-bypass query value. All 35 returned HTTP 200 and contained the expected family or diagnostic name. The returned documents contained the normal public navigation login link and theme CSS, but no rendered Login component in the page body.
+Every new canonical route was fetched without authentication and with a cache-bypass query value. All 37 returned HTTP 200 and contained the expected family or diagnostic name. The returned documents contained the normal public navigation login link and theme CSS, but no rendered Login component in the page body.
 
 Representative routes verified include:
 
@@ -78,6 +80,8 @@ Representative routes verified include:
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/ODATA/ODATA0003`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/OWASP/OWASP0001`
 - `https://ccoder.co.uk/Documentation/CodeAnalysis/STXAPP/STXAPP015`
+- `https://ccoder.co.uk/Documentation/CodeAnalysis/STXAPI/STXAPI005`
+- `https://ccoder.co.uk/Documentation/CodeAnalysis/STXF/STXF004`
 
 ## Deferred families
 

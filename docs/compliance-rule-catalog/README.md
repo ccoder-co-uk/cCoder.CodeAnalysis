@@ -15,6 +15,15 @@ The prefixes identify the authority behind each rule family:
 
 Implemented diagnostics within each compliance family use a contiguous sequence beginning at `0001`. Research candidates do not reserve diagnostic numbers; they receive a code only when implemented and published. A published diagnostic that is later retired keeps its historical number, and that number is never reused. `STXAPP005` is the explicit current example of such a retired, reserved gap.
 
+## Adopted Standard HTTP and concurrency profiles
+
+Two source-verifiable policies extend the existing Standard families:
+
+| Code | Policy | Model evidence | Standard basis |
+|---|---|---|---|
+| STXAPI005 | Every public controller or middleware HTTP handler uses try/catch flow and maps every modeled outcome to a 2xx, 4xx, or 5xx response. | HTTP-handler classification, response paths, incoming call-chain exceptions, catches, and middleware `Response.StatusCode` assignments. | The Standard RESTful APIs [§3.1.1.2.1](https://github.com/hassanhabib/The-Standard/blob/master/3.%20Exposers/3.1%20Communication%20Protocols/3.1.1%20RESTful%20APIs/3.1.1%20RESTful%20APIs.md#31121-codes--responses). cCoder explicitly applies the controller boundary policy to middleware. |
+| STXF004 | A foundation above an EF-backed storage broker must handle or categorically wrap an inferred `DbUpdateConcurrencyException`. | Calls through storage brokers and context factories to a `DbContext` `SaveChanges` operation, including higher-order `TryCatch` wrappers and escaping exception mappings. | The Standard Foundations [§2.1.3.2.1](https://github.com/hassanhabib/The-Standard/blob/master/2.%20Services/2.1%20Foundations/2.1%20Foundations.md#21321-exceptions-mappings), specialized as an adopted cCoder concurrency profile. |
+
 ## Recommended implementation wave
 
 | Code | Requirement | Deterministic trigger | Required evidence | Exclusions | Model support | Authority |
