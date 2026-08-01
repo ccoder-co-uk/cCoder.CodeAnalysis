@@ -526,6 +526,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             method: method,
             compilation: compilation);
 
+        if (HasEntityFrameworkSaveChanges(method: method, compilation: compilation))
+        {
+            directlyThrownExceptionTypes.Add(
+                "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException");
+        }
+
+        directlyThrownExceptionTypes = directlyThrownExceptionTypes
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(typeName => typeName, StringComparer.Ordinal)
+            .ToList();
+
         List<string> httpMethods = GetHttpMethods(method: method);
 
         bool isODataControllerAction = InheritsFromTypeNamed(
@@ -540,6 +551,10 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         List<HttpResponse> httpResponses = isHttpRequestHandler
             ? GetHttpResponses(method: method, compilation: compilation)
             : [];
+
+        List<ExceptionCatch> exceptionCatches = GetExceptionCatches(
+            method: method,
+            compilation: compilation);
 
         return new Method
         {
@@ -568,6 +583,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 || call.TargetSymbol.ContainingType.TypeKind == TypeKind.Interface)))
                 .ToList(),
             PossibleExceptionTypes = directlyThrownExceptionTypes.ToList(),
+            IncomingExceptionTypes = directlyThrownExceptionTypes.ToList(),
             ThrowsExceptionTypes = directlyThrownExceptionTypes.ToList(),
             HttpMethods = httpMethods,
             HttpResponses = httpResponses,
@@ -580,11 +596,44 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 && method.Parameters.Length > 0,
             HandlesNullWithNotFound = httpResponses.Any(
                 response => response.StatusCode == 404 && response.IsNullPath),
+            HasTryCatch = exceptionCatches.Count > 0,
             Symbol = method,
             DirectCalls = directCalls,
             DirectlyThrowsExceptionTypes = directlyThrownExceptionTypes,
-            ExceptionCatches = GetExceptionCatches(method: method, compilation: compilation),
+            ExceptionCatches = exceptionCatches,
         };
+    }
+
+    private static bool HasEntityFrameworkSaveChanges(
+        IMethodSymbol method,
+        CSharpCompilation compilation) =>
+
+        method.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .SelectMany(declaration => declaration.DescendantNodes())
+            .OfType<InvocationExpressionSyntax>()
+            .Where(invocation => GetInvocationName(invocation: invocation)
+                is "SaveChanges" or "SaveChangesAsync")
+            .Any(invocation => IsDbContextInvocation(
+                invocation: invocation,
+                compilation: compilation));
+
+    private static bool IsDbContextInvocation(
+        InvocationExpressionSyntax invocation,
+        CSharpCompilation compilation)
+    {
+        SemanticModel semanticModel = compilation.GetSemanticModel(invocation.SyntaxTree);
+        IMethodSymbol? method = semanticModel.GetSymbolInfo(invocation).Symbol as IMethodSymbol;
+
+        if (method is not null
+            && InheritsFromTypeNamed(type: method.ContainingType, typeName: "DbContext"))
+        {
+            return true;
+        }
+
+        return invocation.Expression is MemberAccessExpressionSyntax memberAccess
+            && semanticModel.GetTypeInfo(memberAccess.Expression).Type is INamedTypeSymbol receiverType
+            && InheritsFromTypeNamed(type: receiverType, typeName: "DbContext");
     }
 
     private static List<MethodCall> GetDirectCalls(
@@ -600,14 +649,19 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         is InvocationExpressionSyntax
                         or ObjectCreationExpressionSyntax
                         or ImplicitObjectCreationExpressionSyntax))
-            .Select(call => GetCalledMethod(compilation: compilation, call: call))
-            .Where(methodSymbol => methodSymbol is not null)
-            .Select(methodSymbol => methodSymbol!)
-            .GroupBy(GetMethodId, StringComparer.Ordinal)
+            .Select(call => new
+            {
+                Node = call,
+                Method = GetCalledMethod(compilation: compilation, call: call)?.OriginalDefinition,
+            })
+            .Where(call => call.Method is not null)
+            .GroupBy(call => GetMethodId(method: call.Method!), StringComparer.Ordinal)
             .Select(group => group.First())
             .Select(
-                target =>
+                call =>
                 {
+                    IMethodSymbol target = call.Method!;
+
                     bool isDependencyBoundary = !IsDeclaredInCurrentProject(
                         method: target,
                         compilation: compilation);
@@ -627,6 +681,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 : Classify(type: localType),
                         IsDependencyBoundary = isDependencyBoundary,
                         TargetSymbol = target,
+                        IsExceptionWrapper = target.Name == "TryCatch"
+                            && call.Node is InvocationExpressionSyntax invocation
+                            && invocation.ArgumentList.Arguments.Any(argument =>
+                                argument.Expression is LambdaExpressionSyntax lambda
+                                && lambda.DescendantNodes()
+                                    .OfType<InvocationExpressionSyntax>()
+                                    .Any()),
                     };
                 })
             .OrderBy(call => call.MethodId, StringComparer.Ordinal)
@@ -845,6 +906,42 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         });
                 }
             }
+
+            foreach (AssignmentExpressionSyntax assignment in declaration
+                .DescendantNodes()
+                .OfType<AssignmentExpressionSyntax>()
+                .Where(assignment => BelongsToMethod(
+                    node: assignment,
+                    declaration: declaration))
+                .Where(assignment => assignment.Left.ToString()
+                    .EndsWith(".Response.StatusCode", StringComparison.Ordinal)))
+            {
+                int? statusCode = GetConstantStatusCode(
+                    expression: assignment.Right,
+                    compilation: compilation);
+
+                if (statusCode is null)
+                {
+                    continue;
+                }
+
+                CatchClauseSyntax? exceptionCatch = assignment
+                    .Ancestors()
+                    .OfType<CatchClauseSyntax>()
+                    .FirstOrDefault();
+
+                responses.Add(
+                    new HttpResponse
+                    {
+                        StatusCode = statusCode.Value,
+                        ResultMethod = "Response.StatusCode",
+                        ExceptionType = GetCaughtExceptionType(
+                            catchClause: exceptionCatch,
+                            compilation: compilation),
+                        IsExceptionPath = exceptionCatch is not null,
+                        HasBody = false,
+                    });
+            }
         }
 
         return responses
@@ -867,7 +964,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         ReturnStatementSyntax statement,
         SyntaxNode declaration) =>
 
-        !statement.Ancestors()
+        BelongsToMethod(node: statement, declaration: declaration);
+
+    private static bool BelongsToMethod(
+        SyntaxNode node,
+        SyntaxNode declaration) =>
+
+        !node.Ancestors()
             .TakeWhile(ancestor => ancestor != declaration)
             .Any(
                 ancestor => ancestor
@@ -902,24 +1005,24 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             "PreconditionFailed" => 412,
             "UnsupportedMediaType" => 415,
             "UnprocessableEntity" => 422,
-            "StatusCode" => GetConstantStatusCode(invocation: invocation, compilation: compilation),
+            "StatusCode" => GetConstantStatusCode(
+                expression: invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression,
+                compilation: compilation),
             _ => null,
         };
 
     private static int? GetConstantStatusCode(
-        InvocationExpressionSyntax invocation,
+        ExpressionSyntax? expression,
         CSharpCompilation compilation)
     {
-        ExpressionSyntax? argument = invocation.ArgumentList.Arguments.FirstOrDefault()?.Expression;
-
-        if (argument is null)
+        if (expression is null)
         {
             return null;
         }
 
         Optional<object?> constant = compilation
-            .GetSemanticModel(argument.SyntaxTree)
-            .GetConstantValue(argument);
+            .GetSemanticModel(expression.SyntaxTree)
+            .GetConstantValue(expression);
 
         return constant.HasValue && constant.Value is int statusCode ? statusCode : null;
     }

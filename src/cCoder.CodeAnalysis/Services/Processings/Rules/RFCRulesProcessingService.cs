@@ -203,18 +203,18 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
             .Where(method => method.IsHttpRequestHandler);
 
     private static bool HasEscapingException(Method method, string category) =>
-        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
+        (method.IncomingExceptionTypes ?? method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(
             exceptionType => exceptionType.Contains(category, StringComparison.Ordinal));
 
     private static bool HasConflictException(Method method) =>
-        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
+        (method.IncomingExceptionTypes ?? method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
             (exceptionType.Contains("Conflict", StringComparison.Ordinal)
                 || exceptionType.Contains("Concurrency", StringComparison.Ordinal))
             && !exceptionType.Contains("Precondition", StringComparison.Ordinal)
             && !exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
 
     private static bool HasPreconditionException(Method method) =>
-        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
+        (method.IncomingExceptionTypes ?? method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
             exceptionType.Contains("Precondition", StringComparison.Ordinal)
             || exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
 

@@ -12,26 +12,67 @@ namespace cCoder.CodeAnalysis.SampleWeb.Controllers.RuleViolations;
 public sealed class HTTPViolationController : ControllerBase
 {
     [HttpHead]
-    public IActionResult GetHeaders() =>
-        Ok(new HttpRuleModel());
+    public IActionResult GetHeaders()
+    {
+        try
+        {
+            return Ok(new HttpRuleModel());
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpGet("invalid-status")]
-    public IActionResult GetInvalidStatus() =>
-        StatusCode(statusCode: 799);
+    public IActionResult GetInvalidStatus()
+    {
+        try
+        {
+            return StatusCode(statusCode: 799);
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpPost("no-content")]
-    public IActionResult PostNoContent(HttpRuleModel model) =>
-        StatusCode(statusCode: 204, value: model);
+    public IActionResult PostNoContent(HttpRuleModel model)
+    {
+        try
+        {
+            return StatusCode(statusCode: 204, value: model);
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpPost("unsupported-media")]
-    public void PostUnsupportedMedia()
+    public IActionResult PostUnsupportedMedia()
     {
-        throw new HttpRuleUnsupportedMediaException();
+        try
+        {
+            throw new HttpRuleUnsupportedMediaException();
+        }
+        catch (HttpRuleUnsupportedMediaException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpPut("precondition")]
-    public void PutPrecondition()
+    public IActionResult PutPrecondition()
     {
-        throw new HttpRulePreconditionException();
+        try
+        {
+            throw new HttpRulePreconditionException();
+        }
+        catch (HttpRulePreconditionException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 }

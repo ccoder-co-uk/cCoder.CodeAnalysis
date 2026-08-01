@@ -102,6 +102,8 @@ public sealed class ArchitectureJsonSerializerTests
                         new Method
                         {
                             Name = "GetStudent",
+                            HasTryCatch = true,
+                            IncomingExceptionTypes = ["Students.StudentServiceException"],
                             HttpResponses =
                             [
                                 new HttpResponse
@@ -141,6 +143,9 @@ public sealed class ArchitectureJsonSerializerTests
         actual.Classes[0].Interfaces.Should().ContainSingle("");
         actual.Classes[0].Interfaces[0].Kind.Should().Be(ArchitectureTypeKind.Interface, "");
         actual.Classes[0].Methods.Single().HttpResponses.Single().HasBody.Should().BeTrue("");
+        actual.Classes[0].Methods.Single().HasTryCatch.Should().BeTrue("");
+        actual.Classes[0].Methods.Single().IncomingExceptionTypes.Should()
+            .ContainSingle().Which.Should().Be("Students.StudentServiceException", "");
         json.Should().NotContain("AnalysisFilePath", "");
         json.Should().NotContain("private", "");
         json.Should().NotContain("AnalysisSourceCode", "");

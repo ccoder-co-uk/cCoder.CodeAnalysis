@@ -16,32 +16,63 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
     [HttpGet]
     public ActionResult<IQueryable<Student>> GetStudents()
     {
-        return Ok(value: studentManager.GetStudents());
+        try
+        {
+            return Ok(value: studentManager.GetStudents());
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("{studentId:int}")]
     public ActionResult<Student> GetStudent(int studentId)
     {
-        Student? student = studentManager.GetStudent(studentId: studentId);
-        return (student == null) ? ((ActionResult<Student>)NotFound()) : ((ActionResult<Student>)Ok(value: student));
+        try
+        {
+            Student? student = studentManager.GetStudent(studentId: studentId);
+
+            return (student == null)
+                ? ((ActionResult<Student>)NotFound())
+                : ((ActionResult<Student>)Ok(value: student));
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpPost]
     public async ValueTask<ActionResult<Student>> PostStudentAsync(Student newStudent)
     {
-        Student addedStudent = await studentManager.AddStudentAsync(newStudent: newStudent);
+        try
+        {
+            Student addedStudent = await studentManager.AddStudentAsync(newStudent: newStudent);
 
-        return CreatedAtAction(
-            actionName: "GetStudent",
-            routeValues: new { studentId = addedStudent.Id },
-            value: addedStudent
-        );
+            return CreatedAtAction(
+                actionName: "GetStudent",
+                routeValues: new { studentId = addedStudent.Id },
+                value: addedStudent
+            );
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpPut]
     public async ValueTask<ActionResult<Student>> PutStudentAsync(Student updatedStudent)
     {
-        return Ok(value: await studentManager.UpdateStudentAsync(updatedStudent: updatedStudent));
+        try
+        {
+            return Ok(value: await studentManager.UpdateStudentAsync(updatedStudent: updatedStudent));
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpDelete("{studentId:int}")]
@@ -62,6 +93,10 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
         catch (ServiceValidationException)
         {
             return BadRequest();
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
         }
     }
 }

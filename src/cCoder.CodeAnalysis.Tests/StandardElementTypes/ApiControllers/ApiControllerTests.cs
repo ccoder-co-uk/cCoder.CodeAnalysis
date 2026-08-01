@@ -57,6 +57,16 @@ public sealed class ApiControllerTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXAPI005EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXAPI005",
+            "cCoder.CodeAnalysis.Sample.Controllers.RuleViolations.InvalidStudentsActionController",
+            16
+        );
+    }
+
+    [Fact]
     public void ShouldGenerateStudentsControllerAsAnExposure()
     {
         Class controller = GetElement("cCoder.CodeAnalysis.Sample.Controllers.StudentsController");

@@ -24,7 +24,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToArray();
 
-        diagnosticGroups.Should().HaveCount(82, "");
+        diagnosticGroups.Should().HaveCount(84, "");
         diagnosticGroups.Should().OnlyContain(group => group.Count() == 1, "");
     }
 

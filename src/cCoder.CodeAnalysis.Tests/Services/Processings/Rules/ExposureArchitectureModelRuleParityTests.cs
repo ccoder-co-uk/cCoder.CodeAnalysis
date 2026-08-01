@@ -40,6 +40,62 @@ public sealed class ExposureArchitectureModelRuleParityTests
             .Should().Contain(["STXAPI001", "STXAPI002", "STXAPI003"]);
     }
 
+    [Fact]
+    public void HttpOutcomeRuleShouldUseAttachedModelFacts()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentsMiddleware",
+            isApiController: false,
+            dependencies: []);
+        context.ArchitectureElement.Methods.Add(
+            new Method
+            {
+                Name = "InvokeAsync",
+                LineNumber = 12,
+                IsHttpRequestHandler = true,
+                HasTryCatch = false,
+                IncomingExceptionTypes = ["StudentServiceException"],
+                HttpResponses =
+                [
+                    new HttpResponse { StatusCode = 200 },
+                ],
+            });
+
+        new STXAPIRulesProcessingService().Evaluate(context: context)
+            .Should().ContainSingle(item => item.Code == "STXAPI005");
+    }
+
+    [Fact]
+    public void HttpOutcomeRuleShouldAcceptCompleteMiddlewareMapping()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentsMiddleware",
+            isApiController: false,
+            dependencies: []);
+        context.ArchitectureElement.Methods.Add(
+            new Method
+            {
+                Name = "InvokeAsync",
+                LineNumber = 12,
+                IsHttpRequestHandler = true,
+                HasTryCatch = true,
+                IncomingExceptionTypes = ["StudentServiceException"],
+                HttpResponses =
+                [
+                    new HttpResponse { StatusCode = 204 },
+                    new HttpResponse
+                    {
+                        StatusCode = 500,
+                        IsExceptionPath = true,
+                        ExceptionType = "StudentServiceException",
+                    },
+                ],
+            });
+
+        new STXAPIRulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STXAPI005");
+    }
+
     private static EvaluationContext CreateContext(
         string typeName,
         bool isApiController,

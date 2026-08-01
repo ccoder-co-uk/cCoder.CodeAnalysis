@@ -101,7 +101,8 @@ public sealed class ArchitectureProcessingServiceTests
                 """
                 namespace Example;
 
-                public sealed class HttpContext { }
+                public sealed class HttpResponse { public int StatusCode { get; set; } }
+                public sealed class HttpContext { public HttpResponse Response { get; } = new(); }
                 public delegate void RequestDelegate(HttpContext context);
                 public interface IMiddleware { }
 
@@ -109,7 +110,19 @@ public sealed class ArchitectureProcessingServiceTests
                 {
                     public object InvokeAsync(
                         HttpContext context,
-                        RequestDelegate next) => new object();
+                        RequestDelegate next)
+                    {
+                        try
+                        {
+                            context.Response.StatusCode = 204;
+                            return new object();
+                        }
+                        catch (System.Exception)
+                        {
+                            context.Response.StatusCode = 500;
+                            return new object();
+                        }
+                    }
 
                     public object Handle() => new object();
                 }
@@ -151,6 +164,12 @@ public sealed class ArchitectureProcessingServiceTests
         conventional.StandardElementType.Should().Be(StandardElementType.HttpExposure, "");
         conventional.Methods.Single(method => method.Name == "InvokeAsync")
             .IsHttpRequestHandler.Should().BeTrue("");
+        Method middleware = conventional.Methods.Single(method => method.Name == "InvokeAsync");
+        middleware.HasTryCatch.Should().BeTrue("");
+        middleware.HttpResponses.Should().Contain(response =>
+            response.StatusCode == 204 && !response.IsExceptionPath);
+        middleware.HttpResponses.Should().Contain(response =>
+            response.StatusCode == 500 && response.IsExceptionPath);
         conventional.Methods.Single(method => method.Name == "Handle")
             .IsHttpRequestHandler.Should().BeFalse("");
 
@@ -233,6 +252,7 @@ public sealed class ArchitectureProcessingServiceTests
             .Methods.Single(method => method.Name == "GetStudent");
         action.IsHttpRequestHandler.Should().BeTrue("");
         action.IsODataControllerAction.Should().BeTrue("");
+        action.HasTryCatch.Should().BeTrue("");
         action.HasKeyParameter.Should().BeTrue("");
         action.HandlesNullWithNotFound.Should().BeTrue("");
         action.HttpMethods.Should().ContainSingle().Which.Should().Be("GET", "");

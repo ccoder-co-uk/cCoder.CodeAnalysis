@@ -18,7 +18,8 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
         return EvaluateSTXAPI001(context: context)
             .Concat(second: EvaluateSTXAPI002(context: context))
             .Concat(second: EvaluateSTXAPI003(context: context))
-            .Concat(second: EvaluateSTXAPI004(context: context));
+            .Concat(second: EvaluateSTXAPI004(context: context))
+            .Concat(second: EvaluateSTXAPI005(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -139,5 +140,38 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                         location: method.GetLocation()
                     )
             );
+    }
+
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI005(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsHttpRequestHandler)
+            .Where(method => !HasCompleteHttpOutcomeMapping(method: method))
+            .Select(method => new AnalysisItem
+            {
+                Code = "STXAPI005",
+                Description = "Every public HTTP handler must map success and caught failure paths to 2xx, 4xx, or 5xx responses.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = method.LineNumber,
+            });
+
+    private static bool HasCompleteHttpOutcomeMapping(Method method)
+    {
+        if (!method.HasTryCatch
+            || !method.HttpResponses.Any(response => response.IsExceptionPath
+                && response.StatusCode is >= 400 and <= 599)
+            || method.HttpResponses.Any(response => response.StatusCode is < 200
+                or >= 300 and <= 399
+                or > 599))
+        {
+            return false;
+        }
+
+        return (method.IncomingExceptionTypes ?? [])
+            .All(exceptionType => method.HttpResponses.Any(response =>
+                response.IsExceptionPath
+                && response.StatusCode is >= 400 and <= 599
+                && (response.ExceptionType == exceptionType
+                    || response.ExceptionType == "System.Exception")));
     }
 }

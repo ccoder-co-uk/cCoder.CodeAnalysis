@@ -25,5 +25,9 @@ public sealed class SchoolImportController(ISchoolImportManager importManager) :
         {
             return BadRequest();
         }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 }

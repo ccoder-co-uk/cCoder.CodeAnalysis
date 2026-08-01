@@ -13,55 +13,135 @@ public sealed class RFCViolationController : ODataController
 {
     [HttpPost]
     public IActionResult Post(
-        [FromBody] HttpRuleModel model) =>
-        Ok(model);
+        [FromBody] HttpRuleModel model)
+    {
+        try
+        {
+            return Ok(model);
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpDelete]
-    public IActionResult Delete(int key) =>
-        Ok();
+    public IActionResult Delete(int key)
+    {
+        try
+        {
+            return Ok();
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpGet]
-    public IActionResult Get() =>
-        NoContent();
+    public IActionResult Get()
+    {
+        try
+        {
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpPut]
     public IActionResult Put(
         int key,
-        HttpRuleModel model) =>
-        NoContent();
+        HttpRuleModel model)
+    {
+        try
+        {
+            return NoContent();
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpGet("validation")]
-    public void Validate()
+    public IActionResult Validate()
     {
-        throw new HttpRuleValidationException();
+        try
+        {
+            throw new HttpRuleValidationException();
+        }
+        catch (HttpRuleValidationException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("authentication")]
-    public void Authenticate()
+    public IActionResult Authenticate()
     {
-        throw new HttpRuleAuthenticationException();
+        try
+        {
+            throw new HttpRuleAuthenticationException();
+        }
+        catch (HttpRuleAuthenticationException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("authorization")]
-    public void Authorize()
+    public IActionResult Authorize()
     {
-        throw new HttpRuleAuthorizationException();
+        try
+        {
+            throw new HttpRuleAuthorizationException();
+        }
+        catch (HttpRuleAuthorizationException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("{key:int}")]
-    public IActionResult Get(int key) =>
-        Ok(FindModel(key: key));
+    public IActionResult Get(int key)
+    {
+        try
+        {
+            return Ok(FindModel(key: key));
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
+    }
 
     [HttpPut("concurrency")]
-    public void UpdateConcurrency()
+    public IActionResult UpdateConcurrency()
     {
-        throw new HttpRuleConcurrencyException();
+        try
+        {
+            throw new HttpRuleConcurrencyException();
+        }
+        catch (HttpRuleConcurrencyException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("unsupported")]
-    public void GetUnsupportedFunction()
+    public IActionResult GetUnsupportedFunction()
     {
-        throw new NotImplementedException();
+        try
+        {
+            throw new NotImplementedException();
+        }
+        catch (NotImplementedException)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("disclosure")]

@@ -202,6 +202,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXAPI002", standardPageUri: $"{RestfulApisPage}#31123-single-contract"),
         new(diagnosticCode: "STXAPI003", standardPageUri: $"{RestfulApisPage}#3113-organization"),
         new(diagnosticCode: "STXAPI004", standardPageUri: $"{RestfulApisPage}#31120-language"),
+        new(diagnosticCode: "STXAPI005", standardPageUri: $"{RestfulApisPage}#31121-codes--responses"),
         new(
             diagnosticCode: "STXB001",
             firstStandardPageUri: $"{BrokersPage}#127-up--sideways",
@@ -244,6 +245,7 @@ internal static class DiagnosticCodeStandardPageIndex
         ),
         new(diagnosticCode: "STXF002", standardPageUri: $"{FoundationsPage}#2121-single-entity-integration"),
         new(diagnosticCode: "STXF003", standardPageUri: $"{FoundationsPage}#2120-pure-primitive"),
+        new(diagnosticCode: "STXF004", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(
             diagnosticCode: "STXFORMAT001",
             firstStandardPageUri: $"{PrinciplesPage}#029-readability-over-optimization",

@@ -17,4 +17,7 @@ public sealed class MethodCall
 
     [JsonIgnore]
     internal IMethodSymbol TargetSymbol { get; set; }
+
+    [JsonIgnore]
+    internal bool IsExceptionWrapper { get; set; }
 }

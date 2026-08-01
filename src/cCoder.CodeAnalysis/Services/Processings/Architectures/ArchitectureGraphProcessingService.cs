@@ -117,7 +117,9 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
             return [];
         }
 
-        HashSet<string> propagatedExceptions = new(StringComparer.Ordinal);
+        HashSet<string> propagatedExceptions = new(
+            method.DirectlyThrowsExceptionTypes,
+            StringComparer.Ordinal);
 
         foreach (MethodCall call in method.DirectCalls.Where(call => !call.IsDependencyBoundary))
         {
@@ -136,20 +138,28 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
             }
         }
 
-        foreach (ExceptionCatch exceptionCatch in method.ExceptionCatches)
-        {
-            propagatedExceptions.RemoveWhere(
-                exceptionType => CatchHandles(
-                    exceptionType: exceptionType,
-                    caughtExceptionType: exceptionCatch.ExceptionType));
+        method.IncomingExceptionTypes = propagatedExceptions
+            .OrderBy(typeName => typeName, StringComparer.Ordinal)
+            .ToList();
 
-            if (exceptionCatch.Rethrows)
+        foreach (MethodCall wrapperCall in method.DirectCalls.Where(call =>
+            call.IsExceptionWrapper))
+        {
+            foreach (Method wrapperMethod in ResolveCalledMethods(
+                call: wrapperCall,
+                methodsById: methodsById,
+                implementationsByContractId: implementationsByContractId))
             {
-                propagatedExceptions.Add(exceptionCatch.ExceptionType);
+                propagatedExceptions = ApplyExceptionCatches(
+                    exceptionTypes: propagatedExceptions,
+                    exceptionCatches: wrapperMethod.ExceptionCatches);
             }
         }
 
-        propagatedExceptions.UnionWith(method.DirectlyThrowsExceptionTypes);
+        propagatedExceptions = ApplyExceptionCatches(
+            exceptionTypes: propagatedExceptions,
+            exceptionCatches: method.ExceptionCatches);
+
         activeMethodIds.Remove(method.Id);
 
         string[] result = propagatedExceptions
@@ -183,4 +193,34 @@ internal sealed class ArchitectureGraphProcessingService : IArchitectureGraphPro
 
         caughtExceptionType == "System.Exception"
         || string.Equals(exceptionType, caughtExceptionType, StringComparison.Ordinal);
+
+    private static HashSet<string> ApplyExceptionCatches(
+        IEnumerable<string> exceptionTypes,
+        IReadOnlyList<ExceptionCatch> exceptionCatches)
+    {
+        HashSet<string> escapingExceptions = new(StringComparer.Ordinal);
+
+        foreach (string exceptionType in exceptionTypes)
+        {
+            ExceptionCatch? matchingCatch = exceptionCatches.FirstOrDefault(exceptionCatch =>
+                CatchHandles(
+                    exceptionType: exceptionType,
+                    caughtExceptionType: exceptionCatch.ExceptionType));
+
+            if (matchingCatch is null)
+            {
+                escapingExceptions.Add(exceptionType);
+                continue;
+            }
+
+            if (matchingCatch.Rethrows)
+            {
+                escapingExceptions.Add(exceptionType);
+            }
+
+            escapingExceptions.UnionWith(matchingCatch.ThrownExceptionTypes);
+        }
+
+        return escapingExceptions;
+    }
 }

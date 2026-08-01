@@ -52,6 +52,52 @@ public sealed class ServiceArchitectureModelRuleParityTests
     }
 
     [Fact]
+    public void FoundationConcurrencyRuleShouldUseAttachedModelFacts()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentService",
+            modelDependencies: [CreateDependency(StandardElementType.Broker)]);
+        context.ArchitectureElement.Methods =
+        [
+            new Method
+            {
+                Name = "UpdateStudentAsync",
+                LineNumber = 21,
+                IncomingExceptionTypes =
+                    ["Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"],
+                ThrowsExceptionTypes =
+                    ["Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"],
+                DirectCalls = [],
+            },
+        ];
+
+        new STXFRulesProcessingService().Evaluate(context: context)
+            .Should().ContainSingle(item => item.Code == "STXF004");
+    }
+
+    [Fact]
+    public void FoundationConcurrencyRuleShouldAcceptWrappedException()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentService",
+            modelDependencies: [CreateDependency(StandardElementType.Broker)]);
+        context.ArchitectureElement.Methods =
+        [
+            new Method
+            {
+                Name = "UpdateStudentAsync",
+                IncomingExceptionTypes =
+                    ["Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException"],
+                ThrowsExceptionTypes = ["StudentServiceConcurrencyException"],
+                DirectCalls = [],
+            },
+        ];
+
+        new STXFRulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STXF004");
+    }
+
+    [Fact]
     public void OrchestrationDependencyRuleShouldUseAttachedModelFacts()
     {
         EvaluationContext context = CreateContext(

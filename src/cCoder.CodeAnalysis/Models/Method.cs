@@ -17,6 +17,7 @@ public sealed class Method
     public List<string> Implements { get; set; }
     public List<MethodCall> Calls { get; set; }
     public List<string> PossibleExceptionTypes { get; set; }
+    public List<string> IncomingExceptionTypes { get; set; }
     public List<string> ThrowsExceptionTypes { get; set; }
     public List<string> HttpMethods { get; set; }
     public List<HttpResponse> HttpResponses { get; set; }
@@ -25,6 +26,7 @@ public sealed class Method
     public bool HasFromBodyParameter { get; set; }
     public bool HasKeyParameter { get; set; }
     public bool HandlesNullWithNotFound { get; set; }
+    public bool HasTryCatch { get; set; }
 
     [JsonIgnore]
     internal IMethodSymbol Symbol { get; set; }

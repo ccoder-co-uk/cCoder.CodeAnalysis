@@ -17,7 +17,8 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
     {
         return EvaluateSTXF001(context: context)
             .Concat(second: EvaluateSTXF002(context: context))
-            .Concat(second: EvaluateSTXF003(context: context));
+            .Concat(second: EvaluateSTXF003(context: context))
+            .Concat(second: EvaluateSTXF004(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -167,4 +168,21 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                                     )
                         )
             );
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXF004(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => (method.IncomingExceptionTypes ?? []).Contains(
+                "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException",
+                StringComparer.Ordinal))
+            .Where(method => (method.ThrowsExceptionTypes ?? []).Contains(
+                "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException",
+                StringComparer.Ordinal))
+            .Select(method => new AnalysisItem
+            {
+                Code = "STXF004",
+                Description = "A foundation service must handle or wrap EF concurrency failures before they escape its boundary.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = method.LineNumber,
+            });
 }
