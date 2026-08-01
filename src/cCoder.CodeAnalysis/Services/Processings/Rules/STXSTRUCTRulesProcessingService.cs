@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,6 +10,9 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTXSTRUCT001(context: context)
@@ -18,18 +22,18 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
 
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT001(EvaluationContext context)
     {
-        if (context.TypeName.Split(separator: ['.'])
+        if (architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last() == "Program")
         {
             return [];
         }
 
-        return context
-            .Declarations.Where(
+        return architectureModelQueries
+            .GetDeclarations(context: context).Where(
                 predicate: (Microsoft.CodeAnalysis.CSharp.Syntax.TypeDeclarationSyntax declaration) =>
                     !IsInStandardFolder(
                         filePath: declaration.SyntaxTree.FilePath,
-                        elementType: context.StandardElementType
+                        elementType: architectureModelQueries.GetStandardElementType(context)
                     )
             )
             .Select(
@@ -43,28 +47,24 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             );
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXSTRUCT002(EvaluationContext context)
     {
-        return context.Declarations
+        ClassDeclarationSyntax? declaration = architectureModelQueries
+            .GetDeclarations(context: context)
             .OfType<ClassDeclarationSyntax>()
-            .Where(predicate: IsTopLevelClass)
-            .Where(
-                predicate: (ClassDeclarationSyntax declaration) =>
-                    declaration.SyntaxTree
-                        .GetRoot()
-                        .DescendantNodes()
-                        .OfType<ClassDeclarationSyntax>()
-                        .Count(predicate: IsTopLevelClass) > 1
-            )
-            .Select(
-                selector: (ClassDeclarationSyntax declaration) =>
+            .FirstOrDefault(predicate: IsTopLevelClass);
+
+        return declaration is not null
+            && architectureModelQueries.HasMultipleTopLevelClasses(context: context)
+                ?
+                [
                     CreateAnalysisItem(
                         code: "STXSTRUCT002",
                         description: "A source file must contain only one top-level class.",
                         context: context,
-                        location: declaration.GetLocation()
-                    )
-            );
+                        location: declaration.GetLocation())
+                ]
+                : [];
     }
 
     private static bool IsTopLevelClass(ClassDeclarationSyntax declaration) =>
@@ -73,12 +73,12 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT003(
         EvaluationContext context)
     {
-        if (!IsService(elementType: context.StandardElementType))
+        if (!IsService(elementType: architectureModelQueries.GetStandardElementType(context)))
         {
             return [];
         }
 
-        return context.Declarations
+        return architectureModelQueries.GetDeclarations(context: context)
             .OfType<InterfaceDeclarationSyntax>()
             .Where(predicate: declaration =>
                 declaration.Modifiers.Any(
@@ -118,6 +118,8 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             StandardElementType.Broker => ["/Brokers/"],
             StandardElementType.Dependency => ["/Brokers/", "/Dependencies/", "/Exposures/"],
             StandardElementType.Exposure => ["/Exposures/", "/Controllers/", "/Extensions/"],
+            StandardElementType.HttpExposure =>
+                ["/Controllers/", "/Middleware/", "/Middlewares/", "/Exposures/"],
             StandardElementType.Model => ["/Models/"],
             StandardElementType.FoundationService => ["/Services/Foundations/"],
             StandardElementType.ProcessingService => ["/Services/Processings/"],
@@ -146,7 +148,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
+            Type = architectureModelQueries.GetTypeName(context),
             LineNumber = location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }

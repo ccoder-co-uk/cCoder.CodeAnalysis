@@ -57,17 +57,27 @@ public sealed class ApiControllerTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXAPI005EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXAPI005",
+            "cCoder.CodeAnalysis.Sample.Controllers.RuleViolations.InvalidStudentsActionController",
+            16
+        );
+    }
+
+    [Fact]
     public void ShouldGenerateStudentsControllerAsAnExposure()
     {
         Class controller = GetElement("cCoder.CodeAnalysis.Sample.Controllers.StudentsController");
-        EnumAssertionsExtensions.Should(controller.StandardElementType).Be(StandardElementType.Exposure, "");
+        EnumAssertionsExtensions.Should(controller.StandardElementType).Be(StandardElementType.HttpExposure, "");
     }
 
     [Fact]
     public void ShouldGenerateSchoolImportControllerAsAValidExposure()
     {
         Class controller = GetElement("cCoder.CodeAnalysis.Sample.Controllers.SchoolImportController");
-        EnumAssertionsExtensions.Should(controller.StandardElementType).Be(StandardElementType.Exposure, "");
+        EnumAssertionsExtensions.Should(controller.StandardElementType).Be(StandardElementType.HttpExposure, "");
         ((IEnumerable<AnalysisItem>)Architecture.AnalysisItems)
             .Should()
             .NotContain((AnalysisItem item) => item.Type == controller.Name, "");

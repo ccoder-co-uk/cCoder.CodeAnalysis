@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,27 +10,16 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXAPI001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXAPI004(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXAPI001(context: context)
+            .Concat(second: EvaluateSTXAPI002(context: context))
+            .Concat(second: EvaluateSTXAPI003(context: context))
+            .Concat(second: EvaluateSTXAPI004(context: context))
+            .Concat(second: EvaluateSTXAPI005(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -44,24 +34,23 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI001(EvaluationContext context)
     {
-        if (!context.IsApiController)
+        if (!architectureModelQueries.IsApiController(context: context))
         {
             return [];
         }
 
-        int serviceDependencyCount = context.Dependencies.Count(
+        int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
-                dependency.StandardElementType
-                    is >= StandardElementType.Exposure
-                        and <= StandardElementType.AggregationService
-                || dependency.TypeName.EndsWith(value: "Service", comparisonType: StringComparison.Ordinal)
+                IsBusinessDependency(dependency.StandardElementType)
         );
 
         return serviceDependencyCount == 1
@@ -76,9 +65,19 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI002(EvaluationContext context)
+    private static bool IsBusinessDependency(StandardElementType elementType) =>
+        elementType is StandardElementType.Exposure
+            or StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
+
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI002(EvaluationContext context)
     {
-        return !context.IsApiController || context.PublicApiModelTypes.Count <= 1
+        return !architectureModelQueries.IsApiController(context: context)
+            || architectureModelQueries.GetPublicApiModelTypes(context: context).Count <= 1
             ? []
             :
             [
@@ -90,13 +89,14 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI003(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last();
 
         return
-            !context.IsApiController || typeName.EndsWith(value: "Controller", comparisonType: StringComparison.Ordinal)
+            !architectureModelQueries.IsApiController(context: context)
+            || typeName.EndsWith(value: "Controller", comparisonType: StringComparison.Ordinal)
             ? []
             :
             [
@@ -108,17 +108,17 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPI004(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI004(EvaluationContext context)
     {
-        if (!context.IsApiController)
+        if (!architectureModelQueries.IsApiController(context: context))
         {
             return [];
         }
 
         string[] verbs = ["Get", "Post", "Put", "Delete"];
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries.GetDeclarations(context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -140,5 +140,38 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                         location: method.GetLocation()
                     )
             );
+    }
+
+    private IEnumerable<AnalysisItem> EvaluateSTXAPI005(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => method.IsHttpRequestHandler)
+            .Where(method => !HasCompleteHttpOutcomeMapping(method: method))
+            .Select(method => new AnalysisItem
+            {
+                Code = "STXAPI005",
+                Description = "Every public HTTP handler must map success and caught failure paths to 2xx, 4xx, or 5xx responses.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = method.LineNumber,
+            });
+
+    private static bool HasCompleteHttpOutcomeMapping(Method method)
+    {
+        if (!method.HasTryCatch
+            || !method.HttpResponses.Any(response => response.IsExceptionPath
+                && response.StatusCode is >= 400 and <= 599)
+            || method.HttpResponses.Any(response => response.StatusCode is < 200
+                or >= 300 and <= 399
+                or > 599))
+        {
+            return false;
+        }
+
+        return (method.IncomingExceptionTypes ?? [])
+            .All(exceptionType => method.HttpResponses.Any(response =>
+                response.IsExceptionPath
+                && response.StatusCode is >= 400 and <= 599
+                && (response.ExceptionType == exceptionType
+                    || response.ExceptionType == "System.Exception")));
     }
 }

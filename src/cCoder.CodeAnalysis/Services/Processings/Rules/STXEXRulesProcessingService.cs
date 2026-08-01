@@ -2,16 +2,20 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXEXRulesProcessingService : ISTXEXRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         if (
-            context.ImplementedInterfaces?.Any(
+            architectureModelQueries.GetImplementedInterfaces(context).Any(
                 predicate: (string interfaceName) =>
                     interfaceName.EndsWith(value: ".IRuleProcessingService", comparisonType: StringComparison.Ordinal)
                     || interfaceName.EndsWith(
@@ -21,23 +25,12 @@ internal sealed class STXEXRulesProcessingService : ISTXEXRulesProcessingService
             ) == true
         )
         {
-            yield break;
+            return [];
         }
 
-        foreach (AnalysisItem item in EvaluateSTXEX001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXEX002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXEX003(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXEX001(context: context)
+            .Concat(second: EvaluateSTXEX002(context: context))
+            .Concat(second: EvaluateSTXEX003(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXEX001(EvaluationContext context) =>
@@ -115,8 +108,8 @@ internal sealed class STXEXRulesProcessingService : ISTXEXRulesProcessingService
 
     private static MethodDeclarationSyntax[] GetTryCatchMethods(EvaluationContext context) =>
 
-        context
-            .Declarations.Where(
+        architectureModelQueries
+            .GetDeclarations(context).Where(
                 predicate: (TypeDeclarationSyntax declaration) =>
                     declaration.SyntaxTree.FilePath.EndsWith(
                         value: ".Exceptions.cs",
@@ -160,8 +153,8 @@ internal sealed class STXEXRulesProcessingService : ISTXEXRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = context.LineNumber,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = architectureModelQueries.GetLineNumber(context),
         };
     }
 }

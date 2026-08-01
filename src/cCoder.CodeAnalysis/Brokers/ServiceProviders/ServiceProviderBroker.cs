@@ -9,6 +9,9 @@ namespace cCoder.CodeAnalysis.Brokers.ServiceProviders;
 
 internal sealed class ServiceProviderBroker(IServiceProvider serviceProvider) : IServiceProviderBroker
 {
+    public IEnumerable<IRuleProcessingService> GetStructuralRuleHandlingServices() =>
+        [serviceProvider.GetRequiredService<ISTXSTRUCTRulesProcessingService>()];
+
     public IEnumerable<IRuleProcessingService> GetRuleHandlingServices(StandardElementType standardElementType) =>
 
         serviceProvider.GetRequiredKeyedService<IEnumerable<IRuleProcessingService>>(

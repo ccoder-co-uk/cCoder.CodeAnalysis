@@ -2,27 +2,20 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXP001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXP002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXP003(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXP001(context: context)
+            .Concat(second: EvaluateSTXP002(context: context))
+            .Concat(second: EvaluateSTXP003(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -37,23 +30,33 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXP001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXP001(EvaluationContext context)
     {
-        int foundationCount = context.Dependencies.Count(
+        IReadOnlyList<TypeDependency> dependencies =
+            architectureModelQueries.GetDependencies(context: context);
+
+        int foundationCount = dependencies.Count(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.FoundationService
         );
 
-        bool hasUnsupportedServiceDependency = context.Dependencies.Any(
+        bool hasUnsupportedServiceDependency = dependencies.Any(
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 3) <= 4u;
+
+                return standardElementType
+                    is StandardElementType.OrchestrationService
+                    or StandardElementType.CoordinationService
+                    or StandardElementType.ManagementService
+                    or StandardElementType.AggregationService;
             }
         );
 
@@ -71,7 +74,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXP002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Processing", comparisonType: StringComparison.Ordinal)
@@ -86,10 +89,11 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXP003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXP003(EvaluationContext context)
     {
-        TypeDependency[] foundationDependencies = context
-            .Dependencies.Where(
+        TypeDependency[] foundationDependencies = architectureModelQueries
+            .GetDependencies(context: context)
+            .Where(
                 predicate: (TypeDependency dependency) =>
                     dependency.StandardElementType == StandardElementType.FoundationService
             )
@@ -100,7 +104,8 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             return Array.Empty<AnalysisItem>();
         }
 
-        string serviceName = RemoveGenericTypeArguments(typeName: context.TypeName.Split(separator: ['.'])
+        string serviceName = RemoveGenericTypeArguments(typeName: architectureModelQueries
+            .GetTypeName(context: context).Split(separator: ['.'])
             .Last());
 
         string foundationName = RemoveGenericTypeArguments(

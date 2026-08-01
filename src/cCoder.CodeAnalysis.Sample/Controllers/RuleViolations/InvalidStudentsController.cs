@@ -16,12 +16,26 @@ public sealed class InvalidStudentsController(IStudentManager studentManager, IT
     [HttpGet("students")]
     public ActionResult<IQueryable<Student>> GetStudents()
     {
-        return Ok(value: studentManager.GetStudents());
+        try
+        {
+            return Ok(value: studentManager.GetStudents());
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 
     [HttpGet("teachers")]
     public ActionResult<IQueryable<Teacher>> GetTeachers()
     {
-        return Ok(value: teacherManager.GetTeachers());
+        try
+        {
+            return Ok(value: teacherManager.GetTeachers());
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 }

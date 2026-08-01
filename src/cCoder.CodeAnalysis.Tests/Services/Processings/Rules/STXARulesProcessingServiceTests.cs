@@ -14,11 +14,11 @@ public sealed class STXARulesProcessingServiceTests
     public void EvaluateShouldIgnoreNonServiceDependencies()
     {
         // given
-        EvaluationContext context = new()
+        Class architectureElement = new()
         {
-            TypeName = "Example.AggregationService",
+            Name = "Example.AggregationService",
             StandardElementType = StandardElementType.AggregationService,
-            Dependencies =
+            AnalysisDependencies =
             [
                 new TypeDependency
                 {
@@ -34,6 +34,14 @@ public sealed class STXARulesProcessingServiceTests
                     StandardElementType = StandardElementType.Dependency
                 }
             ]
+        };
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+            },
         };
 
         STXARulesProcessingService service = new();

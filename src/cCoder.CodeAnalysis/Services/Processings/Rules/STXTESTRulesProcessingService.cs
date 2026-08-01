@@ -2,270 +2,139 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXTEST001(context: context))
+        if (context.ArchitectureElement?.AnalysisTypeFacts is null)
         {
-            yield return item;
+            return [];
         }
 
-        foreach (AnalysisItem item in EvaluateSTXTEST002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST004(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST005(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXTEST006(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXTEST001(context: context)
+            .Concat(second: EvaluateSTXTEST002(context: context))
+            .Concat(second: EvaluateSTXTEST003(context: context))
+            .Concat(second: EvaluateSTXTEST004(context: context))
+            .Concat(second: EvaluateSTXTEST005(context: context))
+            .Concat(second: EvaluateSTXTEST006(context: context));
     }
 
-    private static AnalysisItem CreateAnalysisItem(
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST001(
+        EvaluationContext context) =>
+        GetFacts(context).Methods
+            .Where(method => method.IsGeneric)
+            .Select(method => Create(
+                "STXTEST001",
+                "Tests and test helpers must not be generic.",
+                context,
+                method.LineNumber));
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST002(
+        EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+
+        return IsTestSuite(context, facts) && facts.BaseTypeLine > 0
+            ? [Create(
+                "STXTEST002",
+                "Test suites must not inherit from base test classes.",
+                context,
+                facts.BaseTypeLine)]
+            : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST003(
+        EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+
+        return IsTestSuite(context, facts)
+            && !architectureModelQueries.GetTypeName(context).EndsWith("Tests", StringComparison.Ordinal)
+                ? [Create(
+                    "STXTEST003",
+                    "A test suite must be named for its target type using the {TargetType}Tests convention.",
+                    context)]
+                : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST004(
+        EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+
+        return IsTestSuite(context, facts) && !facts.AllDeclarationsArePartial
+            ? [Create(
+                "STXTEST004",
+                "Every declaration of a test suite must be partial.",
+                context,
+                facts.FirstNonPartialDeclarationLine)]
+            : [];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST005(
+        EvaluationContext context) =>
+        GetFacts(context).Methods
+            .Where(method => method.IsTest && !method.HasGivenWhenThenComments)
+            .Select(method => Create(
+                "STXTEST005",
+                "Every test must explicitly separate its Given, When, and Then phases with comments.",
+                context,
+                method.LineNumber));
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST006(
+        EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+
+        if (!IsTestSuite(context, facts)
+            || !architectureModelQueries.GetTypeName(context).EndsWith("ControllerAcceptanceTests", StringComparison.Ordinal)
+            || architectureModelQueries.GetTypeName(context).EndsWith("ImportControllerAcceptanceTests", StringComparison.Ordinal))
+        {
+            return [];
+        }
+
+        string[] requiredOperations = ["Get", "Post", "Put", "Delete"];
+
+        bool coversCrud = requiredOperations.All(operation => facts.Methods.Any(
+            method => method.IsFact
+                && method.Name.StartsWith(operation, StringComparison.Ordinal)));
+
+        return coversCrud
+            ? []
+            : [Create(
+                "STXTEST006",
+                "An API acceptance suite must cover Get, Post, Put, and Delete operations.",
+                context)];
+    }
+
+    private static TypeAnalysisFacts GetFacts(EvaluationContext context) =>
+        context.ArchitectureElement?.AnalysisTypeFacts ?? new TypeAnalysisFacts();
+
+    private static bool IsTestSuite(
+        EvaluationContext context,
+        TypeAnalysisFacts facts) =>
+        architectureModelQueries.GetTypeName(context).EndsWith("Tests", StringComparison.Ordinal)
+        || facts.Methods.Any(method => method.IsTest);
+
+    private static AnalysisItem Create(
         string code,
         string description,
         EvaluationContext context,
-        Microsoft.CodeAnalysis.Location? location = null
-    )
-    {
-        return new AnalysisItem
+        int lineNumber = 0) => new()
         {
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = lineNumber == 0
+                ? architectureModelQueries.GetLineNumber(context)
+                : lineNumber,
         };
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST006(EvaluationContext context)
-    {
-        if (
-            !IsTestSuite(context: context)
-            || !context.TypeName.EndsWith(value: "ControllerAcceptanceTests", comparisonType: StringComparison.Ordinal)
-            || context.TypeName.EndsWith(
-                value: "ImportControllerAcceptanceTests",
-                comparisonType: StringComparison.Ordinal
-            )
-        )
-        {
-            return Array.Empty<AnalysisItem>();
-        }
-
-        string[] testMethodNames = context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Where(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method
-                        .AttributeLists.SelectMany(selector: (AttributeListSyntax attributes) => attributes.Attributes)
-            .Any(
-                            predicate: delegate (AttributeSyntax attribute)
-                            {
-                                string text = attribute.Name.ToString();
-                                return (text == "Fact" || text == "FactAttribute") ? true : false;
-                            }
-                        )
-            )
-            .Select(selector: (MethodDeclarationSyntax method) => method.Identifier.Text)
-            .ToArray();
-
-        string[] requiredOperations = new string[4] { "Get", "Post", "Put", "Delete" };
-
-        return requiredOperations.All(
-            predicate: (string requiredOperation) =>
-                testMethodNames.Any(
-                    predicate: (string testMethodName) =>
-                        testMethodName.StartsWith(value: requiredOperation, comparisonType: StringComparison.Ordinal)
-                )
-        )
-            ? Array.Empty<AnalysisItem>()
-            : new AnalysisItem[1]
-            {
-                CreateAnalysisItem(
-                    code: "STXTEST006",
-                    description: "An API acceptance suite must cover Get, Post, Put, and Delete operations.",
-                    context: context,
-                    location: context.Declarations[index: 0].Identifier.GetLocation()
-                ),
-            };
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST005(EvaluationContext context) =>
-
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Where(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method
-                        .AttributeLists.SelectMany(selector: (AttributeListSyntax attributes) => attributes.Attributes)
-            .Any(
-                            predicate: delegate (AttributeSyntax attribute)
-                            {
-                                switch (attribute.Name.ToString())
-                                {
-                                    case "Fact":
-                                    case "FactAttribute":
-                                    case "Theory":
-                                    case "TheoryAttribute":
-                                        return true;
-                                    default:
-                                        return false;
-                                }
-                            }
-                        )
-            )
-            .Where(predicate: (MethodDeclarationSyntax method) => !HasGivenWhenThenComments(method: method))
-            .Select(
-                selector: (MethodDeclarationSyntax method) =>
-                    CreateAnalysisItem(
-                        code: "STXTEST005",
-                        description: "Every test must explicitly separate its Given, When, and Then phases with comments.",
-                        context: context,
-                        location: method.Identifier.GetLocation()
-                    )
-            );
-
-    private static bool HasGivenWhenThenComments(MethodDeclarationSyntax method)
-    {
-        string source = method.ToFullString();
-        int given = source.IndexOf(value: "// Given", comparisonType: StringComparison.Ordinal);
-        int when = source.IndexOf(value: "// When", comparisonType: StringComparison.Ordinal);
-        int then = source.IndexOf(value: "// Then", comparisonType: StringComparison.Ordinal);
-        return given >= 0 && when > given && then > when;
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST001(EvaluationContext context) =>
-
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Where(predicate: (MethodDeclarationSyntax method) => method.TypeParameterList != null)
-            .Select(
-                selector: (MethodDeclarationSyntax method) =>
-                    CreateAnalysisItem(
-                        code: "STXTEST001",
-                        description: "Tests and test helpers must not be generic.",
-                        context: context,
-                        location: method.GetLocation()
-                    )
-            );
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST002(EvaluationContext context)
-    {
-        if (!IsTestSuite(context: context))
-        {
-            return Array.Empty<AnalysisItem>();
-        }
-
-        TypeDeclarationSyntax? declaration = context.Declarations.FirstOrDefault(
-            predicate: (TypeDeclarationSyntax candidate) => candidate.BaseList != null
-        );
-
-        return !context.HasBaseClass
-            ? Array.Empty<AnalysisItem>()
-            :
-            [
-                CreateAnalysisItem(
-                    code: "STXTEST002",
-                    description: "Test suites must not inherit from base test classes.",
-                    context: context,
-                    location: declaration?.BaseList?.GetLocation()
-                ),
-            ];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST003(EvaluationContext context)
-    {
-        if (!IsTestSuite(context: context))
-        {
-            return Array.Empty<AnalysisItem>();
-        }
-
-        return context.TypeName.EndsWith(value: "Tests", comparisonType: StringComparison.Ordinal)
-            ? Array.Empty<AnalysisItem>()
-            : new AnalysisItem[1]
-            {
-                CreateAnalysisItem(
-                    code: "STXTEST003",
-                    description: "A test suite must be named for its target type using the {TargetType}Tests convention.",
-                    context: context,
-                    location: context.Declarations[index: 0].Identifier.GetLocation()
-                ),
-            };
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXTEST004(EvaluationContext context)
-    {
-        if (!IsTestSuite(context: context))
-        {
-            return Array.Empty<AnalysisItem>();
-        }
-
-        return (
-            !context.Declarations.Any(
-                predicate: (TypeDeclarationSyntax declaration) =>
-                    !declaration.Modifiers.Any(
-                        predicate: (SyntaxToken modifier) => modifier.IsKind(kind: SyntaxKind.PartialKeyword)
-                    )
-            )
-        )
-            ? Array.Empty<AnalysisItem>()
-            : new AnalysisItem[1]
-            {
-                CreateAnalysisItem(
-                    code: "STXTEST004",
-                    description: "Every declaration of a test suite must be partial.",
-                    context: context,
-                    location: context
-                        .Declarations.First(
-                            predicate: (TypeDeclarationSyntax declaration) =>
-                                !declaration.Modifiers.Any(
-                                    predicate: (SyntaxToken modifier) =>
-                                        modifier.IsKind(kind: SyntaxKind.PartialKeyword)
-                                )
-                        )
-                        .Identifier.GetLocation()
-                ),
-            };
-    }
-
-    private static bool IsTestSuite(EvaluationContext context) =>
-
-        context.TypeName.EndsWith(value: "Tests", comparisonType: StringComparison.Ordinal)
-        || context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Any(predicate: method =>
-                method
-                    .AttributeLists.SelectMany(selector: attributes => attributes.Attributes)
-            .Any(predicate: attribute =>
-                    {
-                        string attributeName = attribute.Name.ToString();
-                        return attributeName is "Fact" or "FactAttribute" or "Theory" or "TheoryAttribute";
-                    })
-            );
 }

@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Exposures.SchoolImports;
+using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,18 @@ public sealed class SchoolImportController(ISchoolImportManager importManager) :
     [HttpPost]
     public async ValueTask<IActionResult> PostSchoolAsync(School newSchool)
     {
-        await importManager.ImportSchoolAsync(school: newSchool);
-        return Accepted();
+        try
+        {
+            await importManager.ImportSchoolAsync(school: newSchool);
+            return Accepted();
+        }
+        catch (ServiceValidationException)
+        {
+            return BadRequest();
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 }

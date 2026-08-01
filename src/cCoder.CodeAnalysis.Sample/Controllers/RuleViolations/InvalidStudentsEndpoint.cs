@@ -15,6 +15,13 @@ public sealed class InvalidStudentsEndpoint(IStudentManager studentManager) : Co
     [HttpGet]
     public ActionResult<IQueryable<Student>> Get()
     {
-        return Ok(value: studentManager.GetStudents());
+        try
+        {
+            return Ok(value: studentManager.GetStudents());
+        }
+        catch (Exception)
+        {
+            return StatusCode(statusCode: 500);
+        }
     }
 }

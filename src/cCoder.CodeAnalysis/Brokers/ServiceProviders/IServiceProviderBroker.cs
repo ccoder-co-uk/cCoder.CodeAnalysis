@@ -8,5 +8,6 @@ namespace cCoder.CodeAnalysis.Brokers.ServiceProviders;
 
 internal interface IServiceProviderBroker
 {
+    IEnumerable<IRuleProcessingService> GetStructuralRuleHandlingServices();
     IEnumerable<IRuleProcessingService> GetRuleHandlingServices(StandardElementType standardElementType);
 }

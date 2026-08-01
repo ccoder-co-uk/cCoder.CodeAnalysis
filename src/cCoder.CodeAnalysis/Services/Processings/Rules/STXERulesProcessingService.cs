@@ -2,16 +2,20 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
-using Microsoft.CodeAnalysis.CSharp;
-using Microsoft.CodeAnalysis.CSharp.Syntax;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        string typeName = context.TypeName
+        TypeAnalysisFacts? facts = context.ArchitectureElement?.AnalysisTypeFacts;
+
+        string typeName = architectureModelQueries.GetTypeName(context)
             .Split(separator: ['.'])
             .Last();
 
@@ -19,57 +23,46 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             "Extensions",
             StringComparison.Ordinal))
         {
-            if (!DeclaresExtensionMethod(context: context))
-            {
-                yield return CreateAnalysisItem(
+            IEnumerable<AnalysisItem> extensionContainerRules = facts is null
+                ? []
+                : EvaluateSTXE007(
+                    context: context,
+                    facts: facts,
+                    extensionContainerName: typeName);
+
+            return EvaluateSTXE006(
+                    context: context,
+                    facts: facts)
+                .Concat(second: extensionContainerRules);
+        }
+
+        return EvaluateSTXE001(context: context, facts: facts)
+            .Concat(second: EvaluateSTXE002(context: context, facts: facts))
+            .Concat(second: EvaluateSTXE003(context: context))
+            .Concat(second: EvaluateSTXE004(context: context))
+            .Concat(second: EvaluateSTXE005(context: context, facts: facts));
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXE006(
+        EvaluationContext context,
+        TypeAnalysisFacts? facts) =>
+        facts is null
+        || !facts.Methods.Any(method => method.IsExtensionMethod)
+            ?
+            [
+                CreateAnalysisItem(
                     code: "STXE006",
                     description:
                         "A type named Extensions must declare at least one extension method.",
-                    context: context);
-            }
-
-            foreach (AnalysisItem item in
-                EvaluateSTXE007(
-                    context: context,
-                    extensionContainerName: typeName))
-            {
-                yield return item;
-            }
-
-            yield break;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE003(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE004(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXE005(context: context))
-        {
-            yield return item;
-        }
-    }
+                    context: context)
+            ]
+            : [];
 
     private static AnalysisItem CreateAnalysisItem(
         string code,
         string description,
         EvaluationContext context,
-        Microsoft.CodeAnalysis.Location? location = null
+        int lineNumber = 0
     )
     {
         return new AnalysisItem
@@ -77,120 +70,83 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context),
+            LineNumber = lineNumber > 0
+                ? lineNumber
+                : architectureModelQueries.GetLineNumber(context),
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE001(
+        EvaluationContext context,
+        TypeAnalysisFacts? facts)
     {
-        return context.IsApiController
-            || context.TypeName.Split(separator: ['.']).Last() == "Program"
+        return architectureModelQueries.IsApiController(context: context)
+            || architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
             || IsEventProviderContract(context: context)
             ? []
-            : context
-                .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
-            .Where(
-                    predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
-                        node is IfStatementSyntax or SwitchStatementSyntax or ConditionalExpressionSyntax
-                )
-                .Where(
-                    predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
-                        !IsMvcActionResponseNode(node: node))
+            : (facts?.BranchingLineNumbers ?? [])
+                .Except(facts?.MvcActionResponseBranchingLineNumbers ?? [])
                 .Select(
-                    selector: (Microsoft.CodeAnalysis.SyntaxNode node) =>
+                    selector: lineNumber =>
                         CreateAnalysisItem(
                             code: "STXE001",
                             description: "An exposure must not contain branching logic.",
                             context: context,
-                            location: node.GetLocation()
+                            lineNumber: lineNumber
                         )
                 );
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE002(EvaluationContext context) =>
+    private static IEnumerable<AnalysisItem> EvaluateSTXE002(
+        EvaluationContext context,
+        TypeAnalysisFacts? facts) =>
         IsEventProviderContract(context: context)
             ? []
-            : context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
-            .Where(
-                predicate: (Microsoft.CodeAnalysis.SyntaxNode node) =>
-                    node is ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax
-            )
+            : (facts?.LoopLineNumbers ?? [])
             .Select(
-                selector: (Microsoft.CodeAnalysis.SyntaxNode node) =>
+                selector: lineNumber =>
                     CreateAnalysisItem(
                         code: "STXE002",
                         description: "An exposure must not contain loops.",
                         context: context,
-                        location: node.GetLocation()
+                        lineNumber: lineNumber
                     )
             );
 
     private static bool IsEventProviderContract(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.']).Last();
+        string typeName = architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last();
 
         return typeName is "EventProvider" or "BulkEventProvider"
             || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
             || typeName.StartsWith(value: "BulkEventProvider<", comparisonType: StringComparison.Ordinal);
     }
 
-    private static bool DeclaresExtensionMethod(
-        EvaluationContext context) =>
-        context.Declarations
-            .SelectMany(
-                selector: (TypeDeclarationSyntax declaration) =>
-                    declaration.Members.OfType<MethodDeclarationSyntax>())
-            .Any(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method.ParameterList.Parameters.Count > 0
-                    && method.ParameterList.Parameters[0]
-                        .Modifiers.Any(
-                            predicate: modifier =>
-                                modifier.RawKind
-                                    == (int)SyntaxKind.ThisKeyword));
-
     private static IEnumerable<AnalysisItem> EvaluateSTXE007(
         EvaluationContext context,
+        TypeAnalysisFacts facts,
         string extensionContainerName) =>
-        context.Declarations
-            .SelectMany(
-                selector: (TypeDeclarationSyntax declaration) =>
-                    declaration.Members.OfType<MethodDeclarationSyntax>())
-            .Where(predicate: IsExtensionMethod)
+        facts.Methods
+            .Where(method => method.IsExtensionMethod)
             .Where(
-                predicate: (MethodDeclarationSyntax method) =>
+                predicate: method =>
                     !MatchesExtensionContainer(
-                        method: method,
+                        receiverName: method.ExtensionReceiverTypeName,
                         extensionContainerName: extensionContainerName))
             .Select(
-                selector: (MethodDeclarationSyntax method) =>
+                selector: method =>
                     CreateAnalysisItem(
                         code: "STXE007",
                         description:
                             "An extension method must be declared in the Extensions type named for its receiver.",
                         context: context,
-                        location: method.GetLocation()));
-
-    private static bool IsExtensionMethod(
-        MethodDeclarationSyntax method) =>
-        method.ParameterList.Parameters.Count > 0
-        && method.ParameterList.Parameters[0]
-            .Modifiers.Any(
-                predicate: modifier =>
-                    modifier.RawKind
-                        == (int)SyntaxKind.ThisKeyword);
+                        lineNumber: method.LineNumber));
 
     private static bool MatchesExtensionContainer(
-        MethodDeclarationSyntax method,
+        string receiverName,
         string extensionContainerName)
     {
-        string receiverName = method.ParameterList.Parameters[0]
-            .Type
-            ?.ToString()
-            ?? string.Empty;
-
         int genericStart = receiverName.IndexOf(
             value: '<');
 
@@ -240,19 +196,17 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             || extensionContainerName == interfaceContainerName;
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE003(EvaluationContext context)
     {
-        if (context.IsApiController
+        if (architectureModelQueries.IsApiController(context: context)
             || IsStandardizedProviderClient(context))
         {
             return [];
         }
 
-        int serviceDependencyCount = context.Dependencies.Count(
+        int serviceDependencyCount = architectureModelQueries.GetDependencies(context: context).Count(
             predicate: (TypeDependency dependency) =>
-                dependency.StandardElementType
-                    is >= StandardElementType.FoundationService
-                        and <= StandardElementType.AggregationService
+                IsBusinessService(dependency.StandardElementType)
         );
 
         return serviceDependencyCount <= 1
@@ -267,17 +221,25 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             ];
     }
 
-    private static bool IsStandardizedProviderClient(
+    private static bool IsBusinessService(StandardElementType elementType) =>
+        elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
+
+    private bool IsStandardizedProviderClient(
         EvaluationContext context) =>
-        context.ProjectName?.EndsWith(
+        architectureModelQueries.GetProjectName(context).EndsWith(
             value: ".Providers",
             comparisonType: StringComparison.OrdinalIgnoreCase) == true
-        && context.TypeName.Split(separator: ['.'])
+        && architectureModelQueries.GetTypeName(context).Split(separator: ['.'])
             .Last()
             .EndsWith(
                 value: "Client",
                 comparisonType: StringComparison.Ordinal)
-        && context.ImplementedInterfaces.Any(
+        && architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: interfaceName =>
                 interfaceName.Split(separator: ['.'])
                     .Last()
@@ -285,9 +247,9 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                         value: "Client",
                         comparisonType: StringComparison.Ordinal));
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
     {
-        return !context.Dependencies.Any(
+        return !architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) => dependency.StandardElementType == StandardElementType.Broker
         )
             ? []
@@ -301,67 +263,34 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             ];
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXE005(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXE005(
+        EvaluationContext context,
+        TypeAnalysisFacts? facts)
     {
-        return context.IsApiController
+        return architectureModelQueries.IsApiController(context: context)
             || IsHostedService(context: context)
-            || context.TypeName.Split(separator: ['.']).Last() == "Program"
+            || architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
             ? []
-            : context
-                .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-                .Where(
-                    predicate: (MethodDeclarationSyntax method) =>
-                        method.Body is not null
-                        && !IsMvcActionResponseMethod(method: method)
-                        && method.Body.Statements.Count(
-                            predicate: (StatementSyntax statement) =>
-                                statement.DescendantNodesAndSelf()
-                                    .OfType<InvocationExpressionSyntax>()
-                                    .Any()
-                        ) > 1
-                )
+            : (facts?.Methods ?? [])
+                .Where(method => method.HasMultipleRoutineCallStatements)
                 .Select(
-                    selector: (MethodDeclarationSyntax method) =>
+                    selector: method =>
                         CreateAnalysisItem(
                             code: "STXE005",
                             description: "An exposure must not sequence multiple routine calls.",
                             context: context,
-                            location: method.GetLocation()
+                            lineNumber: method.LineNumber
                         )
                 );
     }
 
-    private static bool IsHostedService(
+    private bool IsHostedService(
         EvaluationContext context) =>
-        context.ImplementedInterfaces?.Any(
+        architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: (string interfaceName) =>
                 interfaceName.EndsWith(
                     value: ".IHostedService",
                     comparisonType: StringComparison.Ordinal)
-                || interfaceName == "IHostedService")
-            == true;
+                || interfaceName == "IHostedService");
 
-    private static bool IsMvcActionResponseNode(
-        Microsoft.CodeAnalysis.SyntaxNode node)
-    {
-        MethodDeclarationSyntax? method = node
-            .Ancestors()
-            .OfType<MethodDeclarationSyntax>()
-            .FirstOrDefault();
-
-        return method is not null
-            && IsMvcActionResponseMethod(method: method);
-    }
-
-    private static bool IsMvcActionResponseMethod(
-        MethodDeclarationSyntax method) =>
-        method.Modifiers.Any(
-            predicate: modifier =>
-                modifier.RawKind == (int)SyntaxKind.PublicKeyword)
-        && method.ReturnType
-            .ToString()
-            .Contains(
-                value: "IActionResult",
-                comparisonType: StringComparison.Ordinal);
 }

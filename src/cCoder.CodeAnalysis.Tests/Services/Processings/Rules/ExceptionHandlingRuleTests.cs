@@ -25,11 +25,25 @@ public sealed class ExceptionHandlingRuleTests
             .DescendantNodes()
             .OfType<TypeDeclarationSyntax>()
             .Single();
+        Class element = new()
+        {
+            Name = "ExampleService",
+            StandardElementType = StandardElementType.FoundationService,
+            LineNumber = 1,
+            Properties = [],
+            Methods = [],
+            AnalysisDeclarations = [declaration],
+            AnalysisImplementedInterfaces = [],
+        };
+
         return new EvaluationContext
         {
-            TypeName = "ExampleService",
-            StandardElementType = StandardElementType.FoundationService,
-            Declarations = [declaration],
+            ArchitectureElement = element,
+            ArchitectureModel = new Architecture
+            {
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [element],
+            },
         };
     }
 

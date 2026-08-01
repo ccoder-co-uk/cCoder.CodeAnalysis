@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Microsoft.CodeAnalysis;
@@ -615,21 +616,45 @@ public sealed class ApplicationCompositionRuleTests
             path: filePath ?? $"{typeName.Split(separator: ['.']).Last()}.cs"
         );
 
+        TypeDeclarationSyntax[] declarations = syntaxTree
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<TypeDeclarationSyntax>()
+            .ToArray();
+
+        TypeAnalysisFacts facts = ArchitectureProcessingService
+            .CreateTypeAnalysisFacts(declarations);
+        facts.ProjectName = projectName;
+        facts.FilePath = syntaxTree.FilePath;
+        facts.SourceCode = sourceCode;
+        facts.IsConsoleApplication = isConsoleApplication;
+        facts.ProjectTypeNames = projectTypeNames ?? [typeName];
+        Class element = new Class
+        {
+            Name = typeName,
+            StandardElementType = StandardElementType.App,
+            AnalysisDeclarations = declarations,
+            AnalysisFilePath = syntaxTree.FilePath,
+            AnalysisSourceCode = sourceCode,
+            AnalysisTypeFacts = facts,
+        };
+
+        Architecture architecture = new Architecture
+        {
+            Project = new ProjectMetadata
+            {
+                Name = projectName,
+                AssemblyName = projectName,
+            },
+            Classes = (projectTypeNames ?? [typeName])
+                .Select(name => name == typeName ? element : new Class { Name = name })
+                .ToList(),
+        };
+
         return new EvaluationContext
         {
-            TypeName = typeName,
-            StandardElementType = StandardElementType.App,
-            ProjectName = projectName,
-            FilePath = syntaxTree.FilePath,
-            SourceCode = sourceCode,
-            IsConsoleApplication = isConsoleApplication,
-            ProjectTypeNames = projectTypeNames ?? [typeName],
-            Declarations = syntaxTree
-                .GetRoot()
-                .DescendantNodes()
-                .OfType<TypeDeclarationSyntax>()
-                .ToArray(),
-            UsingNamespaces = [],
+            ArchitectureModel = architecture,
+            ArchitectureElement = element,
         };
     }
 }

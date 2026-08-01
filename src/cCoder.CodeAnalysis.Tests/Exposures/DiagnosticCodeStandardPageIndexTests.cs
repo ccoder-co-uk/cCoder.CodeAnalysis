@@ -17,7 +17,7 @@ public sealed class DiagnosticCodeStandardPageIndexTests
             .GetDiagnosticCodeStandardPages()
             .ToArray();
 
-        pages.Should().HaveCount(102, "");
+        pages.Should().HaveCount(123, "");
         pages.Select((DiagnosticCodeStandardPage page) => page.DiagnosticCode).Should().OnlyHaveUniqueItems("");
     }
 
@@ -60,6 +60,40 @@ public sealed class DiagnosticCodeStandardPageIndexTests
         pages.Should().OnlyContain(
             (DiagnosticCodeStandardPage page) => page.StandardPageUris.Count > 0,
             "");
+    }
+
+    [Theory]
+    [InlineData("RFC0001")]
+    [InlineData("RFC0002")]
+    [InlineData("RFC0003")]
+    [InlineData("RFC0004")]
+    [InlineData("RFC0005")]
+    [InlineData("RFC0006")]
+    [InlineData("RFC0007")]
+    [InlineData("RFC0008")]
+    [InlineData("RFC0009")]
+    [InlineData("RFC0010")]
+    [InlineData("RFC0011")]
+    [InlineData("RFC0012")]
+    [InlineData("RFC0013")]
+    [InlineData("RFC0014")]
+    [InlineData("RFC0015")]
+    public void ShouldMapHttpRulesToAnAuthoritativeSpecification(
+        string diagnosticCode)
+    {
+        DiagnosticCodeStandardPage page =
+            GetDiagnosticCodeStandardPage(
+                diagnosticCode: diagnosticCode);
+
+        page.StandardPageUris.Should()
+            .Contain(
+                predicate: uri =>
+                    uri.StartsWith(
+                        "https://www.rfc-editor.org/rfc/rfc9110.html",
+                        StringComparison.Ordinal)
+                    || uri.StartsWith(
+                        "https://docs.oasis-open.org/odata/",
+                        StringComparison.Ordinal));
     }
 
     [Fact]

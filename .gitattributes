@@ -6,3 +6,6 @@
 *.slnx text eol=crlf
 *.ps1 text eol=crlf
 
+# This deliberately invalid sample must retain mixed line endings so that
+# STXFORMAT013 is represented exactly once on every build agent.
+src/cCoder.CodeAnalysis.Sample/Exposures/RuleViolations/AuthorizationExtensions.cs -text

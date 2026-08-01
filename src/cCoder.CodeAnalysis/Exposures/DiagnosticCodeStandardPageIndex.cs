@@ -44,8 +44,52 @@ internal static class DiagnosticCodeStandardPageIndex
     private const string WebApplicationsPage =
         "https://github.com/hassanhabib/The-Standard/blob/master/3.%20Exposers/3.2%20User%20Interfaces/3.2.1%20Web%20Applications/3.2.1%20Web%20Applications.md";
 
+    private const string HttpSemanticsPage =
+        "https://www.rfc-editor.org/rfc/rfc9110.html";
+
+    private const string ODataProtocolPage =
+        "https://docs.oasis-open.org/odata/odata/v4.01/odata-v4.01-part1-protocol.html";
+
+    private const string OwaspApiSecurityPage =
+        "https://owasp.org/API-Security/editions/2023/en/0xa8-security-misconfiguration/";
+
     private static readonly DiagnosticCodeStandardPage[] diagnosticCodeStandardPages =
     [
+        new(
+            diagnosticCode: "RFC0001",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.2"
+        ),
+        new(diagnosticCode: "RFC0002", standardPageUri: $"{HttpSemanticsPage}#section-15.3.5"),
+        new(
+            diagnosticCode: "RFC0003",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.1"
+        ),
+        new(
+            diagnosticCode: "RFC0004",
+            firstStandardPageUri: $"{ODataProtocolPage}#sec_SuccessResponses",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-15.3.1"
+        ),
+        new(diagnosticCode: "RFC0005", standardPageUri: $"{HttpSemanticsPage}#section-15.5.1"),
+        new(
+            diagnosticCode: "RFC0006",
+            firstStandardPageUri: $"{HttpSemanticsPage}#section-15.5.2",
+            secondStandardPageUri: $"{HttpSemanticsPage}#section-11.6.1"
+        ),
+        new(diagnosticCode: "RFC0007", standardPageUri: $"{HttpSemanticsPage}#section-15.5.4"),
+        new(diagnosticCode: "RFC0008", standardPageUri: $"{HttpSemanticsPage}#section-15.5.5"),
+        new(diagnosticCode: "RFC0009", standardPageUri: $"{HttpSemanticsPage}#section-15.5.10"),
+        new(diagnosticCode: "RFC0010", standardPageUri: $"{HttpSemanticsPage}#section-15.6.1"),
+        new(diagnosticCode: "RFC0011", standardPageUri: $"{HttpSemanticsPage}#section-15.3.5"),
+        new(diagnosticCode: "RFC0012", standardPageUri: $"{HttpSemanticsPage}#section-9.3.2"),
+        new(diagnosticCode: "RFC0013", standardPageUri: $"{HttpSemanticsPage}#section-15.5.16"),
+        new(diagnosticCode: "RFC0014", standardPageUri: $"{HttpSemanticsPage}#section-15.5.13"),
+        new(diagnosticCode: "RFC0015", standardPageUri: $"{HttpSemanticsPage}#section-15"),
+        new(diagnosticCode: "ODATA0001", standardPageUri: $"{ODataProtocolPage}#sec_CreateanEntity"),
+        new(diagnosticCode: "ODATA0002", standardPageUri: $"{ODataProtocolPage}#sec_RetrieveanEntity"),
+        new(diagnosticCode: "ODATA0003", standardPageUri: $"{ODataProtocolPage}#sec_UnsupportedFunctionality"),
+        new(diagnosticCode: "OWASP0001", standardPageUri: OwaspApiSecurityPage),
         new(diagnosticCode: "STX0001", standardPageUri: $"{TheoryPage}#002-tri-nature"),
         new(diagnosticCode: "STX0002", standardPageUri: $"{ModelingPage}#01200-data-carrier-models"),
         new(diagnosticCode: "STX0003", standardPageUri: $"{ProcessingsPage}#22201-pass-through"),
@@ -158,6 +202,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXAPI002", standardPageUri: $"{RestfulApisPage}#31123-single-contract"),
         new(diagnosticCode: "STXAPI003", standardPageUri: $"{RestfulApisPage}#3113-organization"),
         new(diagnosticCode: "STXAPI004", standardPageUri: $"{RestfulApisPage}#31120-language"),
+        new(diagnosticCode: "STXAPI005", standardPageUri: $"{RestfulApisPage}#31121-codes--responses"),
         new(
             diagnosticCode: "STXB001",
             firstStandardPageUri: $"{BrokersPage}#127-up--sideways",
@@ -200,6 +245,7 @@ internal static class DiagnosticCodeStandardPageIndex
         ),
         new(diagnosticCode: "STXF002", standardPageUri: $"{FoundationsPage}#2121-single-entity-integration"),
         new(diagnosticCode: "STXF003", standardPageUri: $"{FoundationsPage}#2120-pure-primitive"),
+        new(diagnosticCode: "STXF004", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(
             diagnosticCode: "STXFORMAT001",
             firstStandardPageUri: $"{PrinciplesPage}#029-readability-over-optimization",

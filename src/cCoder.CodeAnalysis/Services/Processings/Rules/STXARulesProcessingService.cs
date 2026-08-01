@@ -2,22 +2,19 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXA001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXA002(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXA001(context: context)
+            .Concat(second: EvaluateSTXA002(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -32,16 +29,16 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null ? architectureModelQueries.GetLineNumber(context: context) : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXA001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXA001(EvaluationContext context)
     {
         bool hasSingleDependencyVariation =
-            context
-                .Dependencies
+            architectureModelQueries
+                .GetDependencies(context: context)
                 .Where(predicate: (TypeDependency dependency) =>
                     IsServiceVariation(
                         standardElementType: dependency.StandardElementType))
@@ -74,7 +71,7 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXA002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Aggregation", comparisonType: StringComparison.Ordinal)

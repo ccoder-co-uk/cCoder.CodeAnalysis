@@ -25,6 +25,8 @@ public sealed class ArchitectureOrchestrationServiceTests
         };
         Mock<IArchitectureProcessingService> architectureProcessingServiceMock =
             new Mock<IArchitectureProcessingService>();
+        Mock<IArchitectureGraphProcessingService> architectureGraphProcessingServiceMock =
+            new Mock<IArchitectureGraphProcessingService>();
         Mock<IEvaluationContextsProcessingService> evaluationContextsProcessingServiceMock =
             new Mock<IEvaluationContextsProcessingService>();
         Mock<IRuleEvaluationsProcessingService> ruleEvaluationsProcessingServiceMock =
@@ -34,6 +36,9 @@ public sealed class ArchitectureOrchestrationServiceTests
                 (IArchitectureProcessingService architectureProcessingService) =>
                     architectureProcessingService.Process(suppliedPath)
             )
+            .Returns(architectureBuild);
+        architectureGraphProcessingServiceMock
+            .Setup(service => service.Process(architectureBuild))
             .Returns(architectureBuild);
         evaluationContextsProcessingServiceMock
             .Setup(
@@ -49,6 +54,7 @@ public sealed class ArchitectureOrchestrationServiceTests
             .Returns([]);
         ArchitectureOrchestrationService service = new ArchitectureOrchestrationService(
             architectureProcessingServiceMock.Object,
+            architectureGraphProcessingServiceMock.Object,
             evaluationContextsProcessingServiceMock.Object,
             ruleEvaluationsProcessingServiceMock.Object
         );

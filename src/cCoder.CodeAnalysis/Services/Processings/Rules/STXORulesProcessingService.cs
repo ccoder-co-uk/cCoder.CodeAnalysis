@@ -2,45 +2,48 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXO001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXO002(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXO001(context: context)
+            .Concat(second: EvaluateSTXO002(context: context));
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXO001(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXO001(EvaluationContext context)
     {
-        int count = context.Dependencies.Count;
+        IReadOnlyList<TypeDependency> dependencies =
+            architectureModelQueries.GetDependencies(context: context);
+
+        int count = dependencies.Count;
         bool flag = (uint)(count - 2) <= 1u;
         bool hasValidCount = flag;
 
-        bool containsFoundation = context.Dependencies.Any(
+        bool containsFoundation = dependencies.Any(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.FoundationService
         );
 
-        bool containsProcessing = context.Dependencies.Any(
+        bool containsProcessing = dependencies.Any(
             predicate: (TypeDependency dependency) =>
                 dependency.StandardElementType == StandardElementType.ProcessingService
         );
 
-        bool containsOnlySupportedDependencies = context.Dependencies.All(
+        bool containsOnlySupportedDependencies = dependencies.All(
             predicate: delegate (TypeDependency dependency)
             {
                 StandardElementType standardElementType = dependency.StandardElementType;
-                return (uint)(standardElementType - 2) <= 1u;
+
+                return standardElementType
+                    is StandardElementType.FoundationService
+                    or StandardElementType.ProcessingService;
             }
         );
 
@@ -56,15 +59,15 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
                     Description =
                         "An orchestration must have two or three foundation or processing dependencies and must not mix them.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXO002(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         return typeName.Contains(value: "Orchestration", comparisonType: StringComparison.Ordinal)
@@ -76,8 +79,8 @@ internal sealed class STXORulesProcessingService : ISTXORulesProcessingService
                     Code = "STXO002",
                     Description = "An orchestration service name must contain the Orchestration identifier.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }

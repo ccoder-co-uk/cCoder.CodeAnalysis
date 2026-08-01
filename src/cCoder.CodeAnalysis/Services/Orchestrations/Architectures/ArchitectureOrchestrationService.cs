@@ -11,6 +11,7 @@ namespace cCoder.CodeAnalysis.Services.Orchestrations.Architectures;
 
 internal sealed class ArchitectureOrchestrationService(
     IArchitectureProcessingService architectureProcessingService,
+    IArchitectureGraphProcessingService architectureGraphProcessingService,
     IEvaluationContextsProcessingService evaluationContextsProcessingService,
     IRuleEvaluationsProcessingService ruleEvaluationsProcessingService
 ) : IArchitectureOrchestrationService
@@ -26,6 +27,9 @@ internal sealed class ArchitectureOrchestrationService(
 
     private Architecture Complete(ArchitectureBuild architectureBuild)
     {
+        architectureBuild = architectureGraphProcessingService.Process(
+            architectureBuild: architectureBuild);
+
         IEnumerable<EvaluationContext> evaluationContexts = evaluationContextsProcessingService.Process(
             architectureBuild: architectureBuild
         );

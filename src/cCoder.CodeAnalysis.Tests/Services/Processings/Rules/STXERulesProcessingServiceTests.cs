@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
 using Microsoft.CodeAnalysis.CSharp;
@@ -149,9 +150,9 @@ public sealed class STXERulesProcessingServiceTests
             typeName:
                 "cCoder.Mail.Providers.Exposures.MicrosoftGraphMailClient");
 
-        context.ProjectName = "cCoder.Mail.Providers";
-        context.ImplementedInterfaces = ["IMailClient"];
-        context.Dependencies =
+        context.ArchitectureModel.Project.AssemblyName = "cCoder.Mail.Providers";
+        context.ArchitectureElement.AnalysisImplementedInterfaces = ["IMailClient"];
+        context.ArchitectureElement.AnalysisDependencies =
         [
             new TypeDependency
             {
@@ -189,9 +190,9 @@ public sealed class STXERulesProcessingServiceTests
             declaration: declaration,
             typeName: "cCoder.Mail.Exposures.MailExposure");
 
-        context.ProjectName = "cCoder.Mail";
-        context.ImplementedInterfaces = [];
-        context.Dependencies =
+        context.ArchitectureModel.Project.AssemblyName = "cCoder.Mail";
+        context.ArchitectureElement.AnalysisImplementedInterfaces = [];
+        context.ArchitectureElement.AnalysisDependencies =
         [
             new TypeDependency
             {
@@ -294,14 +295,30 @@ public sealed class STXERulesProcessingServiceTests
 
     private static EvaluationContext CreateContext(
         TypeDeclarationSyntax declaration,
-        string typeName = "Example.Controllers.HomeController") =>
-        new()
+        string typeName = "Example.Controllers.HomeController")
+    {
+        Class architectureElement = new()
         {
-            TypeName = typeName,
+            Name = typeName,
             StandardElementType = StandardElementType.Exposure,
-            Declarations = [declaration],
-            Dependencies = []
+            Properties = [],
+            Methods = [],
+            AnalysisDependencies = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisTypeFacts = ArchitectureProcessingService.CreateTypeAnalysisFacts(
+                declarations: [declaration]),
         };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [architectureElement],
+            },
+        };
+    }
 
     private static TypeDeclarationSyntax ParseDeclaration(
         string source) =>

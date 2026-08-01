@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -10,90 +11,84 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService
+        architectureModelQueries = new ArchitectureModelQueriesProcessingService();
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTX0024(
-            context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTX0024(context: context)
+            .Concat(second: ImplementsInfrastructureService(context: context)
+                ? []
+                : EvaluateSTX0001(context: context)
+                    .Concat(second: EvaluateStandardElementTypeRules(context: context)));
+    }
 
-        if (ImplementsInfrastructureService(context: context))
+    private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
+        EvaluationContext context) =>
+        architectureModelQueries.GetStandardElementType(context: context) switch
         {
-            yield break;
-        }
-
-        if (
-            context.StandardElementType == StandardElementType.Unknown
-            && !context.DeclaresDependencyIntent
-        )
-        {
-            yield return CreateAnalysisItem(
-                code: "STX0001",
-                description: "The type is not a valid Standard element type.",
-                context: context
-            );
-        }
-        else if (
-            context.StandardElementType
-            is StandardElementType.FoundationService
+            StandardElementType.FoundationService
                 or StandardElementType.ProcessingService
                 or StandardElementType.OrchestrationService
                 or StandardElementType.CoordinationService
                 or StandardElementType.ManagementService
-                or StandardElementType.AggregationService
-        )
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
-                .Concat(second: EvaluateSTX0003(context: context))
+                or StandardElementType.AggregationService =>
+                EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0003(context: context))
                     .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateSTX0005(context: context))
                     .Concat(second: EvaluateSTX0006(context: context))
                     .Concat(second: EvaluateSTX0007(context: context))
-                    .Concat(
-                        second: EvaluateServiceContractPattern(context: context)
-                .Where(
-                                predicate: (AnalysisItem item) =>
-                                    item.Code.StartsWith(value: "STX0", comparisonType: StringComparison.Ordinal)
-                            )
-                    )
-            )
-            {
-                yield return item;
-            }
-        }
-        else if (context.StandardElementType == StandardElementType.Broker)
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
-                .Concat(second: EvaluateSTX0006(context: context))
+                    .Concat(second: EvaluateSTX0008(context: context))
+                    .Concat(second: EvaluateSTX0009(context: context))
+                    .Concat(second: EvaluateSTX0010(context: context))
+                    .Concat(second: EvaluateSTX0011(context: context))
+                    .Concat(second: EvaluateSTX0012(context: context))
+                    .Concat(second: EvaluateSTX0023(context: context))
+                    .Concat(second: EvaluateSTX0013(context: context))
+                    .Concat(second: EvaluateSTX0014(context: context))
+                    .Concat(second: EvaluateSTX0015(context: context))
+                    .Concat(second: EvaluateSTX0016(context: context))
                     .Concat(second: EvaluateSTX0017(context: context))
-                    .Concat(second: EvaluateMutationNaming(context: context))
-            )
-            {
-                yield return item;
-            }
-        }
-        else if (context.StandardElementType == StandardElementType.Exposure)
-        {
-            foreach (
-                AnalysisItem item in EvaluateSTX0002(context: context)
-                .Concat(second: EvaluateSTX0017(context: context))
+                    .Concat(second: EvaluateSTX0018(context: context))
                     .Concat(second: EvaluateSTX0022(context: context))
-                    .Concat(second: EvaluateMutationNaming(context: context))
-            )
-            {
-                yield return item;
-            }
-        }
-    }
+                    .Concat(second: EvaluateSTX0019(context: context))
+                    .Concat(second: EvaluateSTX0020(context: context))
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            StandardElementType.Broker =>
+                EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0006(context: context))
+                    .Concat(second: EvaluateSTX0017(context: context))
+                    .Concat(second: EvaluateSTX0019(context: context))
+                    .Concat(second: EvaluateSTX0020(context: context))
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            StandardElementType.Exposure or StandardElementType.HttpExposure =>
+                EvaluateSTX0002(context: context)
+                    .Concat(second: EvaluateSTX0017(context: context))
+                    .Concat(second: EvaluateSTX0022(context: context))
+                    .Concat(second: EvaluateSTX0019(context: context))
+                    .Concat(second: EvaluateSTX0020(context: context))
+                    .Concat(second: EvaluateSTX0021(context: context)),
+            _ => [],
+        };
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0001(
+        EvaluationContext context) =>
+        architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Unknown
+        && !architectureModelQueries.DeclaresDependencyIntent(context: context)
+            ?
+            [
+                CreateAnalysisItem(
+                    code: "STX0001",
+                    description: "The type is not a valid Standard element type.",
+                    context: context)
+            ]
+            : [];
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0024(
         EvaluationContext context)
     {
-        InvocationExpressionSyntax[] invocations = context
-            .Declarations
+        InvocationExpressionSyntax[] invocations = architectureModelQueries
+            .GetDeclarations(context: context)
             .SelectMany(
                 selector: declaration =>
                     declaration.DescendantNodes())
@@ -178,7 +173,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ImplementsInfrastructureService(EvaluationContext context) =>
 
-        context.ImplementedInterfaces?.Any(
+        architectureModelQueries.GetImplementedInterfaces(context: context)?.Any(
             predicate: (string interfaceName) =>
                 interfaceName.EndsWith(value: ".IRuleProcessingService", comparisonType: StringComparison.Ordinal)
                 || interfaceName.EndsWith(
@@ -190,8 +185,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTX0002(EvaluationContext context) =>
         IsEventProviderContract(context: context)
             ? []
-            : context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+            : architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<PropertyDeclarationSyntax>()
             .Select(
                 selector: (PropertyDeclarationSyntax property) =>
@@ -205,7 +200,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool IsEventProviderContract(EvaluationContext context)
     {
-        string typeName = context.TypeName.Split(separator: ['.']).Last();
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.']).Last();
 
         return typeName is "EventProvider" or "BulkEventProvider"
             || typeName.StartsWith(value: "EventProvider<", comparisonType: StringComparison.Ordinal)
@@ -214,8 +209,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0003(EvaluationContext context)
     {
-        MethodDeclarationSyntax[] methods = context
-            .Declarations.Where(
+        MethodDeclarationSyntax[] methods = architectureModelQueries
+            .GetDeclarations(context: context).Where(
                 predicate: (TypeDeclarationSyntax declaration) =>
                     !declaration.SyntaxTree.FilePath.EndsWith(
                         value: ".Validations.cs",
@@ -248,11 +243,11 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         string code
     )
     {
-        int count = context.Dependencies.Count;
+        int count = architectureModelQueries.GetDependencies(context: context).Count;
         bool flag = (uint)(count - 2) <= 1u;
         bool hasValidCount = flag;
 
-        bool containsOnlyExpectedDependencies = context.Dependencies.All(
+        bool containsOnlyExpectedDependencies = architectureModelQueries.GetDependencies(context: context).All(
             predicate: (TypeDependency dependency) => dependency.StandardElementType == expectedDependencyType
         );
 
@@ -271,8 +266,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTX0004(EvaluationContext context)
     {
         return (
-            !context.Dependencies.Any(
-                predicate: (TypeDependency dependency) => dependency.StandardElementType == context.StandardElementType
+            !architectureModelQueries.GetDependencies(context: context).Any(
+                predicate: (TypeDependency dependency) => dependency.StandardElementType == architectureModelQueries.GetStandardElementType(context: context)
             )
         )
             ? Array.Empty<AnalysisItem>()
@@ -288,21 +283,21 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 
-        context.PublicMethodCallLineNumbers.Select(
+        architectureModelQueries.GetPublicMethodCallLineNumbers(context: context).Select(
             selector: (int lineNumber) =>
                 new AnalysisItem
                 {
                     Code = "STX0005",
                     Description = "A public service method must not call another public method on the same service.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
+                    Type = architectureModelQueries.GetTypeName(context: context),
                     LineNumber = lineNumber,
                 }
         );
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0006(EvaluationContext context)
     {
-        return (!context.IsPublic)
+        return (!architectureModelQueries.IsPublic(context: context))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -316,7 +311,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0007(EvaluationContext context)
     {
-        return (context.PublicApiModelTypes.Count <= 1)
+        return (architectureModelQueries.GetPublicApiModelTypes(context: context).Count <= 1)
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -328,162 +323,118 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateServiceContractPattern(EvaluationContext context)
-    {
-        MethodDeclarationSyntax[] publicMethods = context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Where(predicate: (MethodDeclarationSyntax method) => method.Modifiers.Any(kind: SyntaxKind.PublicKeyword))
-            .ToArray();
+    private static IEnumerable<AnalysisItem> EvaluateSTX0008(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !HasPartial(context: context, suffix: ".Validations.cs"),
+            code: "STX0008",
+            description: "A service must declare its validations in a Validations partial.",
+            context: context);
 
-        bool hasValidationPartial = context.Declarations.Any(
-            predicate: (TypeDeclarationSyntax declaration) =>
+    private static IEnumerable<AnalysisItem> EvaluateSTX0009(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !HasPartial(context: context, suffix: ".Exceptions.cs"),
+            code: "STX0009",
+            description: "A service must declare TryCatch handling in an Exceptions partial.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0010(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !GetPublicMethods(context: context).All(predicate: UsesTryCatch),
+            code: "STX0010",
+            description: "Every public service method must enter through a local TryCatch operation.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0011(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !GetPublicMethods(context: context).All(predicate: ValidatesInputs),
+            code: "STX0011",
+            description: "Every service input must be validated inside TryCatch before business work.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0012(EvaluationContext context)
+    {
+        if (architectureModelQueries.GetStandardElementType(context: context) != StandardElementType.FoundationService)
+        {
+            return [];
+        }
+
+        MethodDeclarationSyntax[] publicMethods = GetPublicMethods(context: context);
+
+        if (!publicMethods.Any(predicate: RequiresOperationSpecificValidation))
+        {
+            return [];
+        }
+
+        MethodDeclarationSyntax[] operationValidationMethods = architectureModelQueries
+            .GetDeclarations(context: context)
+            .Where(predicate: declaration =>
                 declaration.SyntaxTree.FilePath.EndsWith(
                     value: ".Validations.cs",
-                    comparisonType: StringComparison.Ordinal
-                )
-        );
-
-        bool hasExceptionPartial = context.Declarations.Any(
-            predicate: (TypeDeclarationSyntax declaration) =>
-                declaration.SyntaxTree.FilePath.EndsWith(
-                    value: ".Exceptions.cs",
-                    comparisonType: StringComparison.Ordinal
-                )
-        );
-
-        bool allUseTryCatch = publicMethods.All(predicate: UsesTryCatch);
-        bool allValidateInputs = publicMethods.All(predicate: ValidatesInputs);
-        bool isFoundationService = context.StandardElementType == StandardElementType.FoundationService;
-        bool requiresOperationValidation = publicMethods.Any(predicate: RequiresOperationSpecificValidation);
-
-        bool allUseOperationSpecificValidations =
-            !isFoundationService || publicMethods.All(predicate: UsesOperationSpecificValidation);
-
-        MethodDeclarationSyntax[] operationValidationMethods = context
-            .Declarations.Where(
-                predicate: (TypeDeclarationSyntax declaration) =>
-                    declaration.SyntaxTree.FilePath.EndsWith(
-                        value: ".Validations.cs",
-                        comparisonType: StringComparison.Ordinal
-                    )
-            )
-            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+                    comparisonType: StringComparison.Ordinal))
+            .SelectMany(selector: declaration => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
-            .Where(
-                predicate: (MethodDeclarationSyntax method) =>
-                    method.Identifier.Text.StartsWith(value: "Validate", comparisonType: StringComparison.Ordinal)
-                    && method.Identifier.Text.Contains(value: "On", comparisonType: StringComparison.Ordinal)
-            )
+            .Where(predicate: method =>
+                method.Identifier.Text.StartsWith(value: "Validate", comparisonType: StringComparison.Ordinal)
+                && method.Identifier.Text.Contains(value: "On", comparisonType: StringComparison.Ordinal))
             .ToArray();
 
-        bool usesValidationCollector =
-            !isFoundationService
-            || !requiresOperationValidation
-            || operationValidationMethods.Length != 0
-                && operationValidationMethods.All(
-                    predicate: (MethodDeclarationSyntax method) =>
-                        method
-                            .DescendantNodes()
-            .OfType<InvocationExpressionSyntax>()
-                            .Any(
-                                predicate: (InvocationExpressionSyntax invocation) =>
-                                    invocation
-                                        .Expression.ToString()
-            .EndsWith(value: "Validate", comparisonType: StringComparison.Ordinal)
-                            )
-                );
+        bool usesValidationCollector = operationValidationMethods.Length != 0
+            && operationValidationMethods.All(predicate: method =>
+                method.DescendantNodes()
+                    .OfType<InvocationExpressionSyntax>()
+                    .Any(predicate: invocation =>
+                        invocation.Expression.ToString().EndsWith(
+                            value: "Validate",
+                            comparisonType: StringComparison.Ordinal)));
 
-        List<AnalysisItem> list = new List<AnalysisItem>();
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !hasValidationPartial,
-                code: "STX0008",
-                description: "A service must declare its validations in a Validations partial.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !hasExceptionPartial,
-                code: "STX0009",
-                description: "A service must declare TryCatch handling in an Exceptions partial.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !allUseTryCatch,
-                code: "STX0010",
-                description: "Every public service method must enter through a local TryCatch operation.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !allValidateInputs,
-                code: "STX0011",
-                description: "Every service input must be validated inside TryCatch before business work.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !usesValidationCollector,
-                code: "STX0012",
-                description: "Business-operation validation methods must evaluate their rules through a validation collector.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !allUseOperationSpecificValidations,
-                code: "STX0023",
-                description: "Each business operation must call its operation-specific validation method.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: context.ImplementedInterfaces.Count == 0,
-                code: "STX0013",
-                description: "A service must implement a local interface.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !ImplementsMatchingInterface(context: context),
-                code: "STX0014",
-                description: "A service contract must be named after its implementation with an I prefix.",
-                context: context
-            )
-        );
-
-        list.AddRange(
-            collection: CreateWhenInvalid(
-                isInvalid: !ContractContainsPublicMethods(context: context),
-                code: "STX0015",
-                description: "Every public service method must be declared by its local interface.",
-                context: context
-            )
-        );
-
-        list.AddRange(collection: EvaluateSTX0016(context: context));
-        list.AddRange(collection: EvaluateSTX0017(context: context));
-        list.AddRange(collection: EvaluateSTX0018(context: context));
-        list.AddRange(collection: EvaluateSTX0022(context: context));
-        list.AddRange(collection: EvaluateMutationNaming(context: context));
-        return list;
+        return CreateWhenInvalid(
+            isInvalid: !usesValidationCollector,
+            code: "STX0012",
+            description: "Business-operation validation methods must evaluate their rules through a validation collector.",
+            context: context);
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0013(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0,
+            code: "STX0013",
+            description: "A service must implement a local interface.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0014(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !ImplementsMatchingInterface(context: context),
+            code: "STX0014",
+            description: "A service contract must be named after its implementation with an I prefix.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0015(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: !ContractContainsPublicMethods(context: context),
+            code: "STX0015",
+            description: "Every public service method must be declared by its local interface.",
+            context: context);
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0023(EvaluationContext context) =>
+        CreateWhenInvalid(
+            isInvalid: architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.FoundationService
+                && !GetPublicMethods(context: context).All(predicate: UsesOperationSpecificValidation),
+            code: "STX0023",
+            description: "Each business operation must call its operation-specific validation method.",
+            context: context);
+
+    private static bool HasPartial(EvaluationContext context, string suffix) =>
+        architectureModelQueries.GetDeclarations(context: context).Any(predicate: declaration =>
+            declaration.SyntaxTree.FilePath.EndsWith(
+                value: suffix,
+                comparisonType: StringComparison.Ordinal));
+
+    private static MethodDeclarationSyntax[] GetPublicMethods(EvaluationContext context) =>
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: declaration => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .Where(predicate: method => method.Modifiers.Any(kind: SyntaxKind.PublicKeyword))
+            .ToArray();
 
     private static bool HasWrappedExceptionCategory(MethodDeclarationSyntax method, string categoryName) =>
 
@@ -546,8 +497,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     {
         string[] nonDomainVerbs = new string[4] { "Select", "Insert", "Post", "Put" };
 
-        return context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        return architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -570,8 +521,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0017(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .SelectMany(selector: (MethodDeclarationSyntax method) => method.ParameterList.Parameters)
             .Where(predicate: (ParameterSyntax parameter) => parameter.Identifier.Text == "id")
@@ -585,9 +536,34 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     )
             );
 
-    private static IEnumerable<AnalysisItem> EvaluateMutationNaming(EvaluationContext context)
+    private static IEnumerable<AnalysisItem> EvaluateSTX0019(EvaluationContext context) =>
+        EvaluateMutationNaming(
+            context: context,
+            operation: "create",
+            expectedPrefix: "new",
+            code: "STX0019");
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0020(EvaluationContext context) =>
+        EvaluateMutationNaming(
+            context: context,
+            operation: "update",
+            expectedPrefix: "updated",
+            code: "STX0020");
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0021(EvaluationContext context) =>
+        EvaluateMutationNaming(
+            context: context,
+            operation: "delete",
+            expectedPrefix: "deleted",
+            code: "STX0021");
+
+    private static IEnumerable<AnalysisItem> EvaluateMutationNaming(
+        EvaluationContext context,
+        string operation,
+        string expectedPrefix,
+        string code)
     {
-        if (context.TypeName.EndsWith(value: ".IServiceCollectionExtensions", comparisonType: StringComparison.Ordinal))
+        if (architectureModelQueries.GetTypeName(context: context).EndsWith(value: ".IServiceCollectionExtensions", comparisonType: StringComparison.Ordinal))
         {
             return Array.Empty<AnalysisItem>();
         }
@@ -595,15 +571,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         List<AnalysisItem> items = new List<AnalysisItem>();
 
         foreach (
-            MethodDeclarationSyntax method in context
-                .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+            MethodDeclarationSyntax method in architectureModelQueries
+                .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
         )
         {
             string methodName = method.Identifier.Text;
-            string? operation = GetMutationOperation(methodName: methodName);
+            string? methodOperation = GetMutationOperation(methodName: methodName);
 
-            if (operation == null)
+            if (methodOperation != operation
+                || operation == "create"
+                    && methodName.StartsWith(value: "AddOrUpdate", comparisonType: StringComparison.Ordinal))
             {
                 continue;
             }
@@ -622,30 +600,12 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 continue;
             }
 
-            string? expectedPrefix = operation switch
-            {
-                "create" when !methodName.StartsWith(value: "AddOrUpdate", comparisonType: StringComparison.Ordinal) =>
-                    "new",
-                "update" => "updated",
-                "delete" => "deleted",
-                _ => null,
-            };
-
-            if (
-                expectedPrefix != null
-                && !modelParameter.Item1.Identifier.Text.StartsWith(
+            if (!modelParameter.Item1.Identifier.Text.StartsWith(
                     value: expectedPrefix,
                     comparisonType: StringComparison.Ordinal
                 )
             )
             {
-                string code = operation switch
-                {
-                    "create" => "STX0019",
-                    "update" => "STX0020",
-                    _ => "STX0021",
-                };
-
                 items.Add(
                     item: CreateAnalysisItem(
                         code: code,
@@ -662,8 +622,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0018(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(predicate: (MethodDeclarationSyntax method) => method.Modifiers.Any(kind: SyntaxKind.PublicKeyword))
             .Select(
@@ -698,8 +658,8 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0022(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .Where(
                 predicate: (MethodDeclarationSyntax method) =>
@@ -780,7 +740,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
         return candidateNames.FirstOrDefault(
             predicate: (string candidate) =>
-                context.PublicApiModelTypes.Any(
+                architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                     predicate: (string modelType) =>
                         modelType.EndsWith(value: "." + candidate, comparisonType: StringComparison.Ordinal)
                 )
@@ -789,17 +749,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ImplementsMatchingInterface(EvaluationContext context)
     {
-        if (context.ImplementedInterfaces.Count == 0)
+        if (architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0)
         {
             return true;
         }
 
-        string typeName = context.TypeName.Split(separator: ['.'])
+        string typeName = architectureModelQueries.GetTypeName(context: context).Split(separator: ['.'])
             .Last();
 
         string expectedInterfaceName = "I" + typeName;
 
-        return context.ImplementedInterfaces.Any(
+        return architectureModelQueries.GetImplementedInterfaces(context: context).Any(
             predicate: (string interfaceName) => interfaceName.Split(separator: ['.'])
             .Last() == expectedInterfaceName
         );
@@ -807,9 +767,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ContractContainsPublicMethods(EvaluationContext context)
     {
-        return context.ImplementedInterfaces.Count == 0
-            || context.PublicMethodNames.All(
-                predicate: ((IEnumerable<string>)context.ContractMethodNames).Contains<string>
+        return architectureModelQueries.GetImplementedInterfaces(context: context).Count == 0
+            || architectureModelQueries.GetPublicMethodNames(context: context).All(
+                predicate: ((IEnumerable<string>)architectureModelQueries.GetContractMethodNames(context: context)).Contains<string>
             );
     }
 
@@ -954,9 +914,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
+            Type = architectureModelQueries.GetTypeName(context: context),
             LineNumber = (
-                location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : context.LineNumber
+                location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : architectureModelQueries.GetLineNumber(context: context)
             ),
         };
     }

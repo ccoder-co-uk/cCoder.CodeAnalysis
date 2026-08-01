@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
@@ -9,22 +10,15 @@ namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
 internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
 {
+    private static readonly IArchitectureModelQueriesProcessingService architectureModelQueries =
+        new ArchitectureModelQueriesProcessingService();
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXF001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXF002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXF003(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXF001(context: context)
+            .Concat(second: EvaluateSTXF002(context: context))
+            .Concat(second: EvaluateSTXF003(context: context))
+            .Concat(second: EvaluateSTXF004(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -39,15 +33,18 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
             Code = code,
             Description = description,
             Severity = AnalysisSeverity.Warning,
-            Type = context.TypeName,
-            LineNumber = location is null ? context.LineNumber : location.GetLineSpan().StartLinePosition.Line + 1,
+            Type = architectureModelQueries.GetTypeName(context: context),
+            LineNumber = location is null
+                ? architectureModelQueries.GetLineNumber(context: context)
+                : location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXF001(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.DescendantNodes())
             .Where(
                 predicate: (SyntaxNode node) =>
                     (node is ForStatementSyntax or ForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax)
@@ -55,7 +52,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                         value: ".Validations.cs",
                         comparisonType: StringComparison.Ordinal
                     )
-                    && context.PublicApiModelTypes.Any(
+                    && architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                         predicate: (string modelType) =>
                             node.DescendantNodes()
             .OfType<IdentifierNameSyntax>()
@@ -73,16 +70,16 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                         Code = "STXF001",
                         Description = "A foundation service must not loop over its service model type.",
                         Severity = AnalysisSeverity.Warning,
-                        Type = context.TypeName,
+                        Type = architectureModelQueries.GetTypeName(context: context),
                         LineNumber = node.GetLocation()
             .GetLineSpan().StartLinePosition.Line + 1,
                     }
             );
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXF002(EvaluationContext context)
+    private IEnumerable<AnalysisItem> EvaluateSTXF002(EvaluationContext context)
     {
         return (
-            !context.Dependencies.Any(
+            !architectureModelQueries.GetDependencies(context: context).Any(
                 predicate: delegate (TypeDependency dependency)
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;
@@ -101,8 +98,8 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                     Code = "STXF002",
                     Description = "A foundation service may only depend on brokers, exposures, or nothing.",
                     Severity = AnalysisSeverity.Warning,
-                    Type = context.TypeName,
-                    LineNumber = context.LineNumber,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = architectureModelQueries.GetLineNumber(context: context),
                 },
             };
     }
@@ -114,15 +111,16 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTXF003(EvaluationContext context) =>
 
-        context
-            .Declarations.SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
+        architectureModelQueries
+            .GetDeclarations(context: context)
+            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .SelectMany(
                 selector: (MethodDeclarationSyntax method) =>
                     method
                         .ParameterList.Parameters.Where(
                             predicate: (ParameterSyntax parameter) =>
-                                context.PublicApiModelTypes.Any(
+                                architectureModelQueries.GetPublicApiModelTypes(context: context).Any(
                                     predicate: (string modelType) =>
                                         modelType.EndsWith(
                                             value: $".{parameter.Type}",
@@ -170,4 +168,21 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                                     )
                         )
             );
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXF004(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .Where(method => (method.IncomingExceptionTypes ?? []).Contains(
+                "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException",
+                StringComparer.Ordinal))
+            .Where(method => (method.ThrowsExceptionTypes ?? []).Contains(
+                "Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException",
+                StringComparer.Ordinal))
+            .Select(method => new AnalysisItem
+            {
+                Code = "STXF004",
+                Description = "A foundation service must handle or wrap EF concurrency failures before they escape its boundary.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = method.LineNumber,
+            });
 }

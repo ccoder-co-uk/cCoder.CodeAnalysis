@@ -13,12 +13,13 @@ public sealed class STXFRulesProcessingServiceTests
     [Fact]
     public void EvaluateShouldAllowLoggingInfrastructure()
     {
-        EvaluationContext context = new()
+        Class architectureElement = new()
         {
-            TypeName = "Example.Services.Foundations.StudentService",
+            Name = "Example.Services.Foundations.StudentService",
             StandardElementType = StandardElementType.FoundationService,
-            Declarations = [],
-            Dependencies =
+            AnalysisDeclarations = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisDependencies =
             [
                 new TypeDependency
                 {
@@ -28,6 +29,7 @@ public sealed class STXFRulesProcessingServiceTests
                 }
             ]
         };
+        EvaluationContext context = CreateContext(architectureElement);
 
         STXFRulesProcessingService service = new();
 
@@ -39,4 +41,14 @@ public sealed class STXFRulesProcessingServiceTests
             .Should()
             .NotContain(predicate: result => result.Code == "STXF002");
     }
+
+    private static EvaluationContext CreateContext(Class architectureElement) =>
+        new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+            },
+        };
 }
