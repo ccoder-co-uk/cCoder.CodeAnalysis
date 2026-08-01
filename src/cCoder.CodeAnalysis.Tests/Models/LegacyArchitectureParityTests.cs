@@ -37,7 +37,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             [StandardElementType.App] = 1,
             [StandardElementType.Broker] = 6,
             [StandardElementType.CoordinationService] = 4,
-            [StandardElementType.Dependency] = 8,
+            [StandardElementType.Dependency] = 9,
             [StandardElementType.Exposure] = 15,
             [StandardElementType.FoundationService] = 8,
             [StandardElementType.HttpExposure] = 5,
@@ -45,7 +45,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             [StandardElementType.Model] = 12,
             [StandardElementType.OrchestrationService] = 8,
             [StandardElementType.ProcessingService] = 15,
-            [StandardElementType.Unknown] = 5,
+            [StandardElementType.Unknown] = 4,
         };
 
         Dictionary<StandardElementType, int> actual = Architecture
@@ -62,7 +62,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
         Architecture.Links.Should().HaveCount(71, "");
 
         CreateClassProjectionHash().Should()
-            .Be("DD923766DC4AE741ACBA980C9FB5DD1E3E4CA08938DB7B0CD7CD9FF1CBFB8CA1", "");
+            .Be("8DA52AECFC6BCD0B3DD476B17B4652A781C3DDCE4F5CF09C38D7A9774FDF30FA", "");
         CreateLinkProjectionHash().Should()
             .Be("ABC124FD5E99221B2F782E819D29575519909F74D4F1446178F31621D36701F8", "");
     }

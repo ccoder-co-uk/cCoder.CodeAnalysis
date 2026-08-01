@@ -419,6 +419,14 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.App;
         }
 
+        if (DeclaresDependencyIntent(type: type)
+            && (InheritsFromExternalType(type: type)
+                || ImplementsExternalInterface(type: type)
+                || HasExternalStateDependency(type: type)))
+        {
+            return StandardElementType.Dependency;
+        }
+
         if (
             IsHttpController(type: type)
             || IsHttpMiddleware(type: type)

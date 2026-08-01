@@ -337,6 +337,29 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyFrameworkControllerWrapperAsDependency()
+    {
+        const string source =
+            """
+            namespace Example.Dependencies.Framework;
+
+            internal sealed class ControllerDependency
+                : Microsoft.AspNetCore.Mvc.Controller
+            {
+            }
+            """;
+
+        EvaluationContext context = service
+            .Process(
+                architectureBuild:
+                    CreateArchitectureBuild(source: source))
+            .Single();
+
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.Dependency);
+    }
+
+    [Fact]
     public void ProcessShouldTreatAwaitedDisposableAsLeakedExternalResource()
     {
         const string source =

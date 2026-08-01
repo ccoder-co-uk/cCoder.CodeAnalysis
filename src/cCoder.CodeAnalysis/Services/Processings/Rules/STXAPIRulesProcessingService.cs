@@ -143,7 +143,13 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
     }
 
     private IEnumerable<AnalysisItem> EvaluateSTXAPI005(EvaluationContext context) =>
-        (context.ArchitectureElement?.Methods ?? [])
+        !architectureModelQueries.IsApiController(context: context)
+            && !architectureModelQueries.GetTypeName(context: context)
+                .EndsWith(
+                    value: "Middleware",
+                    comparisonType: StringComparison.Ordinal)
+            ? []
+            : (context.ArchitectureElement?.Methods ?? [])
             .Where(method => method.IsHttpRequestHandler)
             .Where(method => !HasCompleteHttpOutcomeMapping(method: method))
             .Select(method => new AnalysisItem
