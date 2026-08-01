@@ -68,45 +68,6 @@ public sealed class STXBRulesProcessingServiceTests
             .NotContain(predicate: result => result.Code == "STXB006");
     }
 
-    [Fact]
-    public void EvaluateShouldAllowUtilityBrokerFrameworkBoundaries()
-    {
-        EvaluationContext context = CreateContext(
-            typeName: "Example.Brokers.Utility.CryptographyUtilityBroker",
-            declarations: [],
-            implementedInterfaces:
-                ["Example.Brokers.Utility.ICryptographyUtilityBroker"],
-            dependencies:
-            [
-                new TypeDependency
-                {
-                    TypeName = "External.Argon2id",
-                    StandardElementType = StandardElementType.Dependency
-                },
-                new TypeDependency
-                {
-                    TypeName = "System.Security.Cryptography.RandomNumberGenerator",
-                    StandardElementType = StandardElementType.Dependency
-                },
-                new TypeDependency
-                {
-                    TypeName = "Example.Models.ArgonConfiguration",
-                    StandardElementType = StandardElementType.Model
-                }
-            ]);
-
-        STXBRulesProcessingService service = new();
-
-        AnalysisItem[] results = service
-            .Evaluate(context: context)
-            .ToArray();
-
-        results.Should()
-            .NotContain(predicate: result =>
-                result.Code == "STXB001"
-                || result.Code == "STXB006");
-    }
-
     private static EvaluationContext CreateContext(
         string typeName,
         IReadOnlyList<TypeDeclarationSyntax> declarations,

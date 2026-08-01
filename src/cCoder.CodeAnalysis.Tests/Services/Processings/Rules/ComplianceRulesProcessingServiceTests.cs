@@ -132,7 +132,7 @@ public sealed class ComplianceRulesProcessingServiceTests
     }
 
     [Fact]
-    public void OwaspRuleShouldAllowPasswordHashingUtilityBroker()
+    public void OwaspRuleShouldAllowPasswordHashingDependency()
     {
         Method method = CreateMethod();
         method.DirectCalls.Add(item: new MethodCall
@@ -144,8 +144,27 @@ public sealed class ComplianceRulesProcessingServiceTests
 
         EvaluationContext context = CreateContext(
             method: method,
-            typeName: "Example.Brokers.Utility.PasswordHashingUtilityBroker");
+            typeName: "Example.Dependencies.PasswordHashingDependency");
 
+        OWASPRulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "OWASP0002");
+    }
+
+    [Fact]
+    public void OwaspRuleShouldAllowCallersOfPasswordHashingServices()
+    {
+        Method method = CreateMethod();
+        method.DirectCalls.Add(item: new MethodCall
+        {
+            TypeName = "Example.Services.AuthenticationService",
+            MethodName = "VerifyPassword",
+            MethodId = "AuthenticationService.VerifyPassword(System.String)"
+        });
+
+        EvaluationContext context = CreateContext(method: method);
         OWASPRulesProcessingService service = new();
 
         service.Evaluate(context: context)
