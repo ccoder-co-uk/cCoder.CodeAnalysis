@@ -97,19 +97,13 @@ public sealed class HttpExposureRulePolicyTests
 
         return new EvaluationContext
         {
-            TypeName = architectureElement.Name,
-            StandardElementType = elementType,
             ArchitectureElement = architectureElement,
-            Declarations = [],
-            Dependencies = dependencies,
-            ImplementedInterfaces = [],
-            LocalDependencyTypeNames = [],
-            PublicMethodNames = [],
-            ContractMethodNames = [],
-            PublicMethodCallLineNumbers = [],
-            PublicApiModelTypes = [],
-            ProjectTypeNames = [architectureElement.Name],
-            UsingNamespaces = [],
+            ArchitectureModel = new Architecture
+            {
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [architectureElement],
+                AnalysisLocalDependencyTypeNames = [],
+            },
         };
     }
 

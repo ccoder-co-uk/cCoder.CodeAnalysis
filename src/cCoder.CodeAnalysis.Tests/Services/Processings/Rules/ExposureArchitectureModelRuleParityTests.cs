@@ -22,9 +22,6 @@ public sealed class ExposureArchitectureModelRuleParityTests
                 CreateDependency(StandardElementType.ProcessingService),
                 CreateDependency(StandardElementType.Broker),
             ]);
-        context.IsApiController = true;
-        context.Dependencies = [];
-
         new STXERulesProcessingService().Evaluate(context: context)
             .Select(item => item.Code)
             .Should().Contain(["STXE003", "STXE004"]);
@@ -38,10 +35,6 @@ public sealed class ExposureArchitectureModelRuleParityTests
             isApiController: true,
             dependencies: [],
             publicApiModelTypes: ["Student", "Teacher"]);
-        context.IsApiController = false;
-        context.Dependencies = [CreateDependency(StandardElementType.FoundationService)];
-        context.PublicApiModelTypes = [];
-
         new STXAPIRulesProcessingService().Evaluate(context: context)
             .Select(item => item.Code)
             .Should().Contain(["STXAPI001", "STXAPI002", "STXAPI003"]);
@@ -51,22 +44,33 @@ public sealed class ExposureArchitectureModelRuleParityTests
         string typeName,
         bool isApiController,
         IReadOnlyList<TypeDependency> dependencies,
-        IReadOnlyList<string>? publicApiModelTypes = null) =>
-        new()
+        IReadOnlyList<string>? publicApiModelTypes = null)
+    {
+        Class element = new()
         {
-            TypeName = typeName,
-            Declarations = [],
-            Dependencies = dependencies,
-            ImplementedInterfaces = [],
-            PublicApiModelTypes = publicApiModelTypes ?? [],
-            ArchitectureElement = new Class
+            Name = typeName,
+            StandardElementType = isApiController
+                ? StandardElementType.HttpExposure
+                : StandardElementType.Exposure,
+            Properties = [],
+            Methods = [],
+            AnalysisDependencies = dependencies,
+            AnalysisImplementedInterfaces = [],
+            AnalysisIsApiController = isApiController,
+            AnalysisPublicApiModelTypes = publicApiModelTypes ?? [],
+            AnalysisTypeFacts = new TypeAnalysisFacts(),
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = element,
+            ArchitectureModel = new Architecture
             {
-                AnalysisDependencies = dependencies,
-                AnalysisImplementedInterfaces = [],
-                AnalysisIsApiController = isApiController,
-                AnalysisPublicApiModelTypes = publicApiModelTypes ?? [],
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [element],
             },
         };
+    }
 
     private static TypeDependency CreateDependency(
         StandardElementType standardElementType) =>

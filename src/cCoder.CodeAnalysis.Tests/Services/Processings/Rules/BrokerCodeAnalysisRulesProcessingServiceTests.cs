@@ -23,17 +23,16 @@ public sealed class STXBRulesProcessingServiceTests
             .DescendantNodes()
             .OfType<TypeDeclarationSyntax>()
             .Single();
-        EvaluationContext evaluationContext = new EvaluationContext();
-        evaluationContext.TypeName = "Example.Broker";
-        evaluationContext.StandardElementType = StandardElementType.Broker;
-        evaluationContext.ImplementedInterfaces = ["Example.IBroker"];
-        evaluationContext.Declarations = [declaration];
-        evaluationContext.Dependencies =
+        TypeDependency[] dependencies =
         [
             new TypeDependency { StandardElementType = StandardElementType.Exposure },
             new TypeDependency { StandardElementType = StandardElementType.Dependency },
         ];
-        EvaluationContext context = evaluationContext;
+        EvaluationContext context = CreateContext(
+            typeName: "Example.Broker",
+            declarations: [declaration],
+            dependencies: dependencies,
+            implementedInterfaces: ["Example.IBroker"]);
         STXBRulesProcessingService service = new STXBRulesProcessingService();
         AnalysisItem[] results = service.Evaluate(context).ToArray();
         results
@@ -45,21 +44,18 @@ public sealed class STXBRulesProcessingServiceTests
     [Fact]
     public void EvaluateShouldAllowStronglyTypedConfigurationDependencies()
     {
-        EvaluationContext context = new()
-        {
-            TypeName = "Example.Brokers.ExternalBroker",
-            StandardElementType = StandardElementType.Broker,
-            ImplementedInterfaces = ["Example.Brokers.IExternalBroker"],
-            Declarations = [],
-            Dependencies =
+        EvaluationContext context = CreateContext(
+            typeName: "Example.Brokers.ExternalBroker",
+            declarations: [],
+            implementedInterfaces: ["Example.Brokers.IExternalBroker"],
+            dependencies:
             [
                 new TypeDependency
                 {
                     TypeName = "Example.Models.ExampleConfiguration",
                     StandardElementType = StandardElementType.Model
                 }
-            ]
-        };
+            ]);
 
         STXBRulesProcessingService service = new();
 
@@ -70,5 +66,34 @@ public sealed class STXBRulesProcessingServiceTests
         results
             .Should()
             .NotContain(predicate: result => result.Code == "STXB006");
+    }
+
+    private static EvaluationContext CreateContext(
+        string typeName,
+        IReadOnlyList<TypeDeclarationSyntax> declarations,
+        IReadOnlyList<TypeDependency> dependencies,
+        IReadOnlyList<string> implementedInterfaces)
+    {
+        Class element = new()
+        {
+            Name = typeName,
+            StandardElementType = StandardElementType.Broker,
+            Properties = [],
+            Methods = [],
+            AnalysisDeclarations = declarations,
+            AnalysisDependencies = dependencies,
+            AnalysisImplementedInterfaces = implementedInterfaces,
+            AnalysisTypeFacts = new TypeAnalysisFacts(),
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureElement = element,
+            ArchitectureModel = new Architecture
+            {
+                Project = new ProjectMetadata { AssemblyName = "Example" },
+                Classes = [element],
+            },
+        };
     }
 }
