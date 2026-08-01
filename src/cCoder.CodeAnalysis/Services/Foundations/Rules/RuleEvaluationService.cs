@@ -8,22 +8,17 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Foundations.Rules;
 
-internal class RuleEvaluationService(
-    IServiceProviderBroker serviceProviderBroker,
-    ISTXSTRUCTRulesProcessingService structuralRulesProcessingService)
-    : IRuleEvaluationService
+internal class RuleEvaluationService(IServiceProviderBroker serviceProviderBroker) : IRuleEvaluationService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        if (context.Declarations.Any(
-            predicate: declaration => declaration is InterfaceDeclarationSyntax))
-        {
-            return structuralRulesProcessingService.Evaluate(context: context);
-        }
+        bool isInterface = context.Declarations.Any(
+            predicate: declaration => declaration is InterfaceDeclarationSyntax);
 
-        IEnumerable<IRuleProcessingService> ruleHandlingServices = serviceProviderBroker.GetRuleHandlingServices(
-            standardElementType: context.StandardElementType
-        );
+        IEnumerable<IRuleProcessingService> ruleHandlingServices = isInterface
+            ? serviceProviderBroker.GetStructuralRuleHandlingServices()
+            : serviceProviderBroker.GetRuleHandlingServices(
+                standardElementType: context.StandardElementType);
 
         return ruleHandlingServices.SelectMany(
             selector: (IRuleProcessingService ruleHandlingService) => ruleHandlingService.Evaluate(context: context)
