@@ -21,6 +21,8 @@ internal sealed class ODATARulesProcessingService : IODATARulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateODATA0001(EvaluationContext context) =>
         GetODataMethods(context)
             .Where(method => method.HttpMethods.Contains("POST", StringComparer.Ordinal)
+                && method.Name == "Post"
+                && method.HasFromBodyParameter
                 && !method.HttpResponses.Any(response => response.StatusCode == 201))
             .Select(method => CreateAnalysisItem(
                 "ODATA0001",
