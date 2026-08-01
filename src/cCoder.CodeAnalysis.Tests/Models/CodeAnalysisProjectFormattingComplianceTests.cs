@@ -28,7 +28,8 @@ public sealed class CodeAnalysisProjectFormattingComplianceTests
         Architecture architecture = architectureBuilder.Generate(projectPath);
 
         architecture.AnalysisItems.Should().NotContain(
-            item => item.Code is "STXFORMAT003" or "STXFORMAT008",
+            item => item.Code == "STXFORMAT003"
+                || item.Code == "STXFORMAT008",
             "the CodeAnalysis implementation must comply with its block and wrapped-statement spacing rules");
     }
 
