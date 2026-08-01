@@ -10,6 +10,41 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Contexts;
 public sealed partial class EvaluationContextsProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldClassifyHttpMiddlewareAsHttpExposure()
+    {
+        // Given
+        const string source =
+            """
+            namespace Example;
+
+            public sealed class HttpContext { }
+            public delegate void RequestDelegate(HttpContext context);
+
+            public sealed class RequestMiddleware
+            {
+                public object InvokeAsync(
+                    HttpContext context,
+                    RequestDelegate next) => new object();
+            }
+
+            public sealed class UnrelatedHandler
+            {
+                public object InvokeAsync(string value) => value;
+            }
+            """;
+        ArchitectureBuild architectureBuild = CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext[] contexts = service.Process(architectureBuild).ToArray();
+
+        // Then
+        contexts.Single(context => context.TypeName == "Example.RequestMiddleware")
+            .StandardElementType.Should().Be(StandardElementType.HttpExposure);
+        contexts.Single(context => context.TypeName == "Example.UnrelatedHandler")
+            .StandardElementType.Should().Be(StandardElementType.Unknown);
+    }
+
+    [Fact]
     public void ProcessShouldExcludeSecurityRequestConfigurationFromLayerDependencies()
     {
         const string source =

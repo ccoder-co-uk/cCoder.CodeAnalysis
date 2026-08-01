@@ -435,7 +435,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             typeName: "ODataController");
         bool isHttpRequestHandler = httpMethods.Count > 0
             || isODataControllerAction
-            || InheritsFromTypeNamed(type: method.ContainingType, typeName: "ControllerBase");
+            || IsHttpController(type: method.ContainingType)
+            || IsConventionalMiddlewareMethod(method: method);
         List<HttpResponse> httpResponses = isHttpRequestHandler
             ? GetHttpResponses(method: method, compilation: compilation)
             : [];
@@ -956,6 +957,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         }
 
         if (
+            IsHttpController(type: type)
+            || IsHttpMiddleware(type: type)
+        )
+        {
+            return StandardElementType.HttpExposure;
+        }
+
+        if (
             containingNamespace.Contains(value: ".Controllers", comparisonType: StringComparison.Ordinal)
             || containingNamespace.Contains(value: ".Exposures", comparisonType: StringComparison.Ordinal)
             || type.Name.EndsWith(value: "EventHub", comparisonType: StringComparison.Ordinal)
@@ -1026,6 +1035,30 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         return StandardElementType.Unknown;
     }
+
+    private static bool IsHttpController(INamedTypeSymbol type) =>
+        type.ContainingNamespace.ToDisplayString().Contains(
+            value: ".Controllers",
+            comparisonType: StringComparison.Ordinal)
+        || InheritsFromTypeNamed(type: type, typeName: "ControllerBase")
+        || InheritsFromTypeNamed(type: type, typeName: "ODataController")
+        || type.GetAttributes().Any(attribute =>
+            attribute.AttributeClass?.Name == "ApiControllerAttribute");
+
+    private static bool IsHttpMiddleware(INamedTypeSymbol type) =>
+        type.AllInterfaces.Any(contract => contract.Name == "IMiddleware")
+        || type.GetMembers()
+            .OfType<IMethodSymbol>()
+            .Any(IsConventionalMiddlewareMethod);
+
+    private static bool IsConventionalMiddlewareMethod(IMethodSymbol method) =>
+        method.DeclaredAccessibility == Accessibility.Public
+        && method.MethodKind == MethodKind.Ordinary
+        && method.Name is "Invoke" or "InvokeAsync"
+        && method.Parameters.Length is 1 or 2
+        && method.Parameters[0].Type.Name == "HttpContext"
+        && (method.Parameters.Length == 1
+            || method.Parameters[1].Type.Name == "RequestDelegate");
 
     private static bool IsConfigurationCompositionHelper(
         INamedTypeSymbol type) =>

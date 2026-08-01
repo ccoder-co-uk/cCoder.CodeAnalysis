@@ -118,7 +118,7 @@ public sealed class PublicApiTests
     }
 
     [Fact]
-    public void AddCodeAnalysisShouldEvaluateRfcRulesForExposures()
+    public void AddCodeAnalysisShouldRouteGenericExposureRulesAsExpected()
     {
         ServiceCollection services = new ServiceCollection();
         services.AddCodeAnalysis();
@@ -130,6 +130,27 @@ public sealed class PublicApiTests
                 StandardElementType.Exposure.ToString());
 
         exposureRules.Should()
-            .ContainSingle(rule => rule is IRFCRulesProcessingService);
+            .HaveCount(4)
+            .And.NotContain(rule => rule is IRFCRulesProcessingService)
+            .And.NotContain(rule => rule is ISTXAPIRulesProcessingService);
+    }
+
+    [Fact]
+    public void AddCodeAnalysisShouldRouteHttpExposureRulesAsExpected()
+    {
+        ServiceCollection services = new ServiceCollection();
+        services.AddCodeAnalysis();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        IEnumerable<IRuleProcessingService> exposureRules =
+            provider.GetRequiredKeyedService<
+                IEnumerable<IRuleProcessingService>>(
+                StandardElementType.HttpExposure.ToString());
+
+        exposureRules.Should().HaveCount(8);
+        exposureRules.Should().ContainSingle(rule => rule is ISTXAPIRulesProcessingService);
+        exposureRules.Should().ContainSingle(rule => rule is IRFCRulesProcessingService);
+        exposureRules.Should().ContainSingle(rule => rule is IODATARulesProcessingService);
+        exposureRules.Should().ContainSingle(rule => rule is IOWASPRulesProcessingService);
     }
 }

@@ -15,6 +15,79 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Architectures;
 public sealed class ArchitectureProcessingServiceTests
 {
     [Fact]
+    public void ProcessShouldClassifyOnlyHttpRequestHandlersAsHttpExposures()
+    {
+        // Given
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                namespace Example;
+
+                public sealed class HttpContext { }
+                public delegate void RequestDelegate(HttpContext context);
+                public interface IMiddleware { }
+
+                public sealed class ConventionalMiddleware
+                {
+                    public object InvokeAsync(
+                        HttpContext context,
+                        RequestDelegate next) => new object();
+
+                    public object Handle() => new object();
+                }
+
+                public sealed class InterfaceMiddleware : IMiddleware
+                {
+                    public object InvokeAsync(HttpContext context) => new object();
+                }
+
+                public sealed class UnrelatedHandler
+                {
+                    public object InvokeAsync(string value) => value;
+                }
+
+                namespace Exposures
+                {
+                    public sealed class EventExposure
+                    {
+                        public object Handle() => new object();
+                    }
+                }
+                """,
+            path: "Middleware.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references: [MetadataReference.CreateFromFile(typeof(object).Assembly.Location)]);
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+        ArchitectureProcessingService service = new(architectureServiceMock.Object);
+
+        // When
+        Architecture architecture = service.Process(compilation).Architecture;
+
+        // Then
+        Class conventional = architecture.Classes.Single(element =>
+            element.Name == "Example.ConventionalMiddleware");
+        conventional.StandardElementType.Should().Be(StandardElementType.HttpExposure, "");
+        conventional.Methods.Single(method => method.Name == "InvokeAsync")
+            .IsHttpRequestHandler.Should().BeTrue("");
+        conventional.Methods.Single(method => method.Name == "Handle")
+            .IsHttpRequestHandler.Should().BeFalse("");
+
+        architecture.Classes.Single(element => element.Name == "Example.InterfaceMiddleware")
+            .StandardElementType.Should().Be(StandardElementType.HttpExposure, "");
+        Class unrelated = architecture.Classes.Single(element =>
+            element.Name == "Example.UnrelatedHandler");
+        unrelated.StandardElementType.Should().Be(StandardElementType.Unknown, "");
+        unrelated.Methods.Single(method => method.Name == "InvokeAsync")
+            .IsHttpRequestHandler.Should().BeFalse("");
+        architecture.Classes.Single(element => element.Name == "Example.Exposures.EventExposure")
+            .StandardElementType.Should().Be(StandardElementType.Exposure, "");
+    }
+
+    [Fact]
     public void ProcessShouldCaptureHttpResponseAndExceptionPaths()
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
@@ -150,7 +223,7 @@ public sealed class ArchitectureProcessingServiceTests
 
         Class controller = result.Architecture.Classes.Single(
             element => element.Name == "Example.Controllers.StudentController");
-        controller.StandardElementType.Should().Be(StandardElementType.Exposure, "");
+        controller.StandardElementType.Should().Be(StandardElementType.HttpExposure, "");
         Method getStudent = controller.Methods.Single(method => method.Name == "GetStudent");
         getStudent.Id.Should().Be("Example.Controllers.StudentController.GetStudent(System.String)", "");
         getStudent.ThrowsExceptionTypes.Should()

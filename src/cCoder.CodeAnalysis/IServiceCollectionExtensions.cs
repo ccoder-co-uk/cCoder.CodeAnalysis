@@ -163,6 +163,17 @@ public static class IServiceCollectionExtensions
                     serviceProvider.GetRequiredService<ISTXSTRUCTRulesProcessingService>(),
                     serviceProvider.GetRequiredService<ISTXRulesProcessingService>(),
                     serviceProvider.GetRequiredService<ISTXERulesProcessingService>(),
+                ]);
+
+        AddRuleHandlingServices(
+            services: services,
+            standardElementType: StandardElementType.HttpExposure,
+            ruleServicesFactory: serviceProvider =>
+                [
+                    serviceProvider.GetRequiredService<ISTXFORMATRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXSTRUCTRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXRulesProcessingService>(),
+                    serviceProvider.GetRequiredService<ISTXERulesProcessingService>(),
                     serviceProvider.GetRequiredService<ISTXAPIRulesProcessingService>(),
                     serviceProvider.GetRequiredService<IRFCRulesProcessingService>(),
                     serviceProvider.GetRequiredService<IODATARulesProcessingService>(),
