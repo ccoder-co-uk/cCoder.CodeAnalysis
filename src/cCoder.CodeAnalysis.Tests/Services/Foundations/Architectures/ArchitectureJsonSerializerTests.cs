@@ -97,6 +97,21 @@ public sealed class ArchitectureJsonSerializerTests
                     Name = "Students.Student",
                     LineNumber = 5,
                     IsPublic = true,
+                    Methods =
+                    [
+                        new Method
+                        {
+                            Name = "GetStudent",
+                            HttpResponses =
+                            [
+                                new HttpResponse
+                                {
+                                    StatusCode = 200,
+                                    HasBody = true,
+                                },
+                            ],
+                        },
+                    ],
                     Interfaces =
                     [
                         new TypeReference
@@ -125,6 +140,7 @@ public sealed class ArchitectureJsonSerializerTests
         actual.Classes.Should().ContainSingle("");
         actual.Classes[0].Interfaces.Should().ContainSingle("");
         actual.Classes[0].Interfaces[0].Kind.Should().Be(ArchitectureTypeKind.Interface, "");
+        actual.Classes[0].Methods.Single().HttpResponses.Single().HasBody.Should().BeTrue("");
         json.Should().NotContain("AnalysisFilePath", "");
         json.Should().NotContain("private", "");
         json.Should().NotContain("AnalysisSourceCode", "");

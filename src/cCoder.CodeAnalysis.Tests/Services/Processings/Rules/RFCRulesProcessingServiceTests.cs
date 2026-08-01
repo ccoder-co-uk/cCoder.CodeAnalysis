@@ -91,6 +91,11 @@ public sealed class RFCRulesProcessingServiceTests
     [InlineData("RFC0008")]
     [InlineData("RFC0009")]
     [InlineData("RFC0010")]
+    [InlineData("RFC0011")]
+    [InlineData("RFC0012")]
+    [InlineData("RFC0013")]
+    [InlineData("RFC0014")]
+    [InlineData("RFC0015")]
     public void EvaluateShouldRejectMissingHttpFailureMapping(string expectedCode)
     {
         Method method = CreateHttpMethod();
@@ -118,6 +123,36 @@ public sealed class RFCRulesProcessingServiceTests
                 break;
             case "RFC0010":
                 method.HttpResponses.Add(CreateExceptionResponse("System.Exception", 400, "BadRequest"));
+                break;
+            case "RFC0011":
+                method.HttpResponses.Add(new HttpResponse
+                {
+                    StatusCode = 204,
+                    ResultMethod = "StatusCode",
+                    HasBody = true,
+                });
+                break;
+            case "RFC0012":
+                method.HttpMethods.Add("HEAD");
+                method.HttpResponses.Add(new HttpResponse
+                {
+                    StatusCode = 200,
+                    ResultMethod = "Ok",
+                    HasBody = true,
+                });
+                break;
+            case "RFC0013":
+                method.ThrowsExceptionTypes.Add("UnsupportedMediaException");
+                break;
+            case "RFC0014":
+                method.ThrowsExceptionTypes.Add("PreconditionException");
+                break;
+            case "RFC0015":
+                method.HttpResponses.Add(new HttpResponse
+                {
+                    StatusCode = 799,
+                    ResultMethod = "StatusCode",
+                });
                 break;
         }
 
@@ -147,6 +182,8 @@ public sealed class RFCRulesProcessingServiceTests
                 "AppAuthenticationException",
                 "AppAuthorizationException",
                 "AppConcurrencyException",
+                "UnsupportedMediaException",
+                "PreconditionException",
             ]);
         method.HttpResponses.AddRange(
             [
@@ -154,6 +191,8 @@ public sealed class RFCRulesProcessingServiceTests
                 CreateExceptionResponse("AppAuthenticationException", 401, "Challenge"),
                 CreateExceptionResponse("AppAuthorizationException", 403, "Forbid"),
                 CreateExceptionResponse("AppConcurrencyException", 409, "Conflict"),
+                CreateExceptionResponse("UnsupportedMediaException", 415, "UnsupportedMediaType"),
+                CreateExceptionResponse("PreconditionException", 412, "PreconditionFailed"),
             ]);
         EvaluationContext context = CreateModelContext(method: method);
 

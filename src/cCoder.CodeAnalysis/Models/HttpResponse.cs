@@ -11,5 +11,6 @@ public sealed class HttpResponse
     public string ExceptionType { get; set; }
     public bool IsExceptionPath { get; set; }
     public bool IsNullPath { get; set; }
+    public bool HasBody { get; set; }
     public bool ExposesExceptionDetails { get; set; }
 }

@@ -175,6 +175,7 @@ public sealed class ArchitectureProcessingServiceTests
                 namespace Example.Controllers;
 
                 public sealed class HttpGetAttribute : Attribute { }
+                public sealed class HttpHeadAttribute : Attribute { }
                 public class ODataController
                 {
                     protected object Ok(object value) => value;
@@ -187,6 +188,9 @@ public sealed class ArchitectureProcessingServiceTests
 
                 public sealed class StudentController : ODataController
                 {
+                    [HttpHead]
+                    public object GetStudentHeaders() => Ok(new object());
+
                     [HttpGet]
                     public object GetStudent(int studentId)
                     {
@@ -246,6 +250,11 @@ public sealed class ArchitectureProcessingServiceTests
             response => response.StatusCode == 403
                 && response.ExceptionType == "Example.Controllers.StudentAuthorizationException",
             "");
+        Method headAction = result.Architecture.Classes
+            .Single(element => element.Name == "Example.Controllers.StudentController")
+            .Methods.Single(method => method.Name == "GetStudentHeaders");
+        headAction.HttpMethods.Should().ContainSingle().Which.Should().Be("HEAD", "");
+        headAction.HttpResponses.Should().ContainSingle().Which.HasBody.Should().BeTrue("");
     }
 
     [Fact]

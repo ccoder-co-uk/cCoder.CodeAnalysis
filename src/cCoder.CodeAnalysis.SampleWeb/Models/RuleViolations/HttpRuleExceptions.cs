@@ -19,3 +19,11 @@ internal sealed class HttpRuleAuthorizationException : Exception
 internal sealed class HttpRuleConcurrencyException : Exception
 {
 }
+
+internal sealed class HttpRulePreconditionException : Exception
+{
+}
+
+internal sealed class HttpRuleUnsupportedMediaException : Exception
+{
+}

@@ -713,8 +713,19 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
     private static List<string> GetHttpMethods(IMethodSymbol method)
     {
-        List<string> methods = method.GetAttributes()
+        IEnumerable<string> symbolAttributeNames = method.GetAttributes()
             .Select(attribute => attribute.AttributeClass?.Name ?? string.Empty)
+            .Concat(method.DeclaringSyntaxReferences
+                .Select(reference => reference.GetSyntax())
+                .OfType<MethodDeclarationSyntax>()
+                .SelectMany(declaration => declaration.AttributeLists)
+                .SelectMany(attributeList => attributeList.Attributes)
+                .Select(attribute => attribute.Name.ToString().Split('.').Last())
+                .Select(attributeName => attributeName.EndsWith("Attribute", StringComparison.Ordinal)
+                    ? attributeName
+                    : $"{attributeName}Attribute"));
+
+        List<string> methods = symbolAttributeNames
             .Select(
                 attributeName => attributeName switch
                 {
@@ -723,6 +734,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     "HttpPutAttribute" => "PUT",
                     "HttpPatchAttribute" => "PATCH",
                     "HttpDeleteAttribute" => "DELETE",
+                    "HttpHeadAttribute" => "HEAD",
                     _ => string.Empty,
                 })
             .Where(httpMethod => httpMethod.Length > 0)
@@ -824,6 +836,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             IsExceptionPath = exceptionCatch is not null,
                             IsNullPath = statusCode == 404
                                 && (nullBranch is not null || nullConditional is not null),
+                            HasBody = HasResponseBody(
+                                resultMethod: resultMethod,
+                                invocation: invocation),
                             ExposesExceptionDetails = ExposesExceptionDetails(
                                 invocation: invocation,
                                 exceptionCatch: exceptionCatch),
@@ -840,6 +855,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     response.ExceptionType,
                     response.IsExceptionPath,
                     response.IsNullPath,
+                    response.HasBody,
                     response.ExposesExceptionDetails))
             .Select(group => group.First())
             .OrderBy(response => response.StatusCode)
@@ -884,6 +900,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             "NotFound" => 404,
             "Conflict" => 409,
             "PreconditionFailed" => 412,
+            "UnsupportedMediaType" => 415,
             "UnprocessableEntity" => 422,
             "StatusCode" => GetConstantStatusCode(invocation: invocation, compilation: compilation),
             _ => null,
@@ -906,6 +923,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         return constant.HasValue && constant.Value is int statusCode ? statusCode : null;
     }
+
+    private static bool HasResponseBody(
+        string resultMethod,
+        InvocationExpressionSyntax invocation) =>
+
+        resultMethod switch
+        {
+            "Challenge" or "Forbid" or "NoContent" => false,
+            "StatusCode" => invocation.ArgumentList.Arguments.Count > 1,
+            _ => invocation.ArgumentList.Arguments.Count > 0,
+        };
 
     private static string GetCaughtExceptionType(
         CatchClauseSyntax? catchClause,

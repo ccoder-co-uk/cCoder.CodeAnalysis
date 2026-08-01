@@ -22,7 +22,12 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
             .Concat(second: EvaluateRFC0007(context: context))
             .Concat(second: EvaluateRFC0008(context: context))
             .Concat(second: EvaluateRFC0009(context: context))
-            .Concat(second: EvaluateRFC0010(context: context));
+            .Concat(second: EvaluateRFC0010(context: context))
+            .Concat(second: EvaluateRFC0011(context: context))
+            .Concat(second: EvaluateRFC0012(context: context))
+            .Concat(second: EvaluateRFC0013(context: context))
+            .Concat(second: EvaluateRFC0014(context: context))
+            .Concat(second: EvaluateRFC0015(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateRFC0001(EvaluationContext context) =>
@@ -138,6 +143,57 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
                 context,
                 method));
 
+    private static IEnumerable<AnalysisItem> EvaluateRFC0011(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => method.HttpResponses.Any(response =>
+                response.StatusCode == 204 && response.HasBody))
+            .Select(method => CreateAnalysisItem(
+                "RFC0011",
+                "A 204 No Content response must not include response content.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0012(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => method.HttpMethods.Contains("HEAD", StringComparer.Ordinal)
+                && method.HttpResponses.Any(response => response.HasBody))
+            .Select(method => CreateAnalysisItem(
+                "RFC0012",
+                "A response to HEAD must not include response content.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0013(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasEscapingException(method, "UnsupportedMedia")
+                && !HasExceptionResponse(method, "UnsupportedMedia", 415))
+            .Select(method => CreateAnalysisItem(
+                "RFC0013",
+                "An unsupported request media type must return 415 Unsupported Media Type.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0014(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => HasPreconditionException(method)
+                && !HasExceptionResponse(method, "Precondition", 412)
+                && !HasExceptionResponse(method, "ETag", 412))
+            .Select(method => CreateAnalysisItem(
+                "RFC0014",
+                "A failed request precondition must return 412 Precondition Failed.",
+                context,
+                method));
+
+    private static IEnumerable<AnalysisItem> EvaluateRFC0015(EvaluationContext context) =>
+        GetHttpMethods(context)
+            .Where(method => method.HttpResponses.Any(response =>
+                response.StatusCode is < 100 or > 599))
+            .Select(method => CreateAnalysisItem(
+                "RFC0015",
+                "An HTTP response status code must be a three-digit code between 100 and 599.",
+                context,
+                method));
+
     private static IEnumerable<Method> GetODataMethods(EvaluationContext context) =>
         (context.ArchitectureElement?.Methods ?? [])
             .Where(method => method.IsODataControllerAction);
@@ -156,6 +212,11 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
                 || exceptionType.Contains("Concurrency", StringComparison.Ordinal))
             && !exceptionType.Contains("Precondition", StringComparison.Ordinal)
             && !exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
+
+    private static bool HasPreconditionException(Method method) =>
+        (method.PossibleExceptionTypes ?? method.ThrowsExceptionTypes).Any(exceptionType =>
+            exceptionType.Contains("Precondition", StringComparison.Ordinal)
+            || exceptionType.Contains("ETag", StringComparison.OrdinalIgnoreCase));
 
     private static bool HasExceptionResponse(Method method, string category, params int[] statusCodes) =>
         method.HttpResponses.Any(response => response.IsExceptionPath
