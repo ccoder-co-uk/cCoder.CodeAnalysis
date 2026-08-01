@@ -616,35 +616,45 @@ public sealed class ApplicationCompositionRuleTests
             path: filePath ?? $"{typeName.Split(separator: ['.']).Last()}.cs"
         );
 
-        EvaluationContext context = new EvaluationContext
-        {
-            TypeName = typeName,
-            StandardElementType = StandardElementType.App,
-            ProjectName = projectName,
-            FilePath = syntaxTree.FilePath,
-            SourceCode = sourceCode,
-            IsConsoleApplication = isConsoleApplication,
-            ProjectTypeNames = projectTypeNames ?? [typeName],
-            Declarations = syntaxTree
-                .GetRoot()
-                .DescendantNodes()
-                .OfType<TypeDeclarationSyntax>()
-                .ToArray(),
-            UsingNamespaces = [],
-        };
+        TypeDeclarationSyntax[] declarations = syntaxTree
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<TypeDeclarationSyntax>()
+            .ToArray();
 
         TypeAnalysisFacts facts = ArchitectureProcessingService
-            .CreateTypeAnalysisFacts(context.Declarations);
+            .CreateTypeAnalysisFacts(declarations);
         facts.ProjectName = projectName;
-        facts.FilePath = context.FilePath;
+        facts.FilePath = syntaxTree.FilePath;
         facts.SourceCode = sourceCode;
         facts.IsConsoleApplication = isConsoleApplication;
-        facts.ProjectTypeNames = context.ProjectTypeNames;
-        context.ArchitectureElement = new Class
+        facts.ProjectTypeNames = projectTypeNames ?? [typeName];
+        Class element = new Class
         {
+            Name = typeName,
+            StandardElementType = StandardElementType.App,
+            AnalysisDeclarations = declarations,
+            AnalysisFilePath = syntaxTree.FilePath,
+            AnalysisSourceCode = sourceCode,
             AnalysisTypeFacts = facts,
         };
 
-        return context;
+        Architecture architecture = new Architecture
+        {
+            Project = new ProjectMetadata
+            {
+                Name = projectName,
+                AssemblyName = projectName,
+            },
+            Classes = (projectTypeNames ?? [typeName])
+                .Select(name => name == typeName ? element : new Class { Name = name })
+                .ToList(),
+        };
+
+        return new EvaluationContext
+        {
+            ArchitectureModel = architecture,
+            ArchitectureElement = element,
+        };
     }
 }

@@ -183,24 +183,24 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
             .Where(candidate => !candidate.Ancestors().OfType<TypeDeclarationSyntax>().Any())
             .ToArray();
 
+        Class element = new Class
+        {
+            Name = typeName,
+            StandardElementType = standardElementType,
+            AnalysisFilePath = syntaxTree.FilePath,
+            AnalysisSourceCode = sourceCode,
+            AnalysisDeclarations = [declaration],
+            AnalysisSourceFileTopLevelClassCount = topLevelClasses.Length,
+            AnalysisIsPrimaryTopLevelClassInFile =
+                declaration.SpanStart == topLevelClasses[0].SpanStart,
+        };
+
+        Architecture architecture = new Architecture { Classes = [element] };
+
         return new EvaluationContext
         {
-            TypeName = typeName,
-            StandardElementType = standardElementType,
-            FilePath = syntaxTree.FilePath,
-            SourceCode = sourceCode,
-            Declarations = [declaration],
-            SourceFileTopLevelClassCount = topLevelClasses.Length,
-            IsPrimaryTopLevelClassInFile = declaration.SpanStart == topLevelClasses[0].SpanStart,
-            Dependencies = [],
-            ImplementedInterfaces = [],
-            PublicMethodNames = [],
-            ContractMethodNames = [],
-            PublicMethodCallLineNumbers = [],
-            PublicApiModelTypes = [],
-            LocalDependencyTypeNames = [],
-            ProjectTypeNames = [typeName],
-            UsingNamespaces = [],
+            ArchitectureModel = architecture,
+            ArchitectureElement = element,
         };
     }
 
@@ -219,22 +219,22 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
             .OfType<InterfaceDeclarationSyntax>()
             .First();
 
+        Class element = new Class
+        {
+            Name = typeName,
+            StandardElementType = standardElementType,
+            Kind = ArchitectureTypeKind.Interface,
+            AnalysisFilePath = syntaxTree.FilePath,
+            AnalysisSourceCode = sourceCode,
+            AnalysisDeclarations = [declaration],
+        };
+
+        Architecture architecture = new Architecture { Classes = [element] };
+
         return new EvaluationContext
         {
-            TypeName = typeName,
-            StandardElementType = standardElementType,
-            FilePath = syntaxTree.FilePath,
-            SourceCode = sourceCode,
-            Declarations = [declaration],
-            Dependencies = [],
-            ImplementedInterfaces = [],
-            PublicMethodNames = [],
-            ContractMethodNames = [],
-            PublicMethodCallLineNumbers = [],
-            PublicApiModelTypes = [],
-            LocalDependencyTypeNames = [],
-            ProjectTypeNames = [typeName],
-            UsingNamespaces = [],
+            ArchitectureModel = architecture,
+            ArchitectureElement = element,
         };
     }
 }

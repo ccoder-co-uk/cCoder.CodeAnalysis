@@ -74,7 +74,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
 
         EvaluationContext context = service
             .Process(architectureBuild: architectureBuild)
-            .Single(item => item.TypeName == "Example.Brokers.EventBroker");
+            .Single(item => item.ArchitectureElement.Name == "Example.Brokers.EventBroker");
 
         context.ArchitectureElement.AnalysisDependencies
             .Should()

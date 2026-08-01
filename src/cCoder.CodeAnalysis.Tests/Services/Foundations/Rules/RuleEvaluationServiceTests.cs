@@ -49,7 +49,8 @@ public sealed class RuleEvaluationServiceTests
         Mock<IRuleProcessingService> ruleProcessingServiceMock = new();
         Mock<IServiceProviderBroker> serviceProviderBrokerMock = new();
         EvaluationContext context = CreateContext("public class StudentService { }");
-        context.StandardElementType = StandardElementType.FoundationService;
+        context.ArchitectureElement.StandardElementType =
+            StandardElementType.FoundationService;
         ruleProcessingServiceMock
             .Setup(service => service.Evaluate(context))
             .Returns([expectedItem]);
@@ -78,10 +79,20 @@ public sealed class RuleEvaluationServiceTests
             .OfType<TypeDeclarationSyntax>()
             .Single();
 
+        Class element = new Class
+        {
+            Name = declaration.Identifier.Text,
+            StandardElementType = StandardElementType.Unknown,
+            Kind = declaration is InterfaceDeclarationSyntax
+                ? ArchitectureTypeKind.Interface
+                : ArchitectureTypeKind.Class,
+            AnalysisDeclarations = [declaration],
+        };
+
         return new EvaluationContext
         {
-            Declarations = [declaration],
-            StandardElementType = StandardElementType.Unknown,
+            ArchitectureModel = new Architecture { Classes = [element] },
+            ArchitectureElement = element,
         };
     }
 }
