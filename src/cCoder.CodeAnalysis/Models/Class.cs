@@ -11,8 +11,13 @@ public sealed class Class
 {
     public string Name { get; set; }
     public StandardElementType StandardElementType { get; set; }
-    public List<Property> Properties { get; set; }
-    public List<Method> Methods { get; set; }
+    public int LineNumber { get; set; }
+    public bool IsPublic { get; set; }
+    public ArchitectureTypeKind Kind { get; set; } = ArchitectureTypeKind.Class;
+    public TypeReference BaseType { get; set; }
+    public List<TypeReference> Interfaces { get; set; } = [];
+    public List<Property> Properties { get; set; } = [];
+    public List<Method> Methods { get; set; } = [];
 
     [JsonIgnore]
     internal IReadOnlyList<TypeDependency> AnalysisDependencies { get; set; }

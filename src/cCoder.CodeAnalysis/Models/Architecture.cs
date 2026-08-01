@@ -6,7 +6,9 @@ namespace cCoder.CodeAnalysis.Models;
 
 public sealed class Architecture
 {
-    public List<Class> Classes { get; set; }
-    public List<Link> Links { get; set; }
-    public List<AnalysisItem> AnalysisItems { get; set; }
+    public int SchemaVersion { get; set; } = 2;
+    public ProjectMetadata Project { get; set; } = new();
+    public List<Class> Classes { get; set; } = [];
+    public List<Link> Links { get; set; } = [];
+    public List<AnalysisItem> AnalysisItems { get; set; } = [];
 }
