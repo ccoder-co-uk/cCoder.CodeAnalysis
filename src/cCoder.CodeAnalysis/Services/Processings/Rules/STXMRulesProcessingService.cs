@@ -12,20 +12,9 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
 {
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXM001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXM002(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXM003(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXM001(context: context)
+            .Concat(second: EvaluateSTXM002(context: context))
+            .Concat(second: EvaluateSTXM003(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(

@@ -13,15 +13,8 @@ internal sealed class STXMGRulesProcessingService : ISTXMGRulesProcessingService
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
-        foreach (AnalysisItem item in EvaluateSTXMG001(context: context))
-        {
-            yield return item;
-        }
-
-        foreach (AnalysisItem item in EvaluateSTXMG002(context: context))
-        {
-            yield return item;
-        }
+        return EvaluateSTXMG001(context: context)
+            .Concat(second: EvaluateSTXMG002(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
