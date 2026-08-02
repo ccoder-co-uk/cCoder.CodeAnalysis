@@ -46,10 +46,11 @@ internal sealed class RFCRulesProcessingService : IRFCRulesProcessingService
         GetODataMethods(context)
             .Where(method => method.HttpMethods.Contains("DELETE", StringComparer.Ordinal)
                 && method.Name == "Delete"
+                && !HasSuccessResponse(method, 202)
                 && !HasSuccessResponse(method, 204))
             .Select(method => CreateAnalysisItem(
                 "RFC0002",
-                "An OData CRUD Delete action must return 204 No Content when deletion succeeds.",
+                "An OData CRUD Delete action must return 202 Accepted for asynchronous deletion or 204 No Content when deletion completes synchronously.",
                 context,
                 method));
 

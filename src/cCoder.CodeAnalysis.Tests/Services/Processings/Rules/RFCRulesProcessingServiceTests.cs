@@ -46,6 +46,8 @@ public sealed class RFCRulesProcessingServiceTests
     [InlineData(
         "public IActionResult Delete(int key) => NoContent();")]
     [InlineData(
+        "public IActionResult Delete(int key) => Accepted();")]
+    [InlineData(
         "public IActionResult Get() => Ok(new App());")]
     [InlineData(
         "public IActionResult Put(int key, App app) => Ok(app);")]
@@ -230,6 +232,7 @@ public sealed class RFCRulesProcessingServiceTests
             ["Created"] = 201,
             ["CreatedAtAction"] = 201,
             ["CreatedAtRoute"] = 201,
+            ["Accepted"] = 202,
             ["NoContent"] = 204,
         };
         List<HttpResponse> responses = declarationMethod.DescendantNodes()

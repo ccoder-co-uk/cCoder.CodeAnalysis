@@ -999,6 +999,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         {
             "Ok" or "Updated" => 200,
             "Created" or "CreatedAtAction" or "CreatedAtRoute" => 201,
+            "Accepted" => 202,
             "NoContent" => 204,
             "BadRequest" => 400,
             "Unauthorized" or "Challenge" => 401,
