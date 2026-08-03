@@ -174,9 +174,53 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
         PropertyAnalysisFacts? property = GetFacts(context).Properties.FirstOrDefault(candidate =>
             !candidate.IsPublic || !candidate.HasGetter || !candidate.HasSetter
             || candidate.TypeName == "dynamic"
-            || candidate.TypeName.Contains("Dictionary", StringComparison.Ordinal));
+            || IsDisallowedConfigurationDictionary(candidate.TypeName));
 
         return property is null ? [] : [Create("STXAPP013", "Configuration properties must be public, strongly typed, and bindable with get and set accessors.", context, property.LineNumber)];
+    }
+
+    private static bool IsDisallowedConfigurationDictionary(string typeName)
+    {
+        if (!typeName.Contains("Dictionary", StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        string compactTypeName = typeName.Replace(" ", string.Empty);
+
+        string[] supportedPrefixes =
+        [
+            "Dictionary<string,",
+            "IReadOnlyDictionary<string,",
+            "System.Collections.Generic.Dictionary<string,",
+            "System.Collections.Generic.IReadOnlyDictionary<string,",
+        ];
+
+        string? prefix = supportedPrefixes.FirstOrDefault(candidate =>
+            compactTypeName.StartsWith(candidate, StringComparison.Ordinal));
+
+        if (prefix is null || !compactTypeName.EndsWith(">", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        string valueTypeName = compactTypeName.Substring(
+            startIndex: prefix.Length,
+            length: compactTypeName.Length - prefix.Length - 1).TrimEnd('?');
+
+        if (valueTypeName.IndexOf('<') >= 0)
+        {
+            return true;
+        }
+
+        string simpleValueTypeName = valueTypeName.Split('.').Last();
+
+        bool looksLikeInterface = simpleValueTypeName.Length > 1
+            && simpleValueTypeName[0] == 'I'
+            && char.IsUpper(simpleValueTypeName[1]);
+
+        return looksLikeInterface
+            || !simpleValueTypeName.EndsWith("Configuration", StringComparison.Ordinal);
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPP014(EvaluationContext context)

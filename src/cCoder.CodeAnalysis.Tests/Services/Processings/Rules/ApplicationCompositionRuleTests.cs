@@ -522,6 +522,51 @@ public sealed class ApplicationCompositionRuleTests
         items.Should().ContainSingle(item => item.Code == "STXAPP013", "");
     }
 
+    [Theory]
+    [InlineData("Dictionary<string, MailProviderConfiguration>")]
+    [InlineData("IReadOnlyDictionary<string, MailProviderConfiguration>")]
+    [InlineData("System.Collections.Generic.Dictionary<string, MailProviderConfiguration>")]
+    public void StronglyTypedProviderDictionaryConfigurationPropertyEvaluatesAsExpected(
+        string propertyType)
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "Mail.Models.MailConfiguration",
+            sourceCode:
+                $$"""
+                public sealed class MailConfiguration
+                {
+                    public {{propertyType}} Providers { get; set; }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXAPP013");
+    }
+
+    [Theory]
+    [InlineData("Dictionary<string, object>")]
+    [InlineData("Dictionary<string, dynamic>")]
+    [InlineData("Dictionary<string, IMailProviderConfiguration>")]
+    [InlineData("IReadOnlyDictionary<int, MailProviderConfiguration>")]
+    public void WeaklyTypedProviderDictionaryConfigurationPropertyEvaluatesAsExpected(
+        string propertyType)
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "Mail.Models.MailConfiguration",
+            sourceCode:
+                $$"""
+                public sealed class MailConfiguration
+                {
+                    public {{propertyType}} Providers { get; set; }
+                }
+                """);
+
+        AnalysisItem[] items = service.Evaluate(context).ToArray();
+
+        items.Should().ContainSingle(item => item.Code == "STXAPP013", "");
+    }
+
     [Fact]
     public void ScalarAppRootConfigurationPropertyEvaluatesAsExpected()
     {
