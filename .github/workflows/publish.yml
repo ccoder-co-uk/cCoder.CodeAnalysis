@@ -38,14 +38,8 @@ jobs:
       - name: Build
         run: dotnet build src/cCoder.CodeAnalysis.slnx -c Release --no-restore /p:Version="${{ steps.version.outputs.value }}"
 
-      - name: Test code analysis
-        run: dotnet test src/cCoder.CodeAnalysis.Tests/cCoder.CodeAnalysis.Tests.csproj -c Release --no-build
-
-      - name: Test sample services
-        run: dotnet test src/cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj -c Release --no-build
-
-      - name: Test sample application
-        run: dotnet test src/cCoder.CodeAnalysis.Sample.AcceptanceTests/cCoder.CodeAnalysis.Sample.AcceptanceTests.csproj -c Release --no-build
+      - name: Test
+        run: ./.github/scripts/Run-Tests.ps1
 
       - name: Pack
         run: |
