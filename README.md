@@ -1,5 +1,7 @@
 # cCoder.CodeAnalysis
 
+[View the latest code coverage report](https://ccoder-co-uk.github.io/cCoder.CodeAnalysis/)
+
 `cCoder.CodeAnalysis` analyses C# projects against the architectural and coding conventions defined by The Standard. It reports findings through normal compiler diagnostics and produces a portable architecture document for tooling and visualisation.
 
 ## Installation
@@ -61,6 +63,8 @@ The model recognises the principal layers used by The Standard, including:
 - Tests
 
 Rules cover architectural dependencies, public contracts, exception handling, validation, naming, asynchronous operations, controller behaviour, test structure, source layout, and formatting.
+
+Models are data carriers only. `STXM001` rejects every explicitly declared method-like member, including instance and static constructors, destructors, operators, conversions, and overrides.
 
 ## Runtime use
 

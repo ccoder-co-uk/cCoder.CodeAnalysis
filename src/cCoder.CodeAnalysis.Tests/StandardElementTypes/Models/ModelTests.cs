@@ -16,7 +16,15 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     [Fact]
     public void RuleSTXM001EvaluatesAsExpected()
     {
-        AssertRuleEvaluatesAsExpected("STXM001", "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel", 11);
+        Architecture.AnalysisItems
+            .Should()
+            .Contain(
+                item =>
+                    item.Code == "STXM001"
+                    && item.Type == "cCoder.CodeAnalysis.Sample.Models.RuleViolations.InvalidModel"
+                    && item.LineNumber == 11,
+                "the intentional sample violation must remain represented"
+            );
     }
 
     [Fact]
@@ -38,15 +46,15 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
-    public void ShouldAllowModelObjectOverrides()
+    public void ShouldRejectModelObjectOverrides()
     {
         Class element = GetElement("cCoder.CodeAnalysis.Sample.LegacyDataModel");
 
         Architecture.AnalysisItems
             .Should()
-            .NotContain(
+            .ContainSingle(
                 item => item.Code == "STXM001" && item.Type == element.Name,
-                "");
+                "object overrides are still methods declared by the model");
     }
 
     [Fact]
