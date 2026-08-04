@@ -44,19 +44,22 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
 
         architectureModelQueries
             .GetDeclarations(context: context)
-            .SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
-            .OfType<MethodDeclarationSyntax>()
-            .Where(
-                predicate: (MethodDeclarationSyntax method) =>
-                    !method.Modifiers.Any(
-                        predicate: (SyntaxToken modifier) => modifier.RawKind == (int)SyntaxKind.OverrideKeyword
-                    )
+            .SelectMany(
+                selector: (TypeDeclarationSyntax declaration) =>
+                    declaration
+                        .Members.OfType<BaseMethodDeclarationSyntax>()
+                        .Cast<SyntaxNode>()
+                        .Concat(
+                            second: declaration.ParameterList is null
+                                ? []
+                                : [declaration.ParameterList]
+                        )
             )
             .Select(
-                selector: (MethodDeclarationSyntax method) =>
+                selector: (SyntaxNode method) =>
                     CreateAnalysisItem(
                         code: "STXM001",
-                        description: "Models must not declare methods.",
+                        description: "Models must not declare methods, constructors, destructors, or operators.",
                         context: context,
                         location: method.GetLocation()
                     )

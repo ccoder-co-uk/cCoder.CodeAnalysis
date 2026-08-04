@@ -25,7 +25,11 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             .ToArray();
 
         diagnosticGroups.Should().HaveCount(84, "");
-        diagnosticGroups.Should().OnlyContain(group => group.Count() == 1, "");
+        diagnosticGroups
+            .Where(group => group.Key != "STXM001")
+            .Should()
+            .OnlyContain(group => group.Count() == 1, "");
+        diagnosticGroups.Single(group => group.Key == "STXM001").Should().NotBeEmpty("");
     }
 
     [Fact]

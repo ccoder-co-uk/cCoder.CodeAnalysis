@@ -1,3 +1,9 @@
+param(
+    [switch]$CollectCoverage,
+    [string]$ResultsDirectory = "",
+    [string]$SettingsPath = ""
+)
+
 $ErrorActionPreference = "Stop"
 
 $testProjects = @(
@@ -7,13 +13,25 @@ $testProjects = @(
 )
 
 $processes = foreach ($project in $testProjects) {
-    Start-Process dotnet -NoNewWindow -PassThru -ArgumentList @(
+    $arguments = @(
         "test",
         $project,
         "-c", "Release",
         "--no-build",
         "--no-restore"
     )
+
+    if ($CollectCoverage) {
+        $projectName = [System.IO.Path]::GetFileNameWithoutExtension($project)
+        $arguments += @(
+            "--settings", $SettingsPath,
+            "--results-directory", (Join-Path $ResultsDirectory $projectName),
+            "--logger", "trx",
+            "--collect:`"XPlat Code Coverage`""
+        )
+    }
+
+    Start-Process dotnet -NoNewWindow -PassThru -ArgumentList $arguments
 }
 
 $processes | Wait-Process

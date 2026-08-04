@@ -31,9 +31,11 @@ public sealed class DiagnosticSampleParityTests(
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToArray();
 
-        demonstratedDiagnostics.Should().OnlyContain(
+        demonstratedDiagnostics.Where(group => group.Key != "STXM001").Should().OnlyContain(
             group => group.Count() == 1,
-            "each intentional sample violation must produce exactly one diagnostic across all sample projects");
+            "each rule other than the model member prohibition has one intentional sample violation");
+        demonstratedDiagnostics.Single(group => group.Key == "STXM001").Should().NotBeEmpty(
+            "every existing model member is now intentionally reported");
 
         string[] accountedForCodes = demonstratedDiagnostics
             .Select(group => group.Key)
@@ -56,9 +58,10 @@ public sealed class DiagnosticSampleParityTests(
                 item => new SampleDiagnostic(project.Key, item)))
             .Where(diagnostic => diagnostic.ProjectName ==
                 GetIntendedProject(diagnostic.Item.Code))
+            .GroupBy(diagnostic => diagnostic.Item.Code, StringComparer.Ordinal)
             .ToDictionary(
-                keySelector: diagnostic => diagnostic.Item.Code,
-                elementSelector: diagnostic => diagnostic.ProjectName,
+                keySelector: group => group.Key,
+                elementSelector: group => group.Select(diagnostic => diagnostic.ProjectName).Distinct().Single(),
                 comparer: StringComparer.Ordinal);
 
         demonstratedProjects.Should().OnlyContain(
