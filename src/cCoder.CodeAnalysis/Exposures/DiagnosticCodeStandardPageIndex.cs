@@ -138,6 +138,7 @@ internal static class DiagnosticCodeStandardPageIndex
         ),
         new(diagnosticCode: "STX0023", standardPageUri: $"{FoundationsPage}#2131-validation"),
         new(diagnosticCode: "STX0024", standardPageUri: $"{RestfulApisPage}#311-controllers"),
+        new(diagnosticCode: "STX0025", standardPageUri: $"{FoundationsPage}#2131-validation"),
         new(diagnosticCode: "STXAPP001", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(diagnosticCode: "STXAPP002", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(

@@ -34,6 +34,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 or StandardElementType.AggregationService =>
                 EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0003(context: context))
+                    .Concat(second: EvaluateSTX0025(context: context))
                     .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateSTX0005(context: context))
                     .Concat(second: EvaluateSTX0006(context: context))
@@ -236,6 +237,18 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 ),
             };
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0025(EvaluationContext context) =>
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: declaration => declaration.DescendantNodes())
+            .OfType<InvocationExpressionSyntax>()
+            .Where(predicate: PassesEmptyValidationInputs)
+            .Select(selector: invocation =>
+                CreateAnalysisItem(
+                    code: "STX0025",
+                    description: "A validation call must not pass an empty inputs collection.",
+                    context: context,
+                    location: invocation.GetLocation()));
 
     private static AnalysisItem[] CreateDependencyLayerAnalysisItems(
         EvaluationContext context,
@@ -855,6 +868,43 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     )
             );
     }
+
+    private static bool PassesEmptyValidationInputs(InvocationExpressionSyntax invocation)
+    {
+        string invokedMethodName = invocation.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            GenericNameSyntax generic => generic.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            _ => string.Empty,
+        };
+
+        return invokedMethodName.StartsWith(value: "Validate", comparisonType: StringComparison.Ordinal)
+            && invocation.ArgumentList.Arguments.Any(predicate: argument =>
+                argument.NameColon?.Name.Identifier.Text == "inputs"
+                && IsEmptyCollection(expression: argument.Expression));
+    }
+
+    private static bool IsEmptyCollection(ExpressionSyntax expression) =>
+        expression switch
+        {
+            CollectionExpressionSyntax collection => collection.Elements.Count == 0,
+            ArrayCreationExpressionSyntax arrayCreation =>
+                arrayCreation.Initializer?.Expressions.Count == 0
+                || arrayCreation.Type.RankSpecifiers
+                    .SelectMany(selector: rank => rank.Sizes)
+                    .OfType<LiteralExpressionSyntax>()
+                    .Any(predicate: size => size.Token.ValueText == "0"),
+            ImplicitArrayCreationExpressionSyntax implicitArray =>
+                implicitArray.Initializer.Expressions.Count == 0,
+            InvocationExpressionSyntax invocation =>
+                invocation.Expression is MemberAccessExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax { Identifier.Text: "Array" },
+                    Name: GenericNameSyntax { Identifier.Text: "Empty" },
+                },
+            _ => false,
+        };
 
     private static bool UsesOperationSpecificValidation(MethodDeclarationSyntax method)
     {
