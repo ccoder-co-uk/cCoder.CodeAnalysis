@@ -327,14 +327,16 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         CreateWhenInvalid(
             isInvalid: !HasPartial(context: context, suffix: ".Validations.cs"),
             code: "STX0008",
-            description: "A service must declare its validations in a Validations partial.",
+            description:
+                $"A service must declare its validations in {GetPartialFileName(context: context, suffix: ".Validations.cs")}.",
             context: context);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0009(EvaluationContext context) =>
         CreateWhenInvalid(
             isInvalid: !HasPartial(context: context, suffix: ".Exceptions.cs"),
             code: "STX0009",
-            description: "A service must declare TryCatch handling in an Exceptions partial.",
+            description:
+                $"A service must declare TryCatch handling in {GetPartialFileName(context: context, suffix: ".Exceptions.cs")}.",
             context: context);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0010(EvaluationContext context) =>
@@ -425,9 +427,13 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool HasPartial(EvaluationContext context, string suffix) =>
         architectureModelQueries.GetDeclarations(context: context).Any(predicate: declaration =>
-            declaration.SyntaxTree.FilePath.EndsWith(
-                value: suffix,
+            string.Equals(
+                a: Path.GetFileName(declaration.SyntaxTree.FilePath),
+                b: GetPartialFileName(context: context, suffix: suffix),
                 comparisonType: StringComparison.Ordinal));
+
+    private static string GetPartialFileName(EvaluationContext context, string suffix) =>
+        $"{architectureModelQueries.GetTypeName(context: context).Split(separator: ['.']).Last()}{suffix}";
 
     private static MethodDeclarationSyntax[] GetPublicMethods(EvaluationContext context) =>
         architectureModelQueries.GetDeclarations(context: context)
