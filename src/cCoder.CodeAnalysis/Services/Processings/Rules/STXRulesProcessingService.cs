@@ -34,6 +34,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 or StandardElementType.AggregationService =>
                 EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0003(context: context))
+                    .Concat(second: EvaluateSTX0025(context: context))
                     .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateSTX0005(context: context))
                     .Concat(second: EvaluateSTX0006(context: context))
@@ -237,6 +238,18 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             };
     }
 
+    private static IEnumerable<AnalysisItem> EvaluateSTX0025(EvaluationContext context) =>
+        architectureModelQueries.GetDeclarations(context: context)
+            .SelectMany(selector: declaration => declaration.DescendantNodes())
+            .OfType<InvocationExpressionSyntax>()
+            .Where(predicate: PassesEmptyValidationInputs)
+            .Select(selector: invocation =>
+                CreateAnalysisItem(
+                    code: "STX0025",
+                    description: "A validation call must not pass an empty inputs collection.",
+                    context: context,
+                    location: invocation.GetLocation()));
+
     private static AnalysisItem[] CreateDependencyLayerAnalysisItems(
         EvaluationContext context,
         StandardElementType expectedDependencyType,
@@ -327,14 +340,16 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         CreateWhenInvalid(
             isInvalid: !HasPartial(context: context, suffix: ".Validations.cs"),
             code: "STX0008",
-            description: "A service must declare its validations in a Validations partial.",
+            description:
+                $"A service must declare its validations in {GetPartialFileName(context: context, suffix: ".Validations.cs")}.",
             context: context);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0009(EvaluationContext context) =>
         CreateWhenInvalid(
             isInvalid: !HasPartial(context: context, suffix: ".Exceptions.cs"),
             code: "STX0009",
-            description: "A service must declare TryCatch handling in an Exceptions partial.",
+            description:
+                $"A service must declare TryCatch handling in {GetPartialFileName(context: context, suffix: ".Exceptions.cs")}.",
             context: context);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0010(EvaluationContext context) =>
@@ -425,9 +440,13 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool HasPartial(EvaluationContext context, string suffix) =>
         architectureModelQueries.GetDeclarations(context: context).Any(predicate: declaration =>
-            declaration.SyntaxTree.FilePath.EndsWith(
-                value: suffix,
+            string.Equals(
+                a: Path.GetFileName(declaration.SyntaxTree.FilePath),
+                b: GetPartialFileName(context: context, suffix: suffix),
                 comparisonType: StringComparison.Ordinal));
+
+    private static string GetPartialFileName(EvaluationContext context, string suffix) =>
+        $"{architectureModelQueries.GetTypeName(context: context).Split(separator: ['.']).Last()}{suffix}";
 
     private static MethodDeclarationSyntax[] GetPublicMethods(EvaluationContext context) =>
         architectureModelQueries.GetDeclarations(context: context)
@@ -849,6 +868,43 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     )
             );
     }
+
+    private static bool PassesEmptyValidationInputs(InvocationExpressionSyntax invocation)
+    {
+        string invokedMethodName = invocation.Expression switch
+        {
+            IdentifierNameSyntax identifier => identifier.Identifier.Text,
+            GenericNameSyntax generic => generic.Identifier.Text,
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
+            _ => string.Empty,
+        };
+
+        return invokedMethodName.StartsWith(value: "Validate", comparisonType: StringComparison.Ordinal)
+            && invocation.ArgumentList.Arguments.Any(predicate: argument =>
+                argument.NameColon?.Name.Identifier.Text == "inputs"
+                && IsEmptyCollection(expression: argument.Expression));
+    }
+
+    private static bool IsEmptyCollection(ExpressionSyntax expression) =>
+        expression switch
+        {
+            CollectionExpressionSyntax collection => collection.Elements.Count == 0,
+            ArrayCreationExpressionSyntax arrayCreation =>
+                arrayCreation.Initializer?.Expressions.Count == 0
+                || arrayCreation.Type.RankSpecifiers
+                    .SelectMany(selector: rank => rank.Sizes)
+                    .OfType<LiteralExpressionSyntax>()
+                    .Any(predicate: size => size.Token.ValueText == "0"),
+            ImplicitArrayCreationExpressionSyntax implicitArray =>
+                implicitArray.Initializer.Expressions.Count == 0,
+            InvocationExpressionSyntax invocation =>
+                invocation.Expression is MemberAccessExpressionSyntax
+                {
+                    Expression: IdentifierNameSyntax { Identifier.Text: "Array" },
+                    Name: GenericNameSyntax { Identifier.Text: "Empty" },
+                },
+            _ => false,
+        };
 
     private static bool UsesOperationSpecificValidation(MethodDeclarationSyntax method)
     {

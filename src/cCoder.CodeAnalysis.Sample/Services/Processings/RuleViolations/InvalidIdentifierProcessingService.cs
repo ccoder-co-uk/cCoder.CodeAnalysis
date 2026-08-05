@@ -6,7 +6,7 @@ internal sealed partial class InvalidIdentifierProcessingService : IInvalidIdent
     {
         return TryCatch(operation: () =>
         {
-            Validate(inputs: [id]);
+            Validate(inputs: [id]); Validate(inputs: []);
             int num = id * 5;
             if (num < 0)
             {
