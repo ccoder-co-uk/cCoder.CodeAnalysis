@@ -461,8 +461,20 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 b: GetPartialFileName(context: context, suffix: suffix),
                 comparisonType: StringComparison.Ordinal));
 
-    private static string GetPartialFileName(EvaluationContext context, string suffix) =>
-        $"{architectureModelQueries.GetTypeName(context: context).Split(separator: ['.']).Last()}{suffix}";
+    private static string GetPartialFileName(EvaluationContext context, string suffix)
+    {
+        string typeName = architectureModelQueries.GetTypeName(context: context)
+            .Split(separator: ['.'])
+            .Last();
+
+        int genericMarkerIndex = typeName.IndexOf(value: '<');
+
+        string fileTypeName = genericMarkerIndex < 0
+            ? typeName
+            : typeName.Substring(startIndex: 0, length: genericMarkerIndex);
+
+        return $"{fileTypeName}{suffix}";
+    }
 
     private static MethodDeclarationSyntax[] GetPublicMethods(EvaluationContext context) =>
         architectureModelQueries.GetDeclarations(context: context)

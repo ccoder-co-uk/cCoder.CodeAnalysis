@@ -40,9 +40,14 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
         };
     }
 
-    private static IEnumerable<AnalysisItem> EvaluateSTXM001(EvaluationContext context) =>
+    private static IEnumerable<AnalysisItem> EvaluateSTXM001(EvaluationContext context)
+    {
+        bool isConfigurationModel = architectureModelQueries.GetTypeName(context: context)
+            .Split(separator: ['.'])
+            .Last()
+            .EndsWith(value: "Configuration", comparisonType: StringComparison.Ordinal);
 
-        architectureModelQueries
+        return architectureModelQueries
             .GetDeclarations(context: context)
             .SelectMany(
                 selector: (TypeDeclarationSyntax declaration) =>
@@ -54,6 +59,9 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
                                 ? []
                                 : [declaration.ParameterList]
                         )
+                        .Where(member =>
+                            !isConfigurationModel
+                            || member is not ConstructorDeclarationSyntax)
             )
             .Select(
                 selector: (SyntaxNode method) =>
@@ -64,6 +72,7 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
                         location: method.GetLocation()
                     )
             );
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXM002(EvaluationContext context) =>
 

@@ -50,7 +50,20 @@ public sealed class STXMRulesProcessingServiceTests
             .Should().NotContain(item => item.Code == "STXM001");
     }
 
-    private static EvaluationContext CreateContext(string source)
+    [Fact]
+    public void STXM001ShouldAllowConfigurationModelConstructor()
+    {
+        EvaluationContext context = CreateContext(
+            source: "internal sealed class EventingConfiguration { public EventingConfiguration() { } }",
+            typeName: "EventingConfiguration");
+
+        new STXMRulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STXM001");
+    }
+
+    private static EvaluationContext CreateContext(
+        string source,
+        string typeName = "Model")
     {
         TypeDeclarationSyntax declaration = CSharpSyntaxTree
             .ParseText(text: source)
@@ -58,7 +71,7 @@ public sealed class STXMRulesProcessingServiceTests
             .DescendantNodes()
             .OfType<TypeDeclarationSyntax>()
             .Single();
-        Class model = new() { Name = "Model", AnalysisDeclarations = [declaration] };
+        Class model = new() { Name = typeName, AnalysisDeclarations = [declaration] };
 
         return new EvaluationContext
         {

@@ -44,7 +44,24 @@ public sealed class ServicePartialFileNameRuleTests
         results.Should().NotContain(result => result.Code == unexpectedCode);
     }
 
-    private static EvaluationContext CreateContext(string partialFileName)
+    [Theory]
+    [InlineData("EventService.Validations.cs", "STX0008")]
+    [InlineData("EventService.Exceptions.cs", "STX0009")]
+    public void GenericServiceShouldUseRuntimeSafePartialFileName(
+        string partialFileName,
+        string unexpectedCode)
+    {
+        EvaluationContext context = CreateContext(
+            partialFileName: partialFileName,
+            typeName: "Example.Services.Foundations.EventService<T>");
+
+        new STXRulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(result => result.Code == unexpectedCode);
+    }
+
+    private static EvaluationContext CreateContext(
+        string partialFileName,
+        string typeName = "Example.Services.Foundations.ExampleService")
     {
         TypeDeclarationSyntax mainDeclaration = ParseDeclaration(
             fileName: "ExampleService.cs");
@@ -54,7 +71,7 @@ public sealed class ServicePartialFileNameRuleTests
 
         Class architectureElement = new()
         {
-            Name = "Example.Services.Foundations.ExampleService",
+            Name = typeName,
             StandardElementType = StandardElementType.FoundationService,
             LineNumber = 1,
             Methods = [],
