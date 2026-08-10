@@ -5,6 +5,8 @@
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
@@ -49,6 +51,26 @@ public sealed class ServiceArchitectureModelRuleParityTests
 
         new STXFRulesProcessingService().Evaluate(context: context)
             .Should().NotContain(item => item.Code == "STXF002");
+    }
+
+    [Fact]
+    public void FoundationPassThroughShouldRemainResponsibleForExceptionMapping()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentService",
+            modelDependencies: [CreateDependency(StandardElementType.Broker)]);
+        context.ArchitectureElement.AnalysisDeclarations =
+        [
+            CSharpSyntaxTree.ParseText(
+                    "internal sealed class StudentService { public object GetStudent() => GetStudent(); }")
+                .GetRoot()
+                .DescendantNodes()
+                .OfType<TypeDeclarationSyntax>()
+                .Single(),
+        ];
+
+        new STXRulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STX0003");
     }
 
     [Fact]
