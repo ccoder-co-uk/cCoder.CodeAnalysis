@@ -226,6 +226,12 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0003(EvaluationContext context)
     {
+        if (architectureModelQueries.GetStandardElementType(context: context)
+            == StandardElementType.FoundationService)
+        {
+            return [];
+        }
+
         MethodDeclarationSyntax[] methods = architectureModelQueries
             .GetDeclarations(context: context).Where(
                 predicate: (TypeDeclarationSyntax declaration) =>
