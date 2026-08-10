@@ -11,7 +11,7 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class STXFRulesProcessingServiceTests
 {
     [Fact]
-    public void EvaluateShouldAllowLoggingInfrastructure()
+    public void EvaluateShouldRejectDirectLoggingInfrastructure()
     {
         Class architectureElement = new()
         {
@@ -39,7 +39,38 @@ public sealed class STXFRulesProcessingServiceTests
 
         results
             .Should()
-            .NotContain(predicate: result => result.Code == "STXF002");
+            .ContainSingle(predicate: result => result.Code == "STXF002");
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(predicate: result => result.Code == "STX0026");
+    }
+
+    [Fact]
+    public void EvaluateShouldIgnoreUtilityLoggingBroker()
+    {
+        Class architectureElement = new()
+        {
+            Name = "Example.Services.Foundations.StudentService",
+            StandardElementType = StandardElementType.FoundationService,
+            AnalysisDeclarations = [],
+            AnalysisImplementedInterfaces = [],
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    TypeName = "Example.Brokers.Loggings.LoggingBroker",
+                    StandardElementType = StandardElementType.Broker
+                }
+            ]
+        };
+
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: CreateContext(architectureElement))
+            .ToArray();
+
+        results.Should().NotContain(result => result.Code == "STXF002");
     }
 
     private static EvaluationContext CreateContext(Class architectureElement) =>

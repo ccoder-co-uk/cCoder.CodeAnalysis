@@ -44,7 +44,9 @@ internal sealed class ArchitectureModelQueriesProcessingService
         context.ArchitectureElement.AnalysisDeclaresDependencyIntent;
 
     public IReadOnlyList<TypeDependency> GetDependencies(EvaluationContext context) =>
-        context.ArchitectureElement.AnalysisDependencies ?? [];
+        (context.ArchitectureElement.AnalysisDependencies ?? [])
+            .Where(dependency => !dependency.IsUtilityBroker && !dependency.IsConfigurationModel)
+            .ToArray();
 
     public IReadOnlyCollection<string> GetLocalDependencyTypeNames(EvaluationContext context) =>
         context.ArchitectureModel.AnalysisLocalDependencyTypeNames;

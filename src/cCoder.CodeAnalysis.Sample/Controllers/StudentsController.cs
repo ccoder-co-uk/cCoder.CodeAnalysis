@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
 using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
@@ -11,7 +12,9 @@ namespace cCoder.CodeAnalysis.Sample.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class StudentsController(IStudentManager studentManager) : ControllerBase
+public sealed class StudentsController(
+    IStudentManager studentManager,
+    ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpGet]
     public ActionResult<IQueryable<Student>> GetStudents()
@@ -20,8 +23,9 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
         {
             return Ok(value: studentManager.GetStudents());
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }
@@ -37,8 +41,9 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
                 ? ((ActionResult<Student>)NotFound())
                 : ((ActionResult<Student>)Ok(value: student));
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }
@@ -56,8 +61,9 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
                 value: addedStudent
             );
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }
@@ -69,8 +75,9 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
         {
             return Ok(value: await studentManager.UpdateStudentAsync(updatedStudent: updatedStudent));
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }
@@ -90,12 +97,14 @@ public sealed class StudentsController(IStudentManager studentManager) : Control
             await studentManager.DeleteStudentAsync(studentId: studentId);
             return NoContent();
         }
-        catch (ServiceValidationException)
+        catch (ServiceValidationException exception)
         {
+            loggingBroker.LogError(exception: exception);
             return BadRequest();
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }

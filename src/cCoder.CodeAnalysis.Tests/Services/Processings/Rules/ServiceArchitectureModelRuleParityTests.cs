@@ -113,6 +113,32 @@ public sealed class ServiceArchitectureModelRuleParityTests
     }
 
     [Fact]
+    public void ParentDependencyCountShouldIgnoreUtilityBrokerAndConfiguration()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentOrchestrationService",
+            modelDependencies:
+            [
+                CreateDependency(StandardElementType.FoundationService),
+                CreateDependency(StandardElementType.FoundationService),
+                new TypeDependency
+                {
+                    TypeName = "ILoggingBroker",
+                    StandardElementType = StandardElementType.Broker,
+                },
+                new TypeDependency
+                {
+                    TypeName = "StudentConfiguration",
+                    StandardElementType = StandardElementType.Model,
+                    IsConfigurationModel = true,
+                },
+            ]);
+
+        new STXORulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STXO001");
+    }
+
+    [Fact]
     public void ProcessingDependencyRulesShouldUseAttachedModelFacts()
     {
         EvaluationContext context = CreateContext(

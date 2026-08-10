@@ -40,7 +40,8 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             .Concat(second: EvaluateSTXE002(context: context, facts: facts))
             .Concat(second: EvaluateSTXE003(context: context))
             .Concat(second: EvaluateSTXE004(context: context))
-            .Concat(second: EvaluateSTXE005(context: context, facts: facts));
+            .Concat(second: EvaluateSTXE005(context: context, facts: facts))
+            .Concat(second: EvaluateSTXE008(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE006(
@@ -292,5 +293,16 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                     value: ".IHostedService",
                     comparisonType: StringComparison.Ordinal)
                 || interfaceName == "IHostedService");
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXE008(EvaluationContext context) =>
+        (context.ArchitectureElement?.Methods ?? [])
+            .SelectMany(method => method.ExceptionCatches ?? [])
+            .Where(exceptionCatch =>
+                (exceptionCatch.Rethrows || exceptionCatch.ThrownExceptionTypes.Count > 0)
+                && !exceptionCatch.LogsException)
+            .Select(_ => CreateAnalysisItem(
+                code: "STXE008",
+                description: "An exposure must log a caught exception before rethrowing or wrapping it.",
+                context: context));
 
 }

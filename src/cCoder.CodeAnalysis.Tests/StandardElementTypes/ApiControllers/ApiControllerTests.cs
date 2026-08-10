@@ -22,7 +22,7 @@ public sealed class ApiControllerTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXAPI001",
             "cCoder.CodeAnalysis.Sample.Controllers.RuleViolations.InvalidStudentsController",
-            12
+            13
         );
     }
 
@@ -32,7 +32,7 @@ public sealed class ApiControllerTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXAPI002",
             "cCoder.CodeAnalysis.Sample.Controllers.RuleViolations.InvalidStudentsController",
-            12
+            13
         );
     }
 
@@ -42,7 +42,7 @@ public sealed class ApiControllerTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXAPI003",
             "cCoder.CodeAnalysis.Sample.Controllers.RuleViolations.InvalidStudentsEndpoint",
-            11
+            12
         );
     }
 

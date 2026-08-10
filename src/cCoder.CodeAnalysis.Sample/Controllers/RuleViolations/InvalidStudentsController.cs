@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
 using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Exposures.Teachers;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
@@ -11,7 +12,10 @@ namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class InvalidStudentsController(IStudentManager studentManager, ITeacherManager teacherManager) : ControllerBase
+public sealed class InvalidStudentsController(
+    IStudentManager studentManager,
+    ITeacherManager teacherManager,
+    ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpGet("students")]
     public ActionResult<IQueryable<Student>> GetStudents()
@@ -20,8 +24,9 @@ public sealed class InvalidStudentsController(IStudentManager studentManager, IT
         {
             return Ok(value: studentManager.GetStudents());
         }
-        catch (Exception)
+        catch (Exception exception)
         {
+            loggingBroker.LogError(exception: exception);
             return StatusCode(statusCode: 500);
         }
     }

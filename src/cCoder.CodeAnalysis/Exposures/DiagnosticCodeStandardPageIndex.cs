@@ -139,6 +139,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STX0023", standardPageUri: $"{FoundationsPage}#2131-validation"),
         new(diagnosticCode: "STX0024", standardPageUri: $"{RestfulApisPage}#311-controllers"),
         new(diagnosticCode: "STX0025", standardPageUri: $"{FoundationsPage}#2131-validation"),
+        new(diagnosticCode: "STX0026", standardPageUri: $"{BrokersPage}#110-language"),
         new(diagnosticCode: "STXAPP001", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(diagnosticCode: "STXAPP002", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(
@@ -212,6 +213,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXAPI003", standardPageUri: $"{RestfulApisPage}#3113-organization"),
         new(diagnosticCode: "STXAPI004", standardPageUri: $"{RestfulApisPage}#31120-language"),
         new(diagnosticCode: "STXAPI005", standardPageUri: $"{RestfulApisPage}#31121-codes--responses"),
+        new(diagnosticCode: "STXAPI006", standardPageUri: $"{RestfulApisPage}#31121-codes--responses"),
         new(
             diagnosticCode: "STXB001",
             firstStandardPageUri: $"{BrokersPage}#127-up--sideways",
@@ -244,6 +246,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXE005", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE006", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE007", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
+        new(diagnosticCode: "STXE008", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXEX001", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(diagnosticCode: "STXEX002", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(diagnosticCode: "STXEX003", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
