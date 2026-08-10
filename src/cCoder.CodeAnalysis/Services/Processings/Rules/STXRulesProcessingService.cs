@@ -16,11 +16,27 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTX0024(context: context)
+            .Concat(second: EvaluateSTX0026(context: context))
             .Concat(second: ImplementsInfrastructureService(context: context)
                 ? []
                 : EvaluateSTX0001(context: context)
                     .Concat(second: EvaluateStandardElementTypeRules(context: context)));
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0026(EvaluationContext context) =>
+        architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Broker
+            || !architectureModelQueries.GetDependencies(context: context).Any(dependency =>
+                dependency.TypeName.StartsWith(
+                    value: "Microsoft.Extensions.Logging.ILogger",
+                    comparisonType: StringComparison.Ordinal)
+                || dependency.TypeName.StartsWith(
+                    value: "ILogger",
+                    comparisonType: StringComparison.Ordinal))
+            ? []
+            : [CreateAnalysisItem(
+                code: "STX0026",
+                description: "Only a broker may depend directly on Microsoft ILogger; other elements must use a LoggingBroker.",
+                context: context)];
 
     private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
         EvaluationContext context) =>

@@ -8,7 +8,11 @@ using cCoder.CodeAnalysis.Sample.Services.Foundations.Teachers;
 
 namespace cCoder.CodeAnalysis.Sample.Exposures.RuleViolations;
 
-internal sealed class InvalidExposure(IStudentService studentService, ITeacherService teacherService, IStudentBroker studentBroker)
+internal sealed class InvalidExposure(
+    IStudentService studentService,
+    ITeacherService teacherService,
+    IStudentBroker studentBroker,
+    ILogger<InvalidExposure> logger)
 {
     public string Value { get; set; } = string.Empty;
 
@@ -39,6 +43,18 @@ internal sealed class InvalidExposure(IStudentService studentService, ITeacherSe
         teacherService.GetTeachers();
         AllowAnyOrigin();
         AllowCredentials();
+    }
+
+    public void ThrowFailure()
+    {
+        try
+        {
+            throw new InvalidOperationException();
+        }
+        catch (InvalidOperationException exception)
+        {
+            throw new ApplicationException(message: "Exposure failure.", innerException: exception);
+        }
     }
 
     private static void AllowAnyOrigin() { }

@@ -75,7 +75,7 @@ public sealed class BrokerTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfBrokers()
     {
-        Count(StandardElementType.Broker).Should().Be(6, "");
+        Count(StandardElementType.Broker).Should().Be(7, "");
     }
 
     [Fact]

@@ -2,6 +2,7 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
 using cCoder.CodeAnalysis.Sample.Brokers.Storage;
 using cCoder.CodeAnalysis.Sample.Exposures.Courses;
 using cCoder.CodeAnalysis.Sample.Exposures.EventHandlers;
@@ -47,6 +48,7 @@ internal sealed partial class ServiceCollectionProcessingService : IServiceColle
                 }
             );
 
+            services.AddScoped<ILoggingBroker, LoggingBroker>();
             services.AddScoped<ISchoolContextFactory, SchoolContextFactory>();
             services.AddScoped<ISchoolBroker, SchoolBroker>();
             services.AddScoped<IStudentBroker, StudentBroker>();

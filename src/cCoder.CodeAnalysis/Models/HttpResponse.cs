@@ -13,4 +13,5 @@ public sealed class HttpResponse
     public bool IsNullPath { get; set; }
     public bool HasBody { get; set; }
     public bool ExposesExceptionDetails { get; set; }
+    public bool LogsException { get; set; }
 }

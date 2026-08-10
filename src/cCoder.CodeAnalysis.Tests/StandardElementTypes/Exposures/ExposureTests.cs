@@ -23,7 +23,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0002",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            13
+            17
         );
     }
 
@@ -33,7 +33,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE001",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            22
+            26
         );
     }
 
@@ -43,7 +43,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE002",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            30
+            34
         );
     }
 
@@ -73,7 +73,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE005",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            36
+            40
         );
     }
 
@@ -83,7 +83,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0022",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            15
+            19
         );
     }
 
@@ -151,7 +151,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfLinks()
     {
-        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(71, "");
+        ((IEnumerable<Link>)Architecture.Links).Should().HaveCount(75, "");
     }
 
     [Fact]

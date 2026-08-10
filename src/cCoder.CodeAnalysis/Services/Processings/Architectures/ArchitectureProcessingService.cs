@@ -766,6 +766,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     {
                         ExceptionType = caughtType is null ? string.Empty : GetTypeName(type: caughtType),
                         ThrownExceptionTypes = thrownTypes,
+                        LogsException = LogsCaughtException(catchClause: catchClause),
                         Rethrows = catchClause.Block
                             .DescendantNodes()
                             .OfType<ThrowStatementSyntax>()
@@ -906,6 +907,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             ExposesExceptionDetails = ExposesExceptionDetails(
                                 invocation: invocation,
                                 exceptionCatch: exceptionCatch),
+                            LogsException = LogsCaughtException(catchClause: exceptionCatch),
                         });
                 }
             }
@@ -943,6 +945,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             compilation: compilation),
                         IsExceptionPath = exceptionCatch is not null,
                         HasBody = false,
+                        LogsException = LogsCaughtException(catchClause: exceptionCatch),
                     });
             }
         }
@@ -956,7 +959,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     response.IsExceptionPath,
                     response.IsNullPath,
                     response.HasBody,
-                    response.ExposesExceptionDetails))
+                    response.ExposesExceptionDetails,
+                    response.LogsException))
             .Select(group => group.First())
             .OrderBy(response => response.StatusCode)
             .ThenBy(response => response.ResultMethod, StringComparer.Ordinal)
@@ -989,6 +993,21 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             MemberAccessExpressionSyntax memberAccess => memberAccess.Name.Identifier.Text,
             _ => string.Empty,
         };
+
+    private static bool LogsCaughtException(CatchClauseSyntax? catchClause)
+    {
+        string exceptionIdentifier = catchClause?.Declaration?.Identifier.Text ?? string.Empty;
+
+        return exceptionIdentifier.Length > 0
+            && catchClause!.Block.DescendantNodes()
+                .OfType<InvocationExpressionSyntax>()
+                .Where(invocation => GetInvocationName(invocation: invocation)
+                    .StartsWith(value: "Log", comparisonType: StringComparison.Ordinal))
+                .Any(invocation => invocation.ArgumentList.Arguments
+                    .SelectMany(argument => argument.Expression.DescendantNodesAndSelf())
+                    .OfType<IdentifierNameSyntax>()
+                    .Any(identifier => identifier.Identifier.Text == exceptionIdentifier));
+    }
 
     private static int? GetStatusCode(
         string resultMethod,

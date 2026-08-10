@@ -85,8 +85,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                     StandardElementType standardElementType = dependency.StandardElementType;
 
                     return standardElementType != StandardElementType.Broker
-                        && standardElementType != StandardElementType.Exposure
-                        && !IsLoggingDependency(dependency: dependency);
+                        && standardElementType != StandardElementType.Exposure;
                 }
             )
         )
@@ -103,11 +102,6 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                 },
             };
     }
-
-    private static bool IsLoggingDependency(TypeDependency dependency) =>
-        dependency.TypeName.StartsWith(
-            value: "Microsoft.Extensions.Logging.ILogger",
-            comparisonType: StringComparison.Ordinal);
 
     private static IEnumerable<AnalysisItem> EvaluateSTXF003(EvaluationContext context) =>
 

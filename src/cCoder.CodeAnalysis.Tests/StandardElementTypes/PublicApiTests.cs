@@ -25,6 +25,7 @@ public sealed class PublicApiTests
                 && !type.Namespace.Contains(".Exposures", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".Controllers", StringComparison.Ordinal)
                 && !type.Namespace.Contains(".RuleViolations", StringComparison.Ordinal)
+                && type.Name != "ILoggingBroker"
                 && type.Name != "IServiceCollectionExtensions"
             )
             .ToArray();

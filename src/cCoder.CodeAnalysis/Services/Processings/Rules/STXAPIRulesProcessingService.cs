@@ -19,7 +19,8 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             .Concat(second: EvaluateSTXAPI002(context: context))
             .Concat(second: EvaluateSTXAPI003(context: context))
             .Concat(second: EvaluateSTXAPI004(context: context))
-            .Concat(second: EvaluateSTXAPI005(context: context));
+            .Concat(second: EvaluateSTXAPI005(context: context))
+            .Concat(second: EvaluateSTXAPI006(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -180,4 +181,22 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                 && (response.ExceptionType == exceptionType
                     || response.ExceptionType == "System.Exception")));
     }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXAPI006(EvaluationContext context) =>
+        !architectureModelQueries.IsApiController(context: context)
+            ? []
+            : (context.ArchitectureElement?.Methods ?? [])
+                .Where(method => method.IsHttpRequestHandler)
+                .Where(method => method.HttpResponses.Any(response =>
+                    response.IsExceptionPath
+                    && response.StatusCode is < 200 or >= 400
+                    && !response.LogsException))
+                .Select(method => new AnalysisItem
+                {
+                    Code = "STXAPI006",
+                    Description = "An HTTP failure response must log the caught exception before returning it.",
+                    Severity = AnalysisSeverity.Warning,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = method.LineNumber,
+                });
 }
