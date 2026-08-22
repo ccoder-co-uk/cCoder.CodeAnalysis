@@ -78,6 +78,11 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             return [];
         }
 
+        if (IsConsumedByLocalPublicExposure(context:context))
+        {
+            return [];
+        }
+
         return architectureModelQueries.GetDeclarations(context: context)
             .OfType<InterfaceDeclarationSyntax>()
             .Where(predicate: declaration =>
@@ -91,6 +96,20 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
                         "Service contracts must be internal; expose cross-library operations through a public manager interface.",
                     context: context,
                     location: declaration.GetLocation()));
+    }
+
+    private static bool IsConsumedByLocalPublicExposure(EvaluationContext context)
+    {
+        string serviceTypeName = architectureModelQueries.GetTypeName(context:context);
+
+        return context.ArchitectureModel.Classes.Any(predicate:element =>
+            element.IsPublic
+            && element.StandardElementType is StandardElementType.Exposure
+                or StandardElementType.HttpExposure
+            && ((element.AnalysisDependencies ?? []).Any(predicate:dependency =>
+                    dependency.TypeName == serviceTypeName)
+                || (element.Methods ?? []).SelectMany(selector:method => method.Calls ?? [])
+                    .Any(predicate:call => call.TypeName == serviceTypeName)));
     }
 
     private static bool IsService(StandardElementType elementType) =>

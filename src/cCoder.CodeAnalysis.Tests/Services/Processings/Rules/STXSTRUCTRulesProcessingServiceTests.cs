@@ -130,6 +130,46 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
                 because: "");
     }
 
+    [Fact]
+    public void PublicServiceContractConsumedByLocalPublicExposureShouldNotProduceDiagnostic()
+    {
+        EvaluationContext context = CreateInterfaceContext(
+            typeName: "Example.IStudentRequestService",
+            standardElementType:StandardElementType.FoundationService,
+            sourceCode:
+                """
+                namespace Example;
+
+                public interface IStudentRequestService
+                {
+                }
+                """);
+
+        context.ArchitectureModel.Classes.Add(item:new Class
+        {
+            Name = "Example.StudentsController",
+            IsPublic = true,
+            StandardElementType = StandardElementType.HttpExposure,
+            Methods =
+            [
+                new Method
+                {
+                    Calls =
+                    [
+                        new MethodCall
+                        {
+                            TypeName = "Example.IStudentRequestService",
+                        }
+                    ],
+                }
+            ],
+        });
+
+        AnalysisItem[] items = service.Evaluate(context:context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXSTRUCT003", "");
+    }
+
     [Theory]
     [InlineData("Project/Controllers/StudentController.cs")]
     [InlineData("Project/Middleware/ErrorMiddleware.cs")]
