@@ -39,6 +39,7 @@
     <GenerateArchitectureTask
       ProjectPath="$(MSBuildProjectFullPath)"
       OutputPath="$(cCoderCodeAnalysisArchitecturePath)"
+      ReferencePaths="@(ReferencePath)"
     />
   </Target>
 </Project>
