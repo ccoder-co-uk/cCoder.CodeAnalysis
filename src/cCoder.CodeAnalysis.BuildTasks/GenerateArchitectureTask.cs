@@ -25,10 +25,15 @@ public sealed class GenerateArchitectureTask : Microsoft.Build.Utilities.Task
     [Required]
     public string OutputPath { get; set; } = string.Empty;
 
+    [Required]
+    public ITaskItem[] ReferencePaths { get; set; } = [];
+
     public override bool Execute()
     {
         try
         {
+            EnsurePlatformAssembliesAreAvailable();
+
             ServiceCollection services = new ServiceCollection();
             services.AddCodeAnalysis();
 
@@ -56,6 +61,27 @@ public sealed class GenerateArchitectureTask : Microsoft.Build.Utilities.Task
                 showStackTrace: true);
 
             return false;
+        }
+    }
+
+    private void EnsurePlatformAssembliesAreAvailable()
+    {
+        if (AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES") is string)
+        {
+            return;
+        }
+
+        string trustedPlatformAssemblies = string.Join(
+            separator: Path.PathSeparator.ToString(),
+            values: ReferencePaths
+                .Select(selector: (ITaskItem referencePath) => referencePath.ItemSpec)
+                .Where(predicate: File.Exists));
+
+        if (!string.IsNullOrWhiteSpace(value: trustedPlatformAssemblies))
+        {
+            AppDomain.CurrentDomain.SetData(
+                name: "TRUSTED_PLATFORM_ASSEMBLIES",
+                data: trustedPlatformAssemblies);
         }
     }
 
