@@ -19,9 +19,9 @@
     <Copyright>2026 Paul Ward</Copyright>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
-    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.11" />
+    <PackageReference Include="System.Text.Json" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Analyzers\ArchitectureDiagnosticAnalyzer.cs" />
@@ -29,62 +29,19 @@
   <ItemGroup>
     <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <None
-      Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.Analyzers.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
-    <None
-      Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
-    <None
-      Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
-    <None
-      Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
-    <None
-      Include="bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll"
-      Pack="true"
-      PackagePath="analyzers/dotnet/cs"
-      Visible="false"
-    />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="buildTransitive\cCoder.CodeAnalysis.targets" Pack="true" PackagePath="buildTransitive" />
-    <None
-      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\*.dll"
-      Pack="true"
-      PackagePath="tools/netstandard2.0"
-      Visible="false"
-    />
-    <None
-      Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.deps.json"
-      Pack="true"
-      PackagePath="tools/netstandard2.0"
-      Visible="false"
-    />
+    <None Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\*.dll" Pack="true" PackagePath="tools/netstandard2.0" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.deps.json" Pack="true" PackagePath="tools/netstandard2.0" Visible="false" />
   </ItemGroup>
   <Target Name="BuildAnalyzerProject" BeforeTargets="GenerateNuspec">
-    <MSBuild
-      Projects="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj"
-      Targets="Build"
-      Properties="Configuration=$(Configuration)"
-    />
+    <MSBuild Projects="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
   </Target>
   <Target Name="BuildTaskProject" BeforeTargets="GenerateNuspec">
-    <MSBuild
-      Projects="..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj"
-      Targets="Build"
-      Properties="Configuration=$(Configuration)"
-    />
+    <MSBuild Projects="..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj" Targets="Build" Properties="Configuration=$(Configuration)" />
   </Target>
 </Project>
