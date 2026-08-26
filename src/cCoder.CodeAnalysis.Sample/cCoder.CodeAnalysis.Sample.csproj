@@ -7,18 +7,14 @@
     <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="cCoder.Eventing" Version="2026.7.3.1811" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.9" />
-    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.9" />
+    <PackageReference Include="cCoder.Eventing" Version="2026.8.15.955" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference
-      Include="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj"
-      OutputItemType="Analyzer"
-      ReferenceOutputAssembly="false"
-    />
+    <ProjectReference Include="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     <Analyzer Include="..\cCoder.CodeAnalysis\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll" />
     <Analyzer Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll" />
     <Analyzer Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" />
