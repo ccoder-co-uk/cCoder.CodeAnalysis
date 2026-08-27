@@ -10,6 +10,9 @@
   <UsingTask
     TaskName="cCoder.CodeAnalysis.BuildTasks.GenerateArchitectureTask"
     AssemblyFile="$(cCoderCodeAnalysisBuildTaskAssembly)"
+    TaskFactory="TaskHostFactory"
+    Runtime="NET"
+    Architecture="*"
   />
   <PropertyGroup>
     <cCoderCodeAnalysisGenerateArchitecture Condition="'$(cCoderCodeAnalysisGenerateArchitecture)' == ''"
