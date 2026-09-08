@@ -30,7 +30,8 @@
     <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
-    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Bcl.AsyncInterfaces.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\System.Threading.Tasks.Extensions.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
     <None Include="bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />

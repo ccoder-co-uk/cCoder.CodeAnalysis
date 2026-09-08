@@ -60,6 +60,45 @@ public sealed class CodeAnalysisProjectFormattingComplianceTests
         }
     }
 
+    [Fact]
+    public void SourceConsumerProjects_WhenLoadingAnalyzer_DeclareDependencyInjectionAssembliesWithoutEvaluationTimeGlobs()
+    {
+        // Given
+        string sourceDirectory = FindSourceDirectory();
+        string dependencyInjectionAssembly =
+            @"..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection.dll";
+        string dependencyInjectionAbstractionsAssembly =
+            @"..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll";
+        string evaluationTimeGlob =
+            @"..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\Microsoft.Extensions.DependencyInjection*.dll";
+        string[] projectPaths =
+        [
+            Path.Combine(sourceDirectory, "cCoder.CodeAnalysis", "cCoder.CodeAnalysis.csproj"),
+            Path.Combine(sourceDirectory, "cCoder.CodeAnalysis.Sample", "cCoder.CodeAnalysis.Sample.csproj"),
+            Path.Combine(sourceDirectory, "cCoder.CodeAnalysis.Sample.Tests", "cCoder.CodeAnalysis.Sample.Tests.csproj"),
+        ];
+
+        foreach (string projectPath in projectPaths)
+        {
+            // When
+            string project = File.ReadAllText(path: projectPath);
+
+            // Then
+            project.Should().Contain(
+                dependencyInjectionAssembly,
+                "a fresh build must retain the dependency item before the analyzer output exists"
+            );
+            project.Should().Contain(
+                dependencyInjectionAbstractionsAssembly,
+                "the analyzer requires the dependency-injection abstractions assembly"
+            );
+            project.Should().NotContain(
+                evaluationTimeGlob,
+                "MSBuild expands globs before a fresh build has produced the analyzer dependencies"
+            );
+        }
+    }
+
     private static string FindSourceDirectory()
     {
         for (
