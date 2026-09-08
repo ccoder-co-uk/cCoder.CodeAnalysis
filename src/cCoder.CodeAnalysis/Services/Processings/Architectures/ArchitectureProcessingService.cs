@@ -219,6 +219,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .Select(selector: GetTypeName)
                 .OrderBy(keySelector: interfaceName => interfaceName, comparer: StringComparer.Ordinal)
                 .ToArray(),
+            AnalysisIsException = InheritsFromTypeNamed(type: type, typeName: "Exception"),
             AnalysisTypeFacts = CreateTypeAnalysisFacts(
                 type: type,
                 compilation: compilation,

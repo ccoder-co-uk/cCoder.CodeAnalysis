@@ -61,6 +61,33 @@ public sealed class STXMRulesProcessingServiceTests
             .Should().NotContain(item => item.Code == "STXM001");
     }
 
+    [Fact]
+    public void STXMRules_WhenModelIsException_DoNotApplyDataCarrierRules()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "internal sealed class StudentServiceException : InvalidOperationException "
+                + "{ public StudentServiceException() { } public string Detail { get; set; } = string.Empty; }",
+            typeName: "StudentServiceException");
+        context.ArchitectureElement.BaseType = new TypeReference
+        {
+            Name = "InvalidOperationException",
+            FullName = "System.InvalidOperationException",
+        };
+        context.ArchitectureElement.AnalysisIsException = true;
+
+        // When
+        AnalysisItem[] diagnostics = new STXMRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        diagnostics.Should().NotContain(
+            item => item.Code.StartsWith(value: "STXM", comparisonType: StringComparison.Ordinal),
+            "exception contracts are diagram models, not data-carrier models");
+    }
+
     private static EvaluationContext CreateContext(
         string source,
         string typeName = "Model")
