@@ -419,6 +419,22 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.App;
         }
 
+        if (IsHttpMiddleware(type: type))
+        {
+            return StandardElementType.HttpExposure;
+        }
+
+        if (type.Name.EndsWith(value: "Hub", comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(value: "ODataModelBuilder", comparisonType: StringComparison.Ordinal))
+        {
+            return StandardElementType.Exposure;
+        }
+
+        if (InheritsFromTypeNamed(type: type, typeName: "Exception"))
+        {
+            return StandardElementType.Model;
+        }
+
         if (DeclaresDependencyIntent(type: type)
             && (InheritsFromExternalType(type: type)
                 || ImplementsExternalInterface(type: type)

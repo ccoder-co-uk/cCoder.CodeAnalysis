@@ -1150,11 +1150,13 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         foreach (ITypeSymbol dependency in dependencies)
         {
             INamedTypeSymbol? target = ResolveConcreteType(dependency: dependency, declaredTypes: declaredTypes);
+            ITypeSymbol linkedType = target ?? dependency;
 
-            if (target is not null)
+            yield return new Link
             {
-                yield return new Link { FromType = GetTypeName(type: type), ToType = GetTypeName(type: target) };
-            }
+                FromType = GetTypeName(type: type),
+                ToType = GetTypeName(type: linkedType),
+            };
         }
     }
 
@@ -1213,6 +1215,22 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         )
         {
             return StandardElementType.App;
+        }
+
+        if (IsHttpMiddleware(type: type))
+        {
+            return StandardElementType.HttpExposure;
+        }
+
+        if (type.Name.EndsWith(value: "Hub", comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(value: "ODataModelBuilder", comparisonType: StringComparison.Ordinal))
+        {
+            return StandardElementType.Exposure;
+        }
+
+        if (InheritsFromTypeNamed(type: type, typeName: "Exception"))
+        {
+            return StandardElementType.Model;
         }
 
         if (DeclaresDependencyIntent(type: type)

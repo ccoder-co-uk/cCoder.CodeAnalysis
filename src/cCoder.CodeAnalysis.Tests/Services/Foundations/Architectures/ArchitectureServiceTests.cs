@@ -237,7 +237,9 @@ public sealed class ArchitectureServiceTests
         // Then
         architecture.Links
             .Should()
-            .BeEmpty();
+            .ContainSingle(link =>
+                link.FromType == "Sample.Services.Foundations.ItemService"
+                && link.ToType == "Sample.IItem", "");
     }
 
     [Theory]

@@ -42,7 +42,7 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfModels()
     {
-        Count(StandardElementType.Model).Should().Be(12, "");
+        Count(StandardElementType.Model).Should().Be(15, "");
     }
 
     [Fact]
