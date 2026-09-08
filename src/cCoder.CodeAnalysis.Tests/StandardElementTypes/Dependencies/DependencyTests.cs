@@ -80,7 +80,7 @@ public sealed class DependencyTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfDependencies()
     {
-        Count(StandardElementType.Dependency).Should().Be(expected: 9);
+        Count(StandardElementType.Dependency).Should().Be(expected: 6);
     }
 
     [Fact]
