@@ -34,6 +34,32 @@ public sealed class CodeAnalysisProjectFormattingComplianceTests
                 "the CodeAnalysis implementation must comply with its block and wrapped-statement spacing rules");
     }
 
+    [Fact]
+    public void SourceConsumerProjects_WhenLoadingAnalyzer_LoadCoreAssemblyFromDependencyCompleteOutput()
+    {
+        // Given
+        string sourceDirectory = FindSourceDirectory();
+        string expectedPath =
+            @"..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll";
+        string incompletePath =
+            @"..\cCoder.CodeAnalysis\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.dll";
+        string[] projectPaths =
+        [
+            Path.Combine(sourceDirectory, "cCoder.CodeAnalysis.Sample", "cCoder.CodeAnalysis.Sample.csproj"),
+            Path.Combine(sourceDirectory, "cCoder.CodeAnalysis.Sample.Tests", "cCoder.CodeAnalysis.Sample.Tests.csproj"),
+        ];
+
+        foreach (string projectPath in projectPaths)
+        {
+            // When
+            string project = File.ReadAllText(path: projectPath);
+
+            // Then
+            project.Should().Contain(expectedPath, "analyzer dependencies must resolve beside its core assembly");
+            project.Should().NotContain(incompletePath, "the separate core output does not contain analyzer dependencies");
+        }
+    }
+
     private static string FindSourceDirectory()
     {
         for (
