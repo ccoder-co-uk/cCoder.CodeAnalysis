@@ -94,6 +94,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             Kind = type.TypeKind == TypeKind.Interface
                 ? ArchitectureTypeKind.Interface
                 : ArchitectureTypeKind.Class,
+            AnalysisIsException = InheritsFromTypeNamed(type: type, typeName: "Exception"),
         };
 
     private static EvaluationContext CreateEvaluationContext(
@@ -133,6 +134,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         architectureElement.AnalysisExposesExternalResource = ExposesExternalResource(type);
         architectureElement.AnalysisUsesExternalResource = UsesExternalResource(type, compilation);
         architectureElement.AnalysisDeclaresDependencyIntent = DeclaresDependencyIntent(type);
+        architectureElement.AnalysisIsException = InheritsFromTypeNamed(type: type, typeName: "Exception");
         architectureElement.AnalysisSourceFileTopLevelClassCount = GetTopLevelClasses(declaration).Count;
         architectureElement.AnalysisIsPrimaryTopLevelClassInFile = IsPrimaryTopLevelClass(declaration);
 

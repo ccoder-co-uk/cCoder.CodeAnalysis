@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Analyzers;
 using cCoder.CodeAnalysis.Services.Foundations.Architectures;
 using cCoder.CodeAnalysis.Services.Processings.Architectures;
 using FluentAssertions;
@@ -75,6 +76,33 @@ public sealed class ArchitectureDiagramContractTests
         // Then
         architecture.Classes.Single()
             .StandardElementType.Should().Be(StandardElementType.Model, "");
+    }
+
+    [Fact]
+    public void Generate_WhenExceptionIsDiagramModel_DoesNotApplyDataCarrierModelRules()
+    {
+        // Given
+        CSharpCompilation compilation = CreateCompilation(
+            source:
+                """
+                using System;
+                namespace Example.Models.Exceptions;
+                public sealed class StudentServiceException : InvalidOperationException
+                {
+                    public StudentServiceException() { }
+                    public string Detail { get; set; } = string.Empty;
+                }
+                """);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+
+        // Then
+        architecture.Classes.Single()
+            .StandardElementType.Should().Be(StandardElementType.Model, "exceptions belong in the model diagram lane");
+        architecture.AnalysisItems.Should().NotContain(
+            item => item.Code.StartsWith(value: "STXM", comparisonType: StringComparison.Ordinal),
+            "exception contracts are not data-carrier models");
     }
 
     [Fact]

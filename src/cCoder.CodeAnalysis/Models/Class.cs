@@ -74,6 +74,9 @@ public sealed class Class
     internal bool AnalysisDeclaresDependencyIntent { get; set; }
 
     [JsonIgnore]
+    internal bool AnalysisIsException { get; set; }
+
+    [JsonIgnore]
     internal IReadOnlyList<string> AnalysisContractMethodNames { get; set; }
 
     [JsonIgnore]

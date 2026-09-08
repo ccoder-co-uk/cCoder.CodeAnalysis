@@ -16,6 +16,11 @@ internal sealed class STXMRulesProcessingService : ISTXMRulesProcessingService
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
+        if (context.ArchitectureElement.AnalysisIsException)
+        {
+            return [];
+        }
+
         return EvaluateSTXM001(context: context)
             .Concat(second: EvaluateSTXM002(context: context))
             .Concat(second: EvaluateSTXM003(context: context));
