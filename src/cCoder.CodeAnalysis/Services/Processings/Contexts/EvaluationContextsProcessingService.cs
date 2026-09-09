@@ -221,6 +221,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     modelType.TypeKind != TypeKind.Error
                     && modelType.ContainingAssembly is not null
                     && Classify(type: modelType) == StandardElementType.Model
+                    && !InheritsFromTypeNamed(type: modelType, typeName: "Exception")
             )
             .Select(selector: (INamedTypeSymbol modelType) => GetTypeName(type: modelType)
             .TrimEnd(trimChars: ['?']))
