@@ -106,6 +106,48 @@ public sealed class ArchitectureDiagramContractTests
     }
 
     [Fact]
+    public void Generate_WhenServiceUsesDomainModelAndException_DoesNotTreatExceptionAsBusinessModelContract()
+    {
+        // Given
+        CSharpCompilation compilation = CreateCompilation(
+            source:
+                """
+                using System;
+
+                namespace Example.Models
+                {
+                    public sealed class Student { }
+                    public sealed class StudentServiceException : Exception { }
+                }
+
+                namespace Example.Services.Processings
+                {
+                    using Example.Models;
+
+                    internal sealed class StudentProcessingService
+                    {
+                        public void LogStudentFailure(
+                            Student student,
+                            StudentServiceException exception)
+                        {
+                        }
+                    }
+                }
+                """);
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+
+        // Then
+        architecture.Classes.Single(element => element.Name.EndsWith("StudentServiceException"))
+            .StandardElementType.Should().Be(StandardElementType.Model, "exceptions belong in the model diagram lane");
+        architecture.AnalysisItems.Should().NotContain(
+            item => item.Type.EndsWith("StudentProcessingService")
+                && (item.Code == "STX0007" || item.Code == "STX0018"),
+            "exceptions are not business model contracts in a service API");
+    }
+
+    [Fact]
     public void Process_WhenClassDependsOnLocalInterface_EmitsLinkToItsConcreteImplementation()
     {
         // Given
