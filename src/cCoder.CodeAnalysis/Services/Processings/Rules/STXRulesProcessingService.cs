@@ -1005,6 +1005,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context: context),
+            FilePath = location?.SourceTree?.FilePath,
             LineNumber = (
                 location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : architectureModelQueries.GetLineNumber(context: context)
             ),

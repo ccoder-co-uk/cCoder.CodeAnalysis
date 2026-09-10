@@ -72,6 +72,25 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
 
     private static Location FindLocation(CSharpCompilation compilation, AnalysisItem analysisItem)
     {
+        if (!string.IsNullOrEmpty(value: analysisItem.FilePath))
+        {
+            SyntaxTree? sourceTree = compilation.SyntaxTrees.FirstOrDefault(
+                predicate: tree => string.Equals(
+                    a: tree.FilePath,
+                    b: analysisItem.FilePath,
+                    comparisonType: StringComparison.Ordinal));
+
+            if (sourceTree is null || analysisItem.LineNumber <= 0
+                || analysisItem.LineNumber > sourceTree.GetText().Lines.Count)
+            {
+                return Location.None;
+            }
+
+            return Location.Create(
+                syntaxTree: sourceTree,
+                textSpan: sourceTree.GetText().Lines[index: analysisItem.LineNumber - 1].Span);
+        }
+
         INamedTypeSymbol? type = compilation.GetTypeByMetadataName(fullyQualifiedMetadataName: analysisItem.Type);
 
         SyntaxTree? syntaxTree =

@@ -773,7 +773,11 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
         type.ContainingNamespace.ToDisplayString()
             .Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
-        || type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal);
+        || (type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal)
+            && !(type.ContainingNamespace.ToDisplayString()
+                .Split(separator: '.')
+                .Contains(value: "Models")
+                && IsDataOnlyType(type: type)));
 
     private static bool IsStaticExtensionContainer(INamedTypeSymbol type) =>
 

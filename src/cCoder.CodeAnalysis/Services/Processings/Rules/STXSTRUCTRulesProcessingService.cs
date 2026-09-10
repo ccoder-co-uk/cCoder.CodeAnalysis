@@ -168,6 +168,7 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context),
+            FilePath = location.SourceTree?.FilePath,
             LineNumber = location.GetLineSpan().StartLinePosition.Line + 1,
         };
     }

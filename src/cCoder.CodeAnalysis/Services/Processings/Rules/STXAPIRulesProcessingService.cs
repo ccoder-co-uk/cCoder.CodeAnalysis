@@ -36,6 +36,7 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context),
+            FilePath = location?.SourceTree?.FilePath,
             LineNumber = location is null
                 ? architectureModelQueries.GetLineNumber(context)
                 : location.GetLineSpan().StartLinePosition.Line + 1,

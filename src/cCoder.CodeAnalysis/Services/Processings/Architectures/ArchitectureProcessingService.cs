@@ -1336,7 +1336,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         type.ContainingNamespace.ToDisplayString()
             .Contains(value: ".Dependencies", comparisonType: StringComparison.Ordinal)
-        || type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal);
+        || (type.Name.EndsWith(value: "Dependency", comparisonType: StringComparison.Ordinal)
+            && !(type.ContainingNamespace.ToDisplayString()
+                .Split(separator: '.')
+                .Contains(value: "Models")
+                && IsDataOnlyType(type: type)));
 
     private static bool IsHttpController(INamedTypeSymbol type) =>
         type.ContainingNamespace.ToDisplayString().Contains(
