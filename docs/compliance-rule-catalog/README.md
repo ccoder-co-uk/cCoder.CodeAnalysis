@@ -95,3 +95,20 @@ Claiming that a local code pattern is “ISO compliant” would therefore overst
 4. Add control-flow dominance and effect classification before implementing the deferred object- and function-authorization candidates.
 5. Add taint and range data flow before implementing the deferred outbound-destination and resource-limit candidates.
 6. Cover all deferred controls with aggregate runtime conformance tests and deployment evidence.
+
+
+## STX0018 service operation names
+
+STX0018 requires public service CRUD methods to include the names of their business
+model parameters. The recognized leading verbs are Create, Read, Update, Delete,
+Insert, Add, Modify, Remove, Get, Post, Put and Destroy. A verb must end at a PascalCase
+word boundary, so Address and Readjust are not mistaken for Add and Read operations.
+Async suffixes do not remove the model-name requirement: AddAsync(School) is flagged,
+while AddSchoolAsync(School) satisfies this rule.
+
+For non-CRUD operations, the complete parameter model name is not required.
+RenderRequestAsync(DiagramRenderRequest) and GenerateDiagramAsync(DiagramRenderRequest)
+are valid for STX0018. Bare Render, RenderAsync, Generate and GenerateAsync are flagged
+because they do not identify the operation's subject, including when there are no
+model parameters. This is a cCoder naming policy; other naming diagnostics remain
+independent of this rule.

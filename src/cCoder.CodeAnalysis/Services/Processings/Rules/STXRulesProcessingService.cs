@@ -673,6 +673,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         return items;
     }
 
+    private static readonly string[] crudOperationVerbs =
+    [
+        "Create", "Read", "Update", "Delete", "Insert", "Add", "Modify", "Remove",
+        "Get", "Post", "Put", "Destroy"
+    ];
+
+    private static bool IsCrudOperation(string methodName) =>
+        crudOperationVerbs.Any(predicate: verb =>
+            methodName.StartsWith(value: verb, comparisonType: StringComparison.Ordinal) &&
+            (methodName.Length == verb.Length || char.IsUpper(c: methodName[verb.Length])));
+
     private static IEnumerable<AnalysisItem> EvaluateSTX0018(EvaluationContext context) =>
 
         architectureModelQueries
@@ -695,15 +706,16 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     }
             )
             .Where(predicate: item =>
-                item.ModelTypes.Any(
-                    predicate: (string typeName) =>
-                        !item.Method.Identifier.Text.Contains(value: typeName, comparisonType: StringComparison.Ordinal)
-                )
-            )
+                item.Method.Identifier.ValueText is "Generate" or "GenerateAsync" or "Render" or "RenderAsync" ||
+                (IsCrudOperation(methodName: item.Method.Identifier.ValueText) &&
+                    item.ModelTypes.Any(predicate: typeName =>
+                        !item.Method.Identifier.ValueText.Contains(value: typeName, comparisonType: StringComparison.Ordinal))))
             .Select(selector: item =>
                 CreateAnalysisItem(
                     code: "STX0018",
-                    description: "Service method names must include each model type they operate on.",
+                    description: item.Method.Identifier.ValueText is "Generate" or "GenerateAsync" or "Render" or "RenderAsync"
+                        ? "Render and Generate service methods must name their subject, for example RenderRequestAsync or GenerateDiagramAsync."
+                        : "CRUD service method names must include each model type they operate on.",
                     context: context,
                     location: item.Method.GetLocation()
                 )
