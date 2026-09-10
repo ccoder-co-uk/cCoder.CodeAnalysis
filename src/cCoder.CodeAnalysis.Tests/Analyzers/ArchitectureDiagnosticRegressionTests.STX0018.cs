@@ -49,12 +49,12 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
     [InlineData("Readjust")]
     [InlineData("Getter")]
     [InlineData("Postprocess")]
-    public void ShouldNotRequireParameterModelNamesForNonCrudOperations(string methodName)
+    public void ShouldRequireParameterModelNamesForNonCrudOperations(string methodName)
     {
         // Given / When
         Architecture architecture = AnalyzeServiceMethod(methodName: methodName);
         // Then
-        Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0018");
+        Assert.Contains(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0018");
     }
 
     [Theory]
@@ -72,6 +72,34 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
         Architecture architecture = AnalyzeServiceMethod(methodName: methodName, hasModelParameter: hasModelParameter);
         // Then
         Assert.Contains(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0018");
+    }
+
+    [Theory]
+    [InlineData("RenderRequestAsync", "diagramRenderRequest", true, false)]
+    [InlineData("RenderDiagramRenderRequestAsync", "request", false, true)]
+    [InlineData("RenderDiagramRenderRequestAsync", "diagramRenderRequest", false, false)]
+    [InlineData("GenerateDiagramRenderRequestAsync", "diagramRenderRequest", false, false)]
+    [InlineData("AddDiagramRenderRequestAsync", "newDiagramRenderRequest", false, false)]
+    [InlineData("UpdateDiagramRenderRequestAsync", "updatedDiagramRenderRequest", false, false)]
+    [InlineData("DeleteDiagramRenderRequestAsync", "deletedDiagramRenderRequest", false, false)]
+    public void ShouldRequireConsistentFullModelNames(string methodName, string parameterName, bool methodViolation, bool parameterViolation)
+    {
+        // Given
+        var compilation = CreateCompilation(CSharpSyntaxTree.ParseText(text: $$"""
+            namespace Example.Models { public class DiagramRenderRequest { public string Format { get; set; } } }
+            namespace Example.Services.Foundations
+            {
+                public class DiagramRequestService
+                {
+                    public byte[] {{methodName}}(Example.Models.DiagramRenderRequest {{parameterName}}) => new byte[0];
+                }
+            }
+            """, path: "Services/Foundations/DiagramRequestService.cs"));
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+        // Then
+        Assert.Equal(expected: methodViolation, actual: architecture.AnalysisItems.Any(item => item.Code == "STX0018"));
+        Assert.Equal(expected: parameterViolation, actual: architecture.AnalysisItems.Any(item => item.Code == "STX0017"));
     }
 
     private static Architecture AnalyzeServiceMethod(string methodName, bool hasModelParameter = true)
