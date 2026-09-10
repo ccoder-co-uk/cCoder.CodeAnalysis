@@ -578,16 +578,48 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             .GetDeclarations(context: context).SelectMany(selector: (TypeDeclarationSyntax declaration) => declaration.Members)
             .OfType<MethodDeclarationSyntax>()
             .SelectMany(selector: (MethodDeclarationSyntax method) => method.ParameterList.Parameters)
-            .Where(predicate: (ParameterSyntax parameter) => parameter.Identifier.Text == "id")
+            .Where(predicate: (ParameterSyntax parameter) => parameter.Identifier.ValueText == "id" || HasIncorrectModelParameterName(parameter: parameter, context: context))
             .Select(
                 selector: (ParameterSyntax parameter) =>
                     CreateAnalysisItem(
                         code: "STX0017",
-                        description: "Identifier parameters must be named for their type, for example studentId.",
+                        description: parameter.Identifier.ValueText == "id"
+                            ? "Identifier parameters must be named for their type, for example studentId."
+                            : "Model parameters must use their full camelCase type name, preserving applicable mutation prefixes.",
                         context: context,
                         location: parameter.GetLocation()
                     )
             );
+
+    private static bool HasIncorrectModelParameterName(ParameterSyntax parameter, EvaluationContext context)
+    {
+        if (parameter.Parent?.Parent is not MethodDeclarationSyntax method ||
+            !method.Modifiers.Any(kind: SyntaxKind.PublicKeyword) ||
+            parameter.Type?.DescendantNodesAndSelf().Any(node => node is ArrayTypeSyntax or GenericNameSyntax) == true)
+        {
+            return false;
+        }
+
+        string? typeName = GetModelTypeName(parameter: parameter, context: context);
+
+        if (typeName is null)
+        {
+            return false;
+        }
+
+        string expectedName = char.ToLowerInvariant(c: typeName[0]) + typeName.Substring(startIndex: 1);
+        string actualName = parameter.Identifier.ValueText;
+
+        string? prefix = GetMutationOperation(methodName: method.Identifier.ValueText) switch
+        {
+            "create" => "new",
+            "update" => "updated",
+            "delete" => "deleted",
+            _ => null
+        };
+
+        return actualName != expectedName && (prefix is null || actualName != prefix + typeName);
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0019(EvaluationContext context) =>
         EvaluateMutationNaming(
@@ -695,15 +727,15 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     }
             )
             .Where(predicate: item =>
-                item.ModelTypes.Any(
-                    predicate: (string typeName) =>
-                        !item.Method.Identifier.Text.Contains(value: typeName, comparisonType: StringComparison.Ordinal)
-                )
-            )
+                item.Method.Identifier.ValueText is "Generate" or "GenerateAsync" or "Render" or "RenderAsync" ||
+                item.ModelTypes.Any(predicate: typeName =>
+                    !item.Method.Identifier.ValueText.Contains(value: typeName, comparisonType: StringComparison.Ordinal)))
             .Select(selector: item =>
                 CreateAnalysisItem(
                     code: "STX0018",
-                    description: "Service method names must include each model type they operate on.",
+                    description: item.Method.Identifier.ValueText is "Generate" or "GenerateAsync" or "Render" or "RenderAsync"
+                        ? "Render and Generate service methods must name their full model subject."
+                        : "Service method names must include each full model type they operate on.",
                     context: context,
                     location: item.Method.GetLocation()
                 )
@@ -1005,6 +1037,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context: context),
+            FilePath = location?.SourceTree?.FilePath,
             LineNumber = (
                 location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : architectureModelQueries.GetLineNumber(context: context)
             ),

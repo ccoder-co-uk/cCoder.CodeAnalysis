@@ -2,6 +2,8 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 #nullable disable
+using System.Text.Json.Serialization;
+
 namespace cCoder.CodeAnalysis.Models;
 
 public sealed class AnalysisItem
@@ -11,4 +13,7 @@ public sealed class AnalysisItem
     public AnalysisSeverity Severity { get; set; }
     public string Type { get; set; }
     public int LineNumber { get; set; }
+
+    [JsonIgnore]
+    public string FilePath { get; set; }
 }

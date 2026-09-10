@@ -34,6 +34,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
             Description = description,
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context: context),
+            FilePath = location?.SourceTree?.FilePath,
             LineNumber = location is null
                 ? architectureModelQueries.GetLineNumber(context: context)
                 : location.GetLineSpan().StartLinePosition.Line + 1,

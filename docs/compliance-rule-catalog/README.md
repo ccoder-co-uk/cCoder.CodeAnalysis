@@ -95,3 +95,22 @@ Claiming that a local code pattern is “ISO compliant” would therefore overst
 4. Add control-flow dominance and effect classification before implementing the deferred object- and function-authorization candidates.
 5. Add taint and range data flow before implementing the deferred outbound-destination and resource-limit candidates.
 6. Cover all deferred controls with aggregate runtime conformance tests and deployment evidence.
+
+
+## STX0017 and STX0018 full model names
+
+STX0017 requires scalar business-model parameters on public methods to use the full
+camelCase type name: `DiagramRenderRequest diagramRenderRequest`, not `request` or
+`diagramRequest`. Existing identifier naming and mutation-prefix rules still apply;
+`newStudent`, `updatedStudent` and `deletedStudent` remain valid for their respective
+mutation operations. Collection parameter naming is unchanged by this refinement.
+
+STX0018 requires public service method names to include each full business-model
+parameter type name, consistently across CRUD and non-CRUD operations. Thus
+`RenderDiagramRenderRequestAsync(DiagramRenderRequest diagramRenderRequest)` satisfies
+both rules. `RenderRequestAsync` is too abbreviated. `GenerateDiagramRenderRequestAsync`
+also names the full model, whereas `GenerateDiagramAsync` does not.
+
+Bare Render, RenderAsync, Generate and GenerateAsync remain flagged even with no model
+parameters because they do not identify a subject. These are cCoder naming policies;
+other naming diagnostics remain independent.
