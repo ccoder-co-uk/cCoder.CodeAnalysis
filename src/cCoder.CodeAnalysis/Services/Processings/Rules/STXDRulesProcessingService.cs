@@ -161,6 +161,20 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
                 LineNumber = call.SourceLineNumber,
             };
         }
+
+        foreach (ExternalApiTypeUsageAnalysisFacts usage in
+            context.ArchitectureElement.AnalysisTypeFacts?.ExternalApiTypeUsages ?? [])
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD005",
+                Description =
+                    $"External API type '{usage.TypeName}' must be isolated behind a broker or dependency.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = usage.LineNumber,
+            };
+        }
     }
 
     private static bool IsAboveBroker(StandardElementType elementType) =>
