@@ -66,6 +66,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             && !architectureModelQueries.ImplementsExternalInterface(context: context)
             && !architectureModelQueries.ImplementsContract(context: context)
             && !architectureModelQueries.HasExternalStateDependency(context: context)
+            && !architectureModelQueries.DirectlyConsumesExternalApi(context: context)
         )
         {
             yield return new AnalysisItem

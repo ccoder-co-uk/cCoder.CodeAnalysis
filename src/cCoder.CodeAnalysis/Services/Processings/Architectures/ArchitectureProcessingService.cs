@@ -188,10 +188,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 declaredTypes: declaredTypes))
             .ToList();
 
+        bool directlyConsumesExternalApi = analysisMethods
+            .Concat(second: analysisConstructors)
+            .SelectMany(method => method.DirectCalls ?? [])
+            .Any(call => call.IsExternalApiCall);
+
         return new Class
         {
             Name = GetTypeName(type: type),
-            StandardElementType = Classify(type: type),
+            StandardElementType = Classify(
+                type: type,
+                directlyConsumesExternalApi: directlyConsumesExternalApi),
             LineNumber = GetDeclarationLineNumber(type: type),
             IsPublic = type.DeclaredAccessibility == Accessibility.Public,
             Kind = GetArchitectureTypeKind(type: type),
@@ -230,6 +237,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .OrderBy(keySelector: interfaceName => interfaceName, comparer: StringComparer.Ordinal)
                 .ToArray(),
             AnalysisIsException = InheritsFromTypeNamed(type: type, typeName: "Exception"),
+            AnalysisDirectlyConsumesExternalApi = directlyConsumesExternalApi,
             AnalysisTypeFacts = CreateTypeAnalysisFacts(
                 type: type,
                 compilation: compilation,
@@ -1514,7 +1522,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         return implementations.Length == 1 ? implementations[0] : null;
     }
 
-    private static StandardElementType Classify(INamedTypeSymbol type)
+    private static StandardElementType Classify(
+        INamedTypeSymbol type,
+        bool directlyConsumesExternalApi = false)
     {
         string containingNamespace = type.ContainingNamespace.ToDisplayString();
 
@@ -1560,7 +1570,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         if (DeclaresDependencyIntent(type: type)
             && (InheritsFromExternalType(type: type)
                 || ImplementsExternalInterface(type: type)
-                || HasExternalStateDependency(type: type)))
+                || HasExternalStateDependency(type: type)
+                || directlyConsumesExternalApi))
         {
             return StandardElementType.Dependency;
         }
