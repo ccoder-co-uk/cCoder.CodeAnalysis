@@ -9,6 +9,7 @@ using Microsoft.Build.Utilities;
 
 namespace cCoder.CodeAnalysis.Tests.BuildTasks;
 
+[Collection(BuildTaskGlobalStateCollection.Name)]
 public sealed class GenerateArchitectureTaskTests
 {
     [Fact]
