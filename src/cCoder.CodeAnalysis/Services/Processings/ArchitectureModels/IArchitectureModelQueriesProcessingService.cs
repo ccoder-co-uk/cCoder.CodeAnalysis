@@ -17,6 +17,7 @@ internal interface IArchitectureModelQueriesProcessingService
     bool HasExternalBaseType(EvaluationContext context);
     bool ImplementsExternalInterface(EvaluationContext context);
     bool HasExternalStateDependency(EvaluationContext context);
+    bool DirectlyConsumesExternalApi(EvaluationContext context);
     bool ExposesExternalResource(EvaluationContext context);
     bool UsesExternalResource(EvaluationContext context);
     bool DeclaresDependencyIntent(EvaluationContext context);

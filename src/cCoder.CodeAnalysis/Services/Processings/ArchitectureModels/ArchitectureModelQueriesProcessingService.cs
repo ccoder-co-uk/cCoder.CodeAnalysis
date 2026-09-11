@@ -34,6 +34,9 @@ internal sealed class ArchitectureModelQueriesProcessingService
     public bool HasExternalStateDependency(EvaluationContext context) =>
         context.ArchitectureElement.AnalysisHasExternalStateDependency;
 
+    public bool DirectlyConsumesExternalApi(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisDirectlyConsumesExternalApi;
+
     public bool ExposesExternalResource(EvaluationContext context) =>
         context.ArchitectureElement.AnalysisExposesExternalResource;
 

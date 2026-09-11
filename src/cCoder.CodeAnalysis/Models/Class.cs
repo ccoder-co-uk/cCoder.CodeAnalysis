@@ -68,6 +68,9 @@ public sealed class Class
     internal bool AnalysisHasExternalStateDependency { get; set; }
 
     [JsonIgnore]
+    internal bool AnalysisDirectlyConsumesExternalApi { get; set; }
+
+    [JsonIgnore]
     internal bool AnalysisExposesExternalResource { get; set; }
 
     [JsonIgnore]

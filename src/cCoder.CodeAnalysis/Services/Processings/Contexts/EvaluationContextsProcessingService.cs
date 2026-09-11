@@ -26,19 +26,19 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
     public IEnumerable<EvaluationContext> Process(ArchitectureBuild architectureBuild)
     {
-        HashSet<string> localDependencyTypeNames = new HashSet<string>(
-            collection: architectureBuild
-                .DeclaredTypes.Where(
-                    predicate: (INamedTypeSymbol type) => Classify(type: type) == StandardElementType.Dependency
-                )
-            .Select(selector: GetTypeName),
-            comparer: StringComparer.Ordinal
-        );
-
         Architecture architecture = architectureBuild.Architecture
             ?? CreateArchitectureShell(
                 declaredTypes: architectureBuild.DeclaredTypes,
                 compilation: architectureBuild.Compilation);
+
+        HashSet<string> localDependencyTypeNames = new HashSet<string>(
+            collection: architecture.Classes
+                .Concat(second: architecture.Interfaces)
+                .Where(element =>
+                    element.StandardElementType == StandardElementType.Dependency)
+                .Select(element => element.Name),
+            comparer: StringComparer.Ordinal
+        );
 
         architecture.AnalysisProjectLineEnding = architectureBuild.ProjectLineEnding;
         architecture.AnalysisLocalDependencyTypeNames = localDependencyTypeNames;
@@ -131,6 +131,13 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         architectureElement.AnalysisHasExternalBaseType = InheritsFromExternalType(type);
         architectureElement.AnalysisImplementsExternalInterface = ImplementsExternalInterface(type);
         architectureElement.AnalysisHasExternalStateDependency = HasExternalStateDependency(type);
+
+        architectureElement.AnalysisDirectlyConsumesExternalApi =
+            (architectureElement.AnalysisMethods ?? [])
+                .Concat(second: architectureElement.AnalysisConstructors ?? [])
+                .SelectMany(method => method.DirectCalls ?? [])
+                .Any(call => call.IsExternalApiCall);
+
         architectureElement.AnalysisExposesExternalResource = ExposesExternalResource(type);
         architectureElement.AnalysisUsesExternalResource = UsesExternalResource(type, compilation);
         architectureElement.AnalysisDeclaresDependencyIntent = DeclaresDependencyIntent(type);
@@ -151,6 +158,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 type: type,
                 architectureElement: architectureElement,
                 declaredTypes: declaredTypes)
+            .Select(dependency => AlignLocalDependencyClassification(
+                dependency: dependency,
+                architecture: architecture))
             .Where(dependency => !dependency.IsConfigurationModel)
             .GroupBy(dependency => dependency.TypeName, StringComparer.Ordinal)
             .Select(dependencies => dependencies.First())
@@ -177,6 +187,25 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             ArchitectureModel = architecture,
             ArchitectureElement = architectureElement,
         };
+    }
+
+    private static TypeDependency AlignLocalDependencyClassification(
+        TypeDependency dependency,
+        Architecture architecture)
+    {
+        Class? localType = architecture.Classes
+            .Concat(second: architecture.Interfaces)
+            .FirstOrDefault(element => string.Equals(
+                element.Name,
+                dependency.TypeName,
+                StringComparison.Ordinal));
+
+        if (localType is not null)
+        {
+            dependency.StandardElementType = localType.StandardElementType;
+        }
+
+        return dependency;
     }
 
     private static IEnumerable<TypeDependency> GetDependencies(
