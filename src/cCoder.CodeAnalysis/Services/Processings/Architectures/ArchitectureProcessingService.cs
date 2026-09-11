@@ -446,9 +446,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             HasMultipleRoutineCallStatements = method.Body is not null
                 && !isMvcActionResponse
                 && method.Body.Statements.Count(statement =>
-                    statement.DescendantNodesAndSelf()
-                        .OfType<InvocationExpressionSyntax>()
-                        .Any()) > 1,
+                    HasRoutineCallStatement(statement: statement)) > 1,
             IsMvcActionResponse = isMvcActionResponse,
             HasScopedOrTransientConfigurationRegistration = invocations.Any(invocation =>
                 invocation.ToString().Contains("Configuration", StringComparison.Ordinal)
@@ -688,6 +686,22 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                     INamedTypeSymbol? localType = declaredTypes.FirstOrDefault(
                         type => SymbolEqualityComparer.Default.Equals(type, target.ContainingType));
 
+                    INamedTypeSymbol? receiverType = GetInvocationReceiverType(
+                        call: call.Node,
+                        compilation: compilation);
+
+                    INamedTypeSymbol? localReceiverType = declaredTypes.FirstOrDefault(
+                        type => SymbolEqualityComparer.Default.Equals(
+                            type,
+                            receiverType));
+
+                    INamedTypeSymbol? inheritedContractReceiver =
+                        IsInheritedContractReceiver(
+                            receiverType: localReceiverType,
+                            declaredMethodType: target.ContainingType)
+                                ? localReceiverType
+                                : null;
+
                     return new MethodCall
                     {
                         TypeName = GetTypeName(type: target.ContainingType),
@@ -714,9 +728,16 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         IsInsideLambda = call.Node.Ancestors()
                             .OfType<LambdaExpressionSyntax>()
                             .Any(),
-                        IsTargetLambdaParameter = IsInvocationOnLambdaParameter(
+                        IsTargetCallbackParameter = IsInvocationOnCallbackParameter(
                             call: call.Node,
                             compilation: compilation),
+                        ArchitecturalDependencyTypeName = inheritedContractReceiver is null
+                            ? null
+                            : GetTypeName(type: inheritedContractReceiver),
+                        ArchitecturalDependencyStandardElementType =
+                            inheritedContractReceiver is null
+                                ? null
+                                : Classify(type: inheritedContractReceiver),
                         ServiceLocatorTypeArguments =
                             IsServiceLocatorMethod(method: resolvedTarget)
                                 ? resolvedTarget.TypeArguments
@@ -750,14 +771,61 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             y: method);
     }
 
-    private static bool IsInvocationOnLambdaParameter(
+    private static INamedTypeSymbol? GetInvocationReceiverType(
         SyntaxNode call,
         CSharpCompilation compilation)
     {
-        if (call is not InvocationExpressionSyntax
+        if (call is not InvocationExpressionSyntax invocation)
+        {
+            return null;
+        }
+
+        SemanticModel semanticModel = compilation.GetSemanticModel(
+            syntaxTree: call.SyntaxTree);
+
+        return invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess =>
+                semanticModel.GetTypeInfo(memberAccess.Expression).Type
+                    as INamedTypeSymbol,
+            _ => null,
+        };
+    }
+
+    private static bool HasRoutineCallStatement(StatementSyntax statement)
+    {
+        if (statement is ExpressionStatementSyntax
             {
-                Expression: MemberAccessExpressionSyntax memberAccess,
-            })
+                Expression: InvocationExpressionSyntax invocation,
+            }
+            && GetInvocationName(invocation: invocation) == "ListenToEvent")
+        {
+            return false;
+        }
+
+        return statement.DescendantNodesAndSelf()
+            .OfType<InvocationExpressionSyntax>()
+            .Any();
+    }
+
+    private static bool IsInheritedContractReceiver(
+        INamedTypeSymbol? receiverType,
+        INamedTypeSymbol declaredMethodType) =>
+        receiverType is not null
+        && declaredMethodType.TypeKind == TypeKind.Interface
+        && !SymbolEqualityComparer.Default.Equals(
+            receiverType.OriginalDefinition,
+            declaredMethodType.OriginalDefinition)
+        && receiverType.AllInterfaces.Any(contract =>
+            SymbolEqualityComparer.Default.Equals(
+                contract.OriginalDefinition,
+                declaredMethodType.OriginalDefinition));
+
+    private static bool IsInvocationOnCallbackParameter(
+        SyntaxNode call,
+        CSharpCompilation compilation)
+    {
+        if (call is not InvocationExpressionSyntax invocation)
         {
             return false;
         }
@@ -765,14 +833,15 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         SemanticModel semanticModel = compilation.GetSemanticModel(
             syntaxTree: call.SyntaxTree);
 
-        return semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol
-            is IParameterSymbol
-            {
-                ContainingSymbol: IMethodSymbol
-                {
-                    MethodKind: MethodKind.AnonymousFunction,
-                },
-            };
+        SyntaxNode receiver = invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax memberAccess => memberAccess.Expression,
+            IdentifierNameSyntax identifier => identifier,
+            _ => invocation.Expression,
+        };
+
+        return semanticModel.GetSymbolInfo(receiver).Symbol
+            is IParameterSymbol { Type.TypeKind: TypeKind.Delegate };
     }
 
     private static bool IsServiceLocatorMethod(IMethodSymbol method) =>

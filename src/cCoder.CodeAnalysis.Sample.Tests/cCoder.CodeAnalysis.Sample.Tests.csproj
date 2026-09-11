@@ -25,6 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Exposures\**\*.cs" />
+    <Compile Include="Exposures\EventHandlers\**\*.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\cCoder.CodeAnalysis.Sample\cCoder.CodeAnalysis.Sample.csproj" />

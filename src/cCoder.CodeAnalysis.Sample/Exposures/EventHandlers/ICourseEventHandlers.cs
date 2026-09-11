@@ -2,9 +2,9 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-namespace cCoder.CodeAnalysis.Sample.Services.Foundations.Events;
+namespace cCoder.CodeAnalysis.Sample.Exposures.EventHandlers;
 
-internal interface IEventHandlerService
+internal interface ICourseEventHandlers
 {
-    void ListenToAllEvents();
+    void ListenToCourseEvents();
 }

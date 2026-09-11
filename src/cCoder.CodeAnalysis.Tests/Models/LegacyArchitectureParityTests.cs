@@ -42,8 +42,8 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             [StandardElementType.Broker] = 7,
             [StandardElementType.CoordinationService] = 4,
             [StandardElementType.Dependency] = 6,
-            [StandardElementType.Exposure] = 15,
-            [StandardElementType.FoundationService] = 8,
+            [StandardElementType.Exposure] = 19,
+            [StandardElementType.FoundationService] = 7,
             [StandardElementType.HttpExposure] = 5,
             [StandardElementType.ManagementService] = 4,
             [StandardElementType.Model] = 15,
@@ -62,13 +62,13 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
     [Fact]
     public void SampleShouldPreserveLegacyArchitectureProjection()
     {
-        Architecture.Classes.Should().HaveCount(95, "");
-        Architecture.Links.Should().HaveCount(89, "");
+        Architecture.Classes.Should().HaveCount(98, "");
+        Architecture.Links.Should().HaveCount(93, "");
 
         CreateClassProjectionHash().Should()
-            .Be("0543D36992E7B913A3BE5658A86D4F68A6F57500FBB707B4D68720303856369F", "");
+            .Be("E4E5FBCD963299F511210841B4673E7B01814FFEF8E10318D9A6CDCEDB766467", "");
         CreateLinkProjectionHash().Should()
-            .Be("55E2FD96C3462D97390B46EDF8E976EC0871384F40C32DAC0900DE486AA21C19", "");
+            .Be("BE03ADAD0173448E2630B8F7D97BE69261C2B645C2EA2F09CCA3BB58142BA4B9", "");
     }
 
     private string CreateClassProjectionHash()

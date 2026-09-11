@@ -204,18 +204,27 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     method.Symbol.MethodKind == MethodKind.Constructor
                     || call.IsInsideLambda))
             .Where(call => !call.IsDependencyBoundary)
-            .Where(call => !call.IsTargetLambdaParameter)
-            .Where(call => call.TypeName != architectureElement.Name)
+            .Where(call => !call.IsTargetCallbackParameter)
+            .Where(call =>
+                (call.ArchitecturalDependencyTypeName ?? call.TypeName)
+                    != architectureElement.Name)
             .Where(call => IsArchitecturalDependency(
-                standardElementType: call.StandardElementType))
+                standardElementType:
+                    call.ArchitecturalDependencyStandardElementType
+                        ?? call.StandardElementType))
             .Select(call => new TypeDependency
             {
-                TypeName = call.TypeName,
-                StandardElementType = call.StandardElementType,
+                TypeName = call.ArchitecturalDependencyTypeName
+                    ?? call.TypeName,
+                StandardElementType =
+                    call.ArchitecturalDependencyStandardElementType
+                        ?? call.StandardElementType,
             });
 
         IEnumerable<TypeDependency> serviceLocatorDependencies = methodCalls
             .SelectMany(call => call.ServiceLocatorTypeArguments ?? [])
+            .Where(typeArgument =>
+                typeArgument.TypeKind != TypeKind.TypeParameter)
             .SelectMany(typeArgument => GetContainedDependencyTypes(type: typeArgument))
             .Select(typeArgument => CreateExactTypeDependency(
                 dependency: typeArgument,
