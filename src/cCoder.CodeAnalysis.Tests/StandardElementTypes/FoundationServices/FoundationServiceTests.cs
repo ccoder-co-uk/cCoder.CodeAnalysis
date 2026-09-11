@@ -172,7 +172,7 @@ public sealed class FoundationServiceTests(SampleArchitectureFixture fixture)
     [Fact]
     public void ShouldGenerateExpectedNumberOfFoundationServices()
     {
-        Count(StandardElementType.FoundationService).Should().Be(8, "");
+        Count(StandardElementType.FoundationService).Should().Be(7, "");
     }
 
     [Fact]

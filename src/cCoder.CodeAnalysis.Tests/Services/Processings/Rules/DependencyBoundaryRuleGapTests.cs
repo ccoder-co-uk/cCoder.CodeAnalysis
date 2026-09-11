@@ -18,6 +18,246 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void EventRegistrationExposure_WhenRegisteringMultipleHandlers_DoesNotSequenceBusinessOperations()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public sealed class StudentEventHandlers(ThirdParty.EventHub eventHub) "
+                + "{ public void ListenToEvents() "
+                + "{ eventHub.ListenToEvent(\"student_add\", () => { }); "
+                + "eventHub.ListenToEvent(\"student_update\", () => { }); } } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class EventHub "
+                + "{ public void ListenToEvent(string name, System.Action handler) { } }",
+            typeName: "Example.Exposures.StudentEventHandlers");
+
+        // When
+        AnalysisItem[] results = new STXERulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXE005");
+    }
+
+    [Fact]
+    public void Exposure_WhenCallingMultipleBusinessOperations_StillReportsSequencing()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Processings "
+                + "{ public interface IStudentProcessingService "
+                + "{ void Add(); void Update(); } } "
+                + "namespace Example.Exposures "
+                + "{ public sealed class StudentManager("
+                + "Example.Services.Processings.IStudentProcessingService service) "
+                + "{ public void Save() { service.Add(); service.Update(); } } }",
+            typeName: "Example.Exposures.StudentManager");
+
+        // When
+        AnalysisItem[] results = new STXERulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXE005");
+    }
+
+    [Fact]
+    public void InheritedOrchestrationMethod_WhenCalledInsideCallback_IsAttributedToReceiverService()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public interface IStudentManager { void Execute(); } } "
+                + "namespace Example.Services.Orchestrations "
+                + "{ public interface IStudentOrchestrationService : "
+                + "Example.Exposures.IStudentManager { } "
+                + "public interface ITeacherOrchestrationService { void Execute(); } } "
+                + "namespace Example.Services.Coordinations "
+                + "{ public sealed class StudentCoordinationService("
+                + "Example.Services.Orchestrations.IStudentOrchestrationService students, "
+                + "Example.Services.Orchestrations.ITeacherOrchestrationService teachers) "
+                + "{ public void Execute() => Run(() => "
+                + "{ students.Execute(); teachers.Execute(); }); "
+                + "private static void Run(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Coordinations.StudentCoordinationService");
+
+        // When
+        AnalysisItem[] results = new STXCRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXC001");
+        context.ArchitectureElement.AnalysisDependencies.Should().OnlyContain(
+            dependency => dependency.StandardElementType ==
+                StandardElementType.OrchestrationService);
+    }
+
+    [Fact]
+    public void ExposureDependency_WhenUsedByCoordinationService_IsStillRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public interface IStudentManager { void Execute(); } } "
+                + "namespace Example.Services.Orchestrations "
+                + "{ public interface ITeacherOrchestrationService { void Execute(); } } "
+                + "namespace Example.Services.Coordinations "
+                + "{ public sealed class StudentCoordinationService("
+                + "Example.Exposures.IStudentManager students, "
+                + "Example.Services.Orchestrations.ITeacherOrchestrationService teachers) "
+                + "{ public void Execute() => Run(() => "
+                + "{ students.Execute(); teachers.Execute(); }); "
+                + "private static void Run(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Coordinations.StudentCoordinationService");
+
+        // When
+        AnalysisItem[] results = new STXCRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXC001");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenCalledOnExistingBrokerDependency_DoesNotAddItsContainer()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public sealed class StudentBroker(ThirdParty.ExternalClient client) "
+                + "{ public void Execute() => Run(() => client.ExecuteWithExtension()); "
+                + "private static void Run(System.Action operation) => operation(); } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class ExternalClient { } "
+                + "public static class ExternalClientExtensions "
+                + "{ public static void ExecuteWithExtension(this ExternalClient client) { } }",
+            typeName: "Example.Brokers.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB001");
+        context.ArchitectureElement.AnalysisDependencies.Should().ContainSingle(
+            dependency => dependency.TypeName == "ThirdParty.ExternalClient");
+    }
+
+    [Fact]
+    public void GenericServiceLocatorTypeParameter_WhenUsedByBroker_IsNotAConcreteDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public sealed class StudentBroker(System.IServiceProvider provider) "
+                + "{ public T GetRequiredService<T>() where T : notnull "
+                + "=> ThirdParty.ServiceProviderExtensions.GetRequiredService<T>(provider); } }",
+            externalSource:
+                "namespace ThirdParty; public static class ServiceProviderExtensions "
+                + "{ public static T GetRequiredService<T>(System.IServiceProvider provider) "
+                + "=> default(T); }",
+            typeName: "Example.Brokers.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB001");
+        context.ArchitectureElement.AnalysisDependencies.Should().NotContain(
+            dependency => dependency.TypeName == "T");
+    }
+
+    [Fact]
+    public void ConcreteServiceLocatorTarget_WhenUsedByBroker_IsStillAConcreteDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public sealed class StudentBroker(System.IServiceProvider provider) "
+                + "{ public object GetRequiredService() "
+                + "=> ThirdParty.ServiceProviderExtensions.GetRequiredService<"
+                + "ThirdParty.ExternalClient>(provider); } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class ExternalClient { } "
+                + "public static class ServiceProviderExtensions "
+                + "{ public static T GetRequiredService<T>(System.IServiceProvider provider) "
+                + "=> default(T); }",
+            typeName: "Example.Brokers.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXB001");
+        context.ArchitectureElement.AnalysisDependencies.Should().Contain(
+            dependency => dependency.TypeName == "ThirdParty.ExternalClient");
+    }
+
+    [Fact]
+    public void MethodCallbackParameter_WhenInvokedByFoundation_IsNotAServiceDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers { public interface IStudentBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService(Example.Brokers.IStudentBroker broker) "
+                + "{ public object Execute(System.Func<object> operation) "
+                + "=> Run(() => operation()); "
+                + "private static object Run(System.Func<object> operation) => operation(); } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXF002");
+        context.ArchitectureElement.AnalysisDependencies.Should().NotContain(
+            dependency => dependency.TypeName.StartsWith(
+                "System.Func", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void ConstructorCallbackDependency_WhenInvokedByFoundation_IsStillRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService(System.Func<object> operation) "
+                + "{ public object Execute() => Run(() => operation()); "
+                + "private static object Run(System.Func<object> callback) => callback(); } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXF002");
+    }
+
+    [Fact]
     public void WrappedHigherLayerDependency_WhenInjectedIntoBroker_IsRejected()
     {
         // Given

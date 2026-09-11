@@ -28,7 +28,13 @@ public sealed class MethodCall
     internal bool IsInsideLambda { get; set; }
 
     [JsonIgnore]
-    internal bool IsTargetLambdaParameter { get; set; }
+    internal bool IsTargetCallbackParameter { get; set; }
+
+    [JsonIgnore]
+    internal string ArchitecturalDependencyTypeName { get; set; }
+
+    [JsonIgnore]
+    internal StandardElementType? ArchitecturalDependencyStandardElementType { get; set; }
 
     [JsonIgnore]
     internal IReadOnlyList<ITypeSymbol> ServiceLocatorTypeArguments { get; set; }

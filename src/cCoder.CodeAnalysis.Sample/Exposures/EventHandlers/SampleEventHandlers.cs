@@ -2,14 +2,16 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Sample.Services.Foundations.Events;
-
 namespace cCoder.CodeAnalysis.Sample.Exposures.EventHandlers;
 
-internal sealed class SampleEventHandlers(IEventHandlerService service) : ISampleEventHandlers
+internal sealed class SampleEventHandlers(
+    IStudentEventHandlers studentEventHandlers,
+    ITeacherEventHandlers teacherEventHandlers,
+    ICourseEventHandlers courseEventHandlers) : ISampleEventHandlers
 {
-    public void ListenToAllEvents()
-    {
-        service.ListenToAllEvents();
-    }
+    public void ListenToAllEvents() =>
+        this.ListenToAllEvents(
+            studentEventHandlers: studentEventHandlers,
+            teacherEventHandlers: teacherEventHandlers,
+            courseEventHandlers: courseEventHandlers);
 }
