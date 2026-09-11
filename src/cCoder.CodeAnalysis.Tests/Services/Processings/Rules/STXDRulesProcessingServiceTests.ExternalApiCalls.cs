@@ -143,6 +143,52 @@ public sealed partial class STXDRulesProcessingServiceTests
     }
 
     [Fact]
+    public void ExternalApiCall_WhenMadeFromApplicationBuilderComposition_IsNotReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class IApplicationBuilderExtensions "
+                + "{ public static ThirdParty.IApplicationBuilder UseFeature("
+                + "this ThirdParty.IApplicationBuilder builder) "
+                + "=> builder.UseMiddleware(); }",
+            externalSource:
+                "namespace ThirdParty; public interface IApplicationBuilder "
+                + "{ IApplicationBuilder UseMiddleware(); }",
+            typeName: "Example.Exposures.IApplicationBuilderExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExternalRequestDelegate_WhenInvokedByMiddleware_IsNotReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class ExampleMiddleware "
+                + "{ private readonly ThirdParty.RequestDelegate next; "
+                + "public ExampleMiddleware(ThirdParty.RequestDelegate next) "
+                + "{ this.next = next; } "
+                + "public System.Threading.Tasks.Task InvokeAsync(object context) "
+                + "=> next(context); }",
+            externalSource:
+                "namespace ThirdParty; public delegate "
+                + "System.Threading.Tasks.Task RequestDelegate(object context);",
+            typeName: "Example.Exposures.ExampleMiddleware");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromMiddleware_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Exposures",
+            typeName: "ExampleMiddleware");
+
+    [Fact]
     public void ExternalApiCall_WhenMadeFromODataModelBuilder_IsNotReported() =>
         AssertExternalApiCallIsNotReported(
             namespaceName: "Example.Exposures",
