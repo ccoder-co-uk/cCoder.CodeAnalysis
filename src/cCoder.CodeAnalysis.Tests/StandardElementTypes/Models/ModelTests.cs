@@ -46,6 +46,15 @@ public sealed class ModelTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void ExceptionModelsWithExternalBaseTypesShouldRemainModels()
+    {
+        GetElement("cCoder.CodeAnalysis.Sample.Models.Exceptions.ServiceDependencyException")
+            .StandardElementType.Should().Be(StandardElementType.Model, "");
+        GetElement("cCoder.CodeAnalysis.Sample.Models.Exceptions.ServiceValidationException")
+            .StandardElementType.Should().Be(StandardElementType.Model, "");
+    }
+
+    [Fact]
     public void ShouldRejectModelObjectOverrides()
     {
         Class element = GetElement("cCoder.CodeAnalysis.Sample.LegacyDataModel");

@@ -327,6 +327,77 @@ public sealed class ArchitectureProcessingServiceTests
     }
 
     [Fact]
+    public void Process_WhenStatusCodeUsesAspNetCoreStatusCodes_CapturesExceptionResponses()
+    {
+        // Given
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
+            text:
+                """
+                using System;
+                using Microsoft.AspNetCore.Http;
+                namespace Example.Controllers;
+
+                public sealed class HttpGetAttribute : Attribute { }
+                public class ODataController
+                {
+                    protected object Ok(object value) => value;
+                    protected object StatusCode(int statusCode) => new object();
+                }
+                public sealed class StudentValidationException : Exception { }
+
+                public sealed class StudentController : ODataController
+                {
+                    [HttpGet]
+                    public object Get()
+                    {
+                        try
+                        {
+                            return Ok(new object());
+                        }
+                        catch (StudentValidationException)
+                        {
+                            return StatusCode(statusCode: StatusCodes.Status403Forbidden);
+                        }
+                        catch (Exception)
+                        {
+                            return StatusCode(statusCode: StatusCodes.Status500InternalServerError);
+                        }
+                    }
+                }
+                """,
+            path: "StudentController.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references:
+            [
+                MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                MetadataReference.CreateFromFile(
+                    typeof(Microsoft.AspNetCore.Http.StatusCodes).Assembly.Location)
+            ]);
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+        ArchitectureProcessingService service = new(architectureServiceMock.Object);
+
+        // When
+        Architecture architecture = service.Process(compilation).Architecture;
+
+        // Then
+        Method action = architecture.Classes
+            .Single(element => element.Name == "Example.Controllers.StudentController")
+            .Methods.Single(method => method.Name == "Get");
+        action.HttpResponses.Should().Contain(response =>
+            response.StatusCode == Microsoft.AspNetCore.Http.StatusCodes.Status403Forbidden
+            && response.IsExceptionPath
+            && response.ExceptionType == "Example.Controllers.StudentValidationException");
+        action.HttpResponses.Should().Contain(response =>
+            response.StatusCode == Microsoft.AspNetCore.Http.StatusCodes.Status500InternalServerError
+            && response.IsExceptionPath
+            && response.ExceptionType == "System.Exception");
+    }
+
+    [Fact]
     public void ProcessShouldCaptureMethodCallsExceptionsAndDependencyBoundaries()
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(

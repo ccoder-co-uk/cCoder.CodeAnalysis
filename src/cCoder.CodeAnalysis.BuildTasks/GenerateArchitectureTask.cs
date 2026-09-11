@@ -66,16 +66,23 @@ public sealed class GenerateArchitectureTask : Microsoft.Build.Utilities.Task
 
     private void EnsurePlatformAssembliesAreAvailable()
     {
-        if (AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES") is string)
-        {
-            return;
-        }
+        string[] existingPlatformAssemblies =
+            (AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES") as string
+                ?? string.Empty)
+            .Split(
+                separator: [Path.PathSeparator],
+                options: StringSplitOptions.RemoveEmptyEntries);
 
         string trustedPlatformAssemblies = string.Join(
             separator: Path.PathSeparator.ToString(),
-            values: ReferencePaths
-                .Select(selector: (ITaskItem referencePath) => referencePath.ItemSpec)
-                .Where(predicate: File.Exists));
+            values: existingPlatformAssemblies
+                .Concat(second: ReferencePaths
+                    .Select(selector: (ITaskItem referencePath) => referencePath.ItemSpec))
+                .Where(predicate: File.Exists)
+                .GroupBy(
+                    keySelector: Path.GetFileName,
+                    comparer: StringComparer.OrdinalIgnoreCase)
+                .Select(selector: assemblyPaths => assemblyPaths.First()));
 
         if (!string.IsNullOrWhiteSpace(value: trustedPlatformAssemblies))
         {
