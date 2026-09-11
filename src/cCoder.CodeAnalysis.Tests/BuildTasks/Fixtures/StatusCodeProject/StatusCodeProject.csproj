@@ -11,7 +11,8 @@
     <ProjectReference Include="..\..\..\..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
   <PropertyGroup>
-    <cCoderCodeAnalysisBuildTaskSourceDirectory>$(MSBuildThisFileDirectory)..\..\..\..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\</cCoderCodeAnalysisBuildTaskSourceDirectory>
+    <cCoderCodeAnalysisGenerateArchitecture Condition="'$(RunStatusCodeArchitectureGeneration)' != 'true'">false</cCoderCodeAnalysisGenerateArchitecture>
+    <cCoderCodeAnalysisBuildTaskAssembly>$(MSBuildThisFileDirectory)..\..\..\..\cCoder.CodeAnalysis.BuildTasks\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
   </PropertyGroup>
   <Import Project="..\..\..\..\cCoder.CodeAnalysis\buildTransitive\cCoder.CodeAnalysis.targets" />
 </Project>
