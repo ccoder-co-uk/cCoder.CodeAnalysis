@@ -134,7 +134,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         if (!IsAboveBroker(
             elementType: architectureModelQueries.GetStandardElementType(
                 context: context))
-            || IsServiceCollectionCompositionRoot(context: context))
+            || IsCompositionRoot(context: context))
         {
             yield break;
         }
@@ -164,16 +164,26 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             or StandardElementType.Exposure
             or StandardElementType.HttpExposure;
 
-    private static bool IsServiceCollectionCompositionRoot(
+    private static bool IsCompositionRoot(
         EvaluationContext context) =>
         (context.ArchitectureElement.AnalysisMethods ?? []).Any(method =>
-            IsServiceCollection(typeName: method.ReturnType)
+            IsCompositionType(typeName: method.ReturnType)
             && method.Inputs.Any(input =>
-                IsServiceCollection(typeName: input.Type)));
+                IsCompositionType(typeName: input.Type)));
 
-    private static bool IsServiceCollection(string typeName) =>
-        typeName == "IServiceCollection"
+    private static bool IsCompositionType(string typeName) =>
+        IsTypeOrQualifiedType(
+            typeName: typeName,
+            expectedTypeName: "IServiceCollection")
+        || IsTypeOrQualifiedType(
+            typeName: typeName,
+            expectedTypeName: "IMvcBuilder");
+
+    private static bool IsTypeOrQualifiedType(
+        string typeName,
+        string expectedTypeName) =>
+        typeName == expectedTypeName
             || typeName.EndsWith(
-                value: ".IServiceCollection",
+                value: $".{expectedTypeName}",
                 comparisonType: StringComparison.Ordinal);
 }

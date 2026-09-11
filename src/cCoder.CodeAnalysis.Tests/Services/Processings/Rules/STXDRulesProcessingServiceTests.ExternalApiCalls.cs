@@ -116,6 +116,33 @@ public sealed partial class STXDRulesProcessingServiceTests
     }
 
     [Fact]
+    public void ExternalApiCall_WhenMadeFromMvcBuilderComposition_IsNotReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class IMvcBuilderExtensions "
+                + "{ public static IMvcBuilder AddFeature(IMvcBuilder mvcBuilder) "
+                + "=> ThirdParty.ExternalApi.Configure(mvcBuilder); }",
+            externalSource:
+                "public interface IMvcBuilder { } "
+                + "namespace ThirdParty { public static class ExternalApi "
+                + "{ public static IMvcBuilder Configure(IMvcBuilder mvcBuilder) => mvcBuilder; } }",
+            typeName: "Example.Exposures.IMvcBuilderExtensions");
+
+        Method method = context.ArchitectureElement.AnalysisMethods.Single();
+        method.ReturnType = "IMvcBuilder";
+        method.Inputs.Add(new Input
+        {
+            Name = "mvcBuilder",
+            Type = "IMvcBuilder",
+        });
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
     public void ExternalBaseMethod_WhenCalledByExposure_IsNotReportedAsApiCall()
     {
         const string externalSource =
