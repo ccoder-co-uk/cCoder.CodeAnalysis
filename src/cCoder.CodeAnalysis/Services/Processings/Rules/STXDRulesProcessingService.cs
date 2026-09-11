@@ -16,7 +16,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         return EvaluateSTXD001(context: context)
             .Concat(second: EvaluateSTXD002(context: context))
             .Concat(second: EvaluateSTXD003(context: context))
-            .Concat(second: EvaluateSTXD004(context: context));
+            .Concat(second: EvaluateSTXD004(context: context))
+            .Concat(second: EvaluateSTXD005(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXD001(EvaluationContext context)
@@ -126,4 +127,53 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             or StandardElementType.CoordinationService
             or StandardElementType.ManagementService
             or StandardElementType.AggregationService;
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD005(
+        EvaluationContext context)
+    {
+        if (!IsAboveBroker(
+            elementType: architectureModelQueries.GetStandardElementType(
+                context: context))
+            || IsServiceCollectionCompositionRoot(context: context))
+        {
+            yield break;
+        }
+
+        foreach (MethodCall call in (context.ArchitectureElement.AnalysisMethods ?? [])
+            .SelectMany(method => method.DirectCalls ?? [])
+            .Where(call => call.IsExternalApiCall))
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD005",
+                Description =
+                    $"External API call '{call.MethodId}' must be isolated behind a broker or dependency.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = call.SourceLineNumber,
+            };
+        }
+    }
+
+    private static bool IsAboveBroker(StandardElementType elementType) =>
+        elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.AggregationService
+            or StandardElementType.Exposure
+            or StandardElementType.HttpExposure;
+
+    private static bool IsServiceCollectionCompositionRoot(
+        EvaluationContext context) =>
+        (context.ArchitectureElement.AnalysisMethods ?? []).Any(method =>
+            IsServiceCollection(typeName: method.ReturnType)
+            && method.Inputs.Any(input =>
+                IsServiceCollection(typeName: input.Type)));
+
+    private static bool IsServiceCollection(string typeName) =>
+        typeName == "IServiceCollection"
+            || typeName.EndsWith(
+                value: ".IServiceCollection",
+                comparisonType: StringComparison.Ordinal);
 }

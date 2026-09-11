@@ -692,10 +692,62 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                                 && lambda.DescendantNodes()
                                     .OfType<InvocationExpressionSyntax>()
                                     .Any()),
+                        IsExternalApiCall = IsExternalApiCall(
+                            targetMethod: target,
+                            callingMethod: method,
+                            compilation: compilation),
+                        SourceLineNumber = GetLineNumber(node: call.Node),
                     };
                 })
             .OrderBy(call => call.MethodId, StringComparer.Ordinal)
             .ToList();
+    }
+
+    private static bool IsExternalApiCall(
+        IMethodSymbol targetMethod,
+        IMethodSymbol callingMethod,
+        CSharpCompilation compilation)
+    {
+        string assemblyName = targetMethod.ContainingAssembly?.Name ?? string.Empty;
+
+        if (assemblyName.Length == 0
+            || string.Equals(
+                assemblyName,
+                compilation.AssemblyName,
+                StringComparison.Ordinal)
+            || assemblyName.StartsWith(
+                value: "cCoder.",
+                comparisonType: StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
+        bool isPlatformAssembly =
+            assemblyName is "mscorlib" or "netstandard"
+            || assemblyName.StartsWith(
+                value: "System",
+                comparisonType: StringComparison.Ordinal);
+
+        if (isPlatformAssembly)
+        {
+            return false;
+        }
+
+        return !GetBaseTypes(type: callingMethod.ContainingType).Any(
+            baseType => SymbolEqualityComparer.Default.Equals(
+                baseType,
+                targetMethod.ContainingType));
+    }
+
+    private static IEnumerable<INamedTypeSymbol> GetBaseTypes(
+        INamedTypeSymbol type)
+    {
+        for (INamedTypeSymbol? baseType = type.BaseType;
+            baseType is not null;
+            baseType = baseType.BaseType)
+        {
+            yield return baseType;
+        }
     }
 
     private static IMethodSymbol? GetCalledMethod(

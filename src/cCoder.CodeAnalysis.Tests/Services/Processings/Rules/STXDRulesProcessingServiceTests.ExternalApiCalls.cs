@@ -1,0 +1,240 @@
+// ---------------------------------------------------------------
+// Copyright (c) Paul.Ward@ccoder.co.uk
+// ---------------------------------------------------------------
+
+using cCoder.CodeAnalysis.Models;
+using cCoder.CodeAnalysis.Services.Foundations.Architectures;
+using cCoder.CodeAnalysis.Services.Processings.Architectures;
+using cCoder.CodeAnalysis.Services.Processings.Contexts;
+using cCoder.CodeAnalysis.Services.Processings.Rules;
+using FluentAssertions;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.Emit;
+using Moq;
+
+namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
+
+public sealed partial class STXDRulesProcessingServiceTests
+{
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromFoundationService_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Services.Foundations",
+            typeName: "ExampleService");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromProcessingService_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Services.Processings",
+            typeName: "ExampleProcessingService");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromOrchestrationService_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Services.Orchestrations",
+            typeName: "ExampleOrchestrationService");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromCoordinationService_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Services.Coordinations",
+            typeName: "ExampleCoordinationService");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromAggregationService_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Services.Aggregations",
+            typeName: "ExampleAggregationService");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromExposure_IsReported() =>
+        AssertExternalApiCallIsReported(
+            namespaceName: "Example.Exposures",
+            typeName: "ExampleManager");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromHttpExposure_IsReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Controllers; "
+                + "public sealed class ExampleController "
+                + "{ public void Patch(ThirdParty.Delta<ExampleController> delta) "
+                + "=> delta.Patch(this); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Delta<T> "
+                + "{ public void Patch(T target) { } }",
+            typeName: "Example.Controllers.ExampleController");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromBroker_IsNotReported() =>
+        AssertExternalApiCallIsNotReported(
+            namespaceName: "Example.Brokers",
+            typeName: "ExampleBroker");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromDependency_IsNotReported() =>
+        AssertExternalApiCallIsNotReported(
+            namespaceName: "Example.Dependencies",
+            typeName: "ExampleDependency");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromCompositionRoot_IsNotReported() =>
+        AssertExternalApiCallIsNotReported(
+            namespaceName: "Example",
+            typeName: "IServiceCollectionExtensions");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromServiceCollectionComposition_IsNotReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Services.Processings; "
+                + "public sealed class ServiceCollectionProcessingService "
+                + "{ public string Execute() => ThirdParty.ExternalApi.Serialize(this); }",
+            externalSource:
+                "namespace ThirdParty; public static class ExternalApi "
+                + "{ public static string Serialize(object value) => string.Empty; }",
+            typeName:
+                "Example.Services.Processings.ServiceCollectionProcessingService");
+
+        Method method = context.ArchitectureElement.AnalysisMethods.Single();
+        method.ReturnType = "IServiceCollection";
+        method.Inputs.Add(new Input
+        {
+            Name = "services",
+            Type = "IServiceCollection",
+        });
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExternalBaseMethod_WhenCalledByExposure_IsNotReportedAsApiCall()
+    {
+        const string externalSource =
+            "namespace ThirdParty; public abstract class ExternalController "
+            + "{ protected string Ok() => string.Empty; }";
+
+        const string source =
+            "namespace Example.Controllers; "
+            + "public sealed class ExampleController : ThirdParty.ExternalController "
+            + "{ public string Get() => Ok(); }";
+
+        EvaluationContext context = CreateExternalApiContext(
+            source: source,
+            externalSource: externalSource,
+            typeName: "Example.Controllers.ExampleController");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExternalAttribute_WhenAppliedToExposure_IsNotReportedAsApiCall()
+    {
+        const string externalSource =
+            "namespace ThirdParty; public sealed class ExternalAttribute : System.Attribute { }";
+
+        const string source =
+            "namespace Example.Exposures; "
+            + "[ThirdParty.External] public sealed class ExampleManager { }";
+
+        EvaluationContext context = CreateExternalApiContext(
+            source: source,
+            externalSource: externalSource,
+            typeName: "Example.Exposures.ExampleManager");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    private static void AssertExternalApiCallIsReported(
+        string namespaceName,
+        string typeName)
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                $"namespace {namespaceName}; "
+                + $"public sealed class {typeName} "
+                + "{ public string Execute() => ThirdParty.ExternalApi.Serialize(this); }",
+            externalSource:
+                "namespace ThirdParty; public static class ExternalApi "
+                + "{ public static string Serialize(object value) => string.Empty; }",
+            typeName: $"{namespaceName}.{typeName}");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXD005");
+    }
+
+    private static void AssertExternalApiCallIsNotReported(
+        string namespaceName,
+        string typeName)
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                $"namespace {namespaceName}; "
+                + $"public sealed class {typeName} "
+                + "{ public string Execute() => ThirdParty.ExternalApi.Serialize(this); }",
+            externalSource:
+                "namespace ThirdParty; public static class ExternalApi "
+                + "{ public static string Serialize(object value) => string.Empty; }",
+            typeName: $"{namespaceName}.{typeName}");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    private static EvaluationContext CreateExternalApiContext(
+        string source,
+        string externalSource,
+        string typeName)
+    {
+        MetadataReference externalReference = CreateExternalReference(source: externalSource);
+        SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(text: source, path: "Example.cs");
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "Example",
+            syntaxTrees: [syntaxTree],
+            references: [.. GetPlatformReferences(), externalReference]);
+
+        ArchitectureBuild build = new() { Compilation = compilation };
+        Mock<IArchitectureService> architectureServiceMock = new();
+        architectureServiceMock.Setup(service => service.Build(compilation)).Returns(build);
+
+        ArchitectureBuild architectureBuild =
+            new ArchitectureProcessingService(architectureServiceMock.Object)
+                .Process(compilation);
+
+        return new EvaluationContextsProcessingService()
+            .Process(architectureBuild)
+            .Single(context => context.ArchitectureElement.Name == typeName);
+    }
+
+    private static MetadataReference CreateExternalReference(string source)
+    {
+        CSharpCompilation compilation = CSharpCompilation.Create(
+            assemblyName: "ThirdParty.External.Library",
+            syntaxTrees: [CSharpSyntaxTree.ParseText(text: source)],
+            references: GetPlatformReferences(),
+            options: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+
+        using MemoryStream stream = new();
+        EmitResult result = compilation.Emit(peStream: stream);
+        result.Success.Should().BeTrue(
+            string.Join(Environment.NewLine, result.Diagnostics));
+
+        return MetadataReference.CreateFromImage(peImage: stream.ToArray());
+    }
+
+    private static MetadataReference[] GetPlatformReferences() =>
+        ((string)AppContext.GetData(name: "TRUSTED_PLATFORM_ASSEMBLIES")!)
+            .Split(separator: Path.PathSeparator)
+            .Select(selector: path => MetadataReference.CreateFromFile(path: path))
+            .ToArray();
+}

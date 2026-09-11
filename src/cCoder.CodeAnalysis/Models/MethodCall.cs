@@ -20,4 +20,10 @@ public sealed class MethodCall
 
     [JsonIgnore]
     internal bool IsExceptionWrapper { get; set; }
+
+    [JsonIgnore]
+    internal bool IsExternalApiCall { get; set; }
+
+    [JsonIgnore]
+    internal int SourceLineNumber { get; set; }
 }

@@ -8,7 +8,7 @@ using FluentAssertions;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
-public sealed class STXDRulesProcessingServiceTests
+public sealed partial class STXDRulesProcessingServiceTests
 {
     [Fact]
     public void EvaluateShouldRejectExternalResourceInBroker()
