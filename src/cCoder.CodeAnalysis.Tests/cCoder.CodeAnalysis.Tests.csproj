@@ -25,8 +25,10 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Remove="BuildTasks\Fixtures\**\*.cs" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.Sample\cCoder.CodeAnalysis.Sample.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.SampleWeb\cCoder.CodeAnalysis.SampleWeb.csproj" />
+    <ProjectReference Include="BuildTasks\Fixtures\StatusCodeProject\StatusCodeProject.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.Analyzers\cCoder.CodeAnalysis.Analyzers.csproj" />
     <ProjectReference Include="..\cCoder.CodeAnalysis.BuildTasks\cCoder.CodeAnalysis.BuildTasks.csproj" />
