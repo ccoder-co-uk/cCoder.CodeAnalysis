@@ -143,6 +143,35 @@ public sealed partial class STXDRulesProcessingServiceTests
     }
 
     [Fact]
+    public void ExternalApiCall_WhenMadeFromODataModelBuilder_IsNotReported() =>
+        AssertExternalApiCallIsNotReported(
+            namespaceName: "Example.Exposures",
+            typeName: "ODataModelBuilder");
+
+    [Fact]
+    public void ExternalApiCall_WhenMadeFromODataBuilderComposition_IsNotReported()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class ODataConventionModelBuilderExtensions "
+                + "{ public static void Configure(object builder) "
+                + "=> ThirdParty.ExternalApi.Configure(builder); }",
+            externalSource:
+                "namespace ThirdParty; public static class ExternalApi "
+                + "{ public static void Configure(object builder) { } }",
+            typeName:
+                "Example.Exposures.ODataConventionModelBuilderExtensions");
+
+        Method method = context.ArchitectureElement.AnalysisMethods.Single();
+        method.ReturnType = "void";
+        method.Inputs.Single().Type = "ODataConventionModelBuilder";
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
     public void ExternalBaseMethod_WhenCalledByExposure_IsNotReportedAsApiCall()
     {
         const string externalSource =

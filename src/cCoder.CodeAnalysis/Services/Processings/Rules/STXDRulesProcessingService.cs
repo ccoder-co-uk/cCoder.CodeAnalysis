@@ -166,10 +166,14 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
 
     private static bool IsCompositionRoot(
         EvaluationContext context) =>
-        (context.ArchitectureElement.AnalysisMethods ?? []).Any(method =>
-            IsCompositionType(typeName: method.ReturnType)
-            && method.Inputs.Any(input =>
-                IsCompositionType(typeName: input.Type)));
+        architectureModelQueries.GetTypeName(context: context).EndsWith(
+            value: ".ODataModelBuilder",
+            comparisonType: StringComparison.Ordinal)
+        || (context.ArchitectureElement.AnalysisMethods ?? []).Any(method =>
+            method.Inputs.Any(input =>
+                IsCompositionType(typeName: input.Type))
+            && (IsCompositionType(typeName: method.ReturnType)
+                || method.ReturnType == "void"));
 
     private static bool IsCompositionType(string typeName) =>
         IsTypeOrQualifiedType(
@@ -177,7 +181,10 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             expectedTypeName: "IServiceCollection")
         || IsTypeOrQualifiedType(
             typeName: typeName,
-            expectedTypeName: "IMvcBuilder");
+            expectedTypeName: "IMvcBuilder")
+        || IsTypeOrQualifiedType(
+            typeName: typeName,
+            expectedTypeName: "ODataConventionModelBuilder");
 
     private static bool IsTypeOrQualifiedType(
         string typeName,
