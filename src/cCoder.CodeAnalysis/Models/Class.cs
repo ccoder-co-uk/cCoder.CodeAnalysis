@@ -41,6 +41,9 @@ public sealed class Class
     internal List<Method> AnalysisMethods { get; set; }
 
     [JsonIgnore]
+    internal List<Method> AnalysisConstructors { get; set; }
+
+    [JsonIgnore]
     internal IReadOnlyList<TypeDeclarationSyntax> AnalysisDeclarations { get; set; }
 
     [JsonIgnore]

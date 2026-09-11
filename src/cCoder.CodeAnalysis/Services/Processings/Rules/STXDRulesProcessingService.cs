@@ -17,7 +17,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             .Concat(second: EvaluateSTXD002(context: context))
             .Concat(second: EvaluateSTXD003(context: context))
             .Concat(second: EvaluateSTXD004(context: context))
-            .Concat(second: EvaluateSTXD005(context: context));
+            .Concat(second: EvaluateSTXD005(context: context))
+            .Concat(second: EvaluateSTXD006(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXD001(EvaluationContext context)
@@ -139,7 +140,11 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             yield break;
         }
 
-        foreach (MethodCall call in (context.ArchitectureElement.AnalysisMethods ?? [])
+        IEnumerable<Method> methods =
+            (context.ArchitectureElement.AnalysisMethods ?? [])
+                .Concat(second: context.ArchitectureElement.AnalysisConstructors ?? []);
+
+        foreach (MethodCall call in methods
             .SelectMany(method => method.DirectCalls ?? [])
             .Where(call => call.IsExternalApiCall)
             .Where(call => !IsMiddlewarePipelineContinuation(
@@ -166,6 +171,34 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             or StandardElementType.AggregationService
             or StandardElementType.Exposure
             or StandardElementType.HttpExposure;
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD006(
+        EvaluationContext context)
+    {
+        StandardElementType elementType =
+            architectureModelQueries.GetStandardElementType(context: context);
+
+        bool isServiceLayer = elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
+
+        if (isServiceLayer
+            && architectureModelQueries.HasExternalBaseType(context: context))
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD006",
+                Description =
+                    "Service layers must isolate external base types behind a broker or dependency.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = architectureModelQueries.GetLineNumber(context: context),
+            };
+        }
+    }
 
     private static bool IsCompositionRoot(
         EvaluationContext context) =>

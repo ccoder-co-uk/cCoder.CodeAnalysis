@@ -25,5 +25,14 @@ public sealed class MethodCall
     internal bool IsExternalApiCall { get; set; }
 
     [JsonIgnore]
+    internal bool IsInsideLambda { get; set; }
+
+    [JsonIgnore]
+    internal bool IsTargetLambdaParameter { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<ITypeSymbol> ServiceLocatorTypeArguments { get; set; }
+
+    [JsonIgnore]
     internal int SourceLineNumber { get; set; }
 }

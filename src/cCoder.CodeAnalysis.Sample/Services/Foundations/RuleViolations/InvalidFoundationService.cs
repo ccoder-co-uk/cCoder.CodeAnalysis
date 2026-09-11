@@ -7,7 +7,7 @@ using cCoder.CodeAnalysis.Sample.Services.Foundations.Students;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Foundations.RuleViolations;
 
-public sealed class InvalidFoundationService : IInvalidFoundationService
+public sealed class InvalidFoundationService : System.ComponentModel.Component, IInvalidFoundationService
 {
     private readonly IStudentService studentService;
 

@@ -114,3 +114,12 @@ also names the full model, whereas `GenerateDiagramAsync` does not.
 Bare Render, RenderAsync, Generate and GenerateAsync remain flagged even with no model
 parameters because they do not identify a subject. These are cCoder naming policies;
 other naming diagnostics remain independent.
+
+## External base types on service layers
+
+`STXD006` reports a Foundation, Processing, Orchestration, Coordination,
+Management, or Aggregation service that directly inherits an externally owned
+base type. External inheritance is permitted at an HTTP or ordinary Exposure
+boundary, where a framework base class can be part of the boundary contract.
+Service layers must instead isolate that external contract behind a Broker or
+Dependency so their inheritance and behavior remain application-controlled.
