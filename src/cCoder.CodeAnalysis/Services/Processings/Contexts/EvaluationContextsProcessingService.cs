@@ -147,10 +147,10 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         architectureElement.AnalysisSourceCode = sourceTree?.GetText().ToString() ?? string.Empty;
         architectureElement.AnalysisProjectLineEnding = architecture.AnalysisProjectLineEnding;
 
-        architectureElement.AnalysisDependencies = type.InstanceConstructors
-            .SelectMany(constructor => constructor.Parameters)
-            .Select(
-                parameter => CreateTypeDependency(parameter.Type, declaredTypes))
+        architectureElement.AnalysisDependencies = GetDependencies(
+                type: type,
+                architectureElement: architectureElement,
+                declaredTypes: declaredTypes)
             .Where(dependency => !dependency.IsConfigurationModel)
             .GroupBy(dependency => dependency.TypeName, StringComparer.Ordinal)
             .Select(dependencies => dependencies.First())
@@ -178,6 +178,94 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             ArchitectureElement = architectureElement,
         };
     }
+
+    private static IEnumerable<TypeDependency> GetDependencies(
+        INamedTypeSymbol type,
+        Class architectureElement,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        IEnumerable<TypeDependency> constructorDependencies = type.InstanceConstructors
+            .SelectMany(constructor => constructor.Parameters)
+            .SelectMany(parameter => GetContainedDependencyTypes(type: parameter.Type))
+            .Select(dependency => CreateTypeDependency(
+                dependency: dependency,
+                declaredTypes: declaredTypes));
+
+        IEnumerable<Method> analysisMethods =
+            (architectureElement.AnalysisMethods ?? [])
+                .Concat(second: architectureElement.AnalysisConstructors ?? []);
+
+        IEnumerable<MethodCall> methodCalls = analysisMethods
+            .SelectMany(method => method.DirectCalls ?? []);
+
+        IEnumerable<TypeDependency> localCallDependencies = analysisMethods
+            .SelectMany(method => (method.DirectCalls ?? [])
+                .Where(call =>
+                    method.Symbol.MethodKind == MethodKind.Constructor
+                    || call.IsInsideLambda))
+            .Where(call => !call.IsDependencyBoundary)
+            .Where(call => !call.IsTargetLambdaParameter)
+            .Where(call => call.TypeName != architectureElement.Name)
+            .Where(call => IsArchitecturalDependency(
+                standardElementType: call.StandardElementType))
+            .Select(call => new TypeDependency
+            {
+                TypeName = call.TypeName,
+                StandardElementType = call.StandardElementType,
+            });
+
+        IEnumerable<TypeDependency> serviceLocatorDependencies = methodCalls
+            .SelectMany(call => call.ServiceLocatorTypeArguments ?? [])
+            .SelectMany(typeArgument => GetContainedDependencyTypes(type: typeArgument))
+            .Select(typeArgument => CreateExactTypeDependency(
+                dependency: typeArgument,
+                declaredTypes: declaredTypes));
+
+        return constructorDependencies
+            .Concat(second: localCallDependencies)
+            .Concat(second: serviceLocatorDependencies);
+    }
+
+    private static bool IsArchitecturalDependency(
+        StandardElementType standardElementType) =>
+        standardElementType is StandardElementType.Dependency
+            or StandardElementType.Broker
+            or StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService
+            or StandardElementType.Exposure
+            or StandardElementType.HttpExposure;
+
+    private static IEnumerable<ITypeSymbol> GetContainedDependencyTypes(
+        ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol arrayType)
+        {
+            return GetContainedDependencyTypes(type: arrayType.ElementType);
+        }
+
+        if (type is INamedTypeSymbol namedType
+            && namedType.TypeArguments.Length > 0
+            && IsCollectionType(type: namedType))
+        {
+            return namedType.TypeArguments
+                .Where(typeArgument => typeArgument.SpecialType == SpecialType.None)
+                .SelectMany(selector: GetContainedDependencyTypes);
+        }
+
+        return [type];
+    }
+
+    private static bool IsCollectionType(INamedTypeSymbol type) =>
+        type.ConstructedFrom.ToDisplayString()
+            .StartsWith(
+                value: "System.Collections.Generic.",
+                comparisonType: StringComparison.Ordinal)
+        || type.AllInterfaces.Any(contract =>
+            contract.ToDisplayString() == "System.Collections.IEnumerable");
 
     private static IReadOnlyList<ClassDeclarationSyntax> GetTopLevelClasses(
         TypeDeclarationSyntax? declaration) =>
@@ -300,18 +388,37 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             };
         }
 
-        INamedTypeSymbol? concreteType = ResolveConcreteType(dependency: dependency, declaredTypes: declaredTypes);
+        bool isDeclaredType = dependency is INamedTypeSymbol namedDependency
+            && declaredTypes.Contains(
+                value: namedDependency,
+                comparer: SymbolEqualityComparer.Default);
 
-        return concreteType is null
-            ? CreateReferencedTypeDependency(dependency: dependency)
-            : new TypeDependency
+        return isDeclaredType
+            ? CreateExactTypeDependency(
+                dependency: dependency,
+                declaredTypes: declaredTypes)
+            : CreateReferencedTypeDependency(dependency: dependency);
+    }
+
+    private static TypeDependency CreateExactTypeDependency(
+        ITypeSymbol dependency,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        INamedTypeSymbol? declaredType = dependency as INamedTypeSymbol;
+
+        bool isDeclaredType = declaredType is not null
+            && declaredTypes.Contains(
+                value: declaredType,
+                comparer: SymbolEqualityComparer.Default);
+
+        return isDeclaredType
+            ? new TypeDependency
             {
-                TypeName = GetTypeName(type: concreteType),
-                StandardElementType = Classify(type: concreteType),
-                IsConfigurationModel =
-                    IsConfigurationModel(type: dependency)
-                    || IsConfigurationModel(type: concreteType),
-            };
+                TypeName = GetTypeName(type: declaredType!),
+                StandardElementType = Classify(type: declaredType!),
+                IsConfigurationModel = IsConfigurationModel(type: declaredType!),
+            }
+            : CreateReferencedTypeDependency(dependency: dependency);
     }
 
     private static TypeDependency CreateReferencedTypeDependency(ITypeSymbol dependency)
@@ -359,36 +466,6 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         && type.Name.EndsWith(value: "Service", comparisonType: StringComparison.Ordinal)
             ? StandardElementType.Exposure
             : Classify(type: type);
-
-    private static INamedTypeSymbol? ResolveConcreteType(
-        ITypeSymbol dependency,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes
-    )
-    {
-        if (
-            dependency.TypeKind == TypeKind.Class
-            && declaredTypes.Contains(value: dependency, comparer: SymbolEqualityComparer.Default)
-        )
-        {
-            return (INamedTypeSymbol)dependency;
-        }
-
-        if (!dependency.Locations.Any(predicate: (Location location) => location.IsInSource))
-        {
-            return null;
-        }
-
-        INamedTypeSymbol[] implementations = declaredTypes
-            .Where(
-                predicate: (INamedTypeSymbol type) =>
-                    type.TypeKind == TypeKind.Class
-                    && type.AllInterfaces.Contains(value: dependency, comparer: SymbolEqualityComparer.Default)
-            )
-            .Take(count: 2)
-            .ToArray();
-
-        return implementations.Length == 1 ? implementations[0] : null;
-    }
 
     private static StandardElementType Classify(INamedTypeSymbol type)
     {
@@ -472,17 +549,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Activity;
         }
 
-        if (
-            containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
-            || InheritsFromExternalType(type: type)
-            || (
-                DeclaresDependencyIntent(type: type)
-                && (
-                    ImplementsExternalInterface(type: type)
-                    || HasExternalStateDependency(type: type)
-                )
-            )
-        )
+        if (containingNamespace.Contains(
+            value: ".Migrations",
+            comparisonType: StringComparison.Ordinal))
         {
             return StandardElementType.Dependency;
         }
@@ -515,6 +584,11 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         if (containingNamespace.Contains(value: ".Services.Aggregations", comparisonType: StringComparison.Ordinal))
         {
             return StandardElementType.AggregationService;
+        }
+
+        if (InheritsFromExternalType(type: type))
+        {
+            return StandardElementType.Dependency;
         }
 
         if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))

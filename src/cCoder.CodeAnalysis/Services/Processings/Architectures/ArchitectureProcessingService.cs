@@ -180,6 +180,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .ThenBy(keySelector: (Method method) => method.Id, comparer: StringComparer.Ordinal)
             .ToList();
 
+        List<Method> analysisConstructors = type.InstanceConstructors
+            .Where(constructor => !constructor.IsImplicitlyDeclared)
+            .Select(constructor => CreateMethod(
+                method: constructor,
+                compilation: compilation,
+                declaredTypes: declaredTypes))
+            .ToList();
+
         return new Class
         {
             Name = GetTypeName(type: type),
@@ -212,9 +220,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .OrderBy(keySelector: (Property property) => property.Name, comparer: StringComparer.Ordinal)
                 .ToList(),
             Methods = analysisMethods
-                .Where(predicate: (Method method) => method.Symbol.DeclaredAccessibility == Accessibility.Public)
+                .Where(predicate: (Method method) =>
+                    method.Symbol.DeclaredAccessibility == Accessibility.Public)
                 .ToList(),
             AnalysisMethods = analysisMethods,
+            AnalysisConstructors = analysisConstructors,
             AnalysisImplementedInterfaces = type.AllInterfaces
                 .Select(selector: GetTypeName)
                 .OrderBy(keySelector: interfaceName => interfaceName, comparer: StringComparer.Ordinal)
@@ -653,18 +663,23 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                         is InvocationExpressionSyntax
                         or ObjectCreationExpressionSyntax
                         or ImplicitObjectCreationExpressionSyntax))
+            .Where(call => IsDeclaredWithinMethod(
+                call: call,
+                method: method,
+                compilation: compilation))
             .Select(call => new
             {
                 Node = call,
-                Method = GetCalledMethod(compilation: compilation, call: call)?.OriginalDefinition,
+                Method = GetCalledMethod(compilation: compilation, call: call),
             })
             .Where(call => call.Method is not null)
-            .GroupBy(call => GetMethodId(method: call.Method!), StringComparer.Ordinal)
+            .GroupBy(call => GetMethodId(method: call.Method!.OriginalDefinition), StringComparer.Ordinal)
             .Select(group => group.First())
             .Select(
                 call =>
                 {
-                    IMethodSymbol target = call.Method!;
+                    IMethodSymbol resolvedTarget = call.Method!;
+                    IMethodSymbol target = resolvedTarget.OriginalDefinition;
 
                     bool isDependencyBoundary = !IsDeclaredInCurrentProject(
                         method: target,
@@ -696,12 +711,72 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             targetMethod: target,
                             callingMethod: method,
                             compilation: compilation),
+                        IsInsideLambda = call.Node.Ancestors()
+                            .OfType<LambdaExpressionSyntax>()
+                            .Any(),
+                        IsTargetLambdaParameter = IsInvocationOnLambdaParameter(
+                            call: call.Node,
+                            compilation: compilation),
+                        ServiceLocatorTypeArguments =
+                            IsServiceLocatorMethod(method: resolvedTarget)
+                                ? resolvedTarget.TypeArguments
+                                : [],
                         SourceLineNumber = GetLineNumber(node: call.Node),
                     };
                 })
             .OrderBy(call => call.MethodId, StringComparer.Ordinal)
             .ToList();
     }
+
+    private static bool IsDeclaredWithinMethod(
+        SyntaxNode call,
+        IMethodSymbol method,
+        CSharpCompilation compilation)
+    {
+        ISymbol? enclosingSymbol = compilation
+            .GetSemanticModel(syntaxTree: call.SyntaxTree)
+            .GetEnclosingSymbol(position: call.SpanStart);
+
+        while (enclosingSymbol is IMethodSymbol
+            {
+                MethodKind: MethodKind.AnonymousFunction,
+            })
+        {
+            enclosingSymbol = enclosingSymbol.ContainingSymbol;
+        }
+
+        return SymbolEqualityComparer.Default.Equals(
+            x: enclosingSymbol,
+            y: method);
+    }
+
+    private static bool IsInvocationOnLambdaParameter(
+        SyntaxNode call,
+        CSharpCompilation compilation)
+    {
+        if (call is not InvocationExpressionSyntax
+            {
+                Expression: MemberAccessExpressionSyntax memberAccess,
+            })
+        {
+            return false;
+        }
+
+        SemanticModel semanticModel = compilation.GetSemanticModel(
+            syntaxTree: call.SyntaxTree);
+
+        return semanticModel.GetSymbolInfo(memberAccess.Expression).Symbol
+            is IParameterSymbol
+            {
+                ContainingSymbol: IMethodSymbol
+                {
+                    MethodKind: MethodKind.AnonymousFunction,
+                },
+            };
+    }
+
+    private static bool IsServiceLocatorMethod(IMethodSymbol method) =>
+        method.Name is "GetRequiredService" or "GetRequiredKeyedService";
 
     private static bool IsExternalApiCall(
         IMethodSymbol targetMethod,
@@ -728,7 +803,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 value: "System",
                 comparisonType: StringComparison.Ordinal);
 
-        if (isPlatformAssembly)
+        string targetTypeName = targetMethod.ContainingType.ToDisplayString();
+
+        bool isBehavioralPlatformApi =
+            targetTypeName == "System.Text.RegularExpressions.Regex"
+            || targetTypeName is "System.Text.Json.JsonSerializer"
+                or "System.Text.Json.JsonDocument";
+
+        if (isPlatformAssembly && !isBehavioralPlatformApi)
         {
             return false;
         }
@@ -1198,7 +1280,8 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     {
         IEnumerable<ITypeSymbol> dependencies = type
             .InstanceConstructors.SelectMany(selector: (IMethodSymbol constructor) => constructor.Parameters)
-            .Select(selector: (IParameterSymbol parameter) => parameter.Type);
+            .SelectMany(selector: (IParameterSymbol parameter) =>
+                GetContainedDependencyTypes(type: parameter.Type));
 
         foreach (ITypeSymbol dependency in dependencies)
         {
@@ -1212,6 +1295,34 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             };
         }
     }
+
+    private static IEnumerable<ITypeSymbol> GetContainedDependencyTypes(
+        ITypeSymbol type)
+    {
+        if (type is IArrayTypeSymbol arrayType)
+        {
+            return GetContainedDependencyTypes(type: arrayType.ElementType);
+        }
+
+        if (type is INamedTypeSymbol namedType
+            && namedType.TypeArguments.Length > 0
+            && IsCollectionType(type: namedType))
+        {
+            return namedType.TypeArguments
+                .Where(typeArgument => typeArgument.SpecialType == SpecialType.None)
+                .SelectMany(selector: GetContainedDependencyTypes);
+        }
+
+        return [type];
+    }
+
+    private static bool IsCollectionType(INamedTypeSymbol type) =>
+        type.ConstructedFrom.ToDisplayString()
+            .StartsWith(
+                value: "System.Collections.Generic.",
+                comparisonType: StringComparison.Ordinal)
+        || type.AllInterfaces.Any(contract =>
+            contract.ToDisplayString() == "System.Collections.IEnumerable");
 
     private static INamedTypeSymbol? ResolveConcreteType(
         ITypeSymbol dependency,
@@ -1313,10 +1424,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Exposure;
         }
 
-        if (
-            containingNamespace.Contains(value: ".Migrations", comparisonType: StringComparison.Ordinal)
-            || InheritsFromExternalType(type: type)
-        )
+        if (containingNamespace.Contains(
+            value: ".Migrations",
+            comparisonType: StringComparison.Ordinal))
         {
             return StandardElementType.Dependency;
         }
@@ -1349,6 +1459,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         if (containingNamespace.Contains(value: ".Services.Aggregations", comparisonType: StringComparison.Ordinal))
         {
             return StandardElementType.AggregationService;
+        }
+
+        if (InheritsFromExternalType(type: type))
+        {
+            return StandardElementType.Dependency;
         }
 
         if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))
