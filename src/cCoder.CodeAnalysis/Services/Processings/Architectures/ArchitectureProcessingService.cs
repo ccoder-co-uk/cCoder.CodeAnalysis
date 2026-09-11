@@ -311,7 +311,98 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         facts.ProjectTypeNames = declaredTypes.Select(GetTypeName).ToArray();
 
+        facts.ExternalApiTypeUsages = GetExternalApiTypeUsages(
+            type: type,
+            compilation: compilation);
+
         return facts;
+    }
+
+    private static IReadOnlyList<ExternalApiTypeUsageAnalysisFacts> GetExternalApiTypeUsages(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation) =>
+        type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(declaration => GetDeclaredTypeSyntaxes(declaration)
+                .SelectMany(typeSyntax => GetContainedTypes(
+                    type: compilation
+                        .GetSemanticModel(typeSyntax.SyntaxTree)
+                        .GetTypeInfo(typeSyntax)
+                        .Type)
+                    .Where(IsExternalApiType)
+                    .Select(externalType => new ExternalApiTypeUsageAnalysisFacts
+                    {
+                        TypeName = GetTypeName(type: externalType),
+                        LineNumber = GetLineNumber(typeSyntax),
+                    })))
+            .GroupBy(
+                usage => (usage.TypeName, usage.LineNumber))
+            .Select(usages => usages.First())
+            .OrderBy(usage => usage.LineNumber)
+            .ThenBy(usage => usage.TypeName, StringComparer.Ordinal)
+            .ToArray();
+
+    private static IEnumerable<TypeSyntax> GetDeclaredTypeSyntaxes(
+        TypeDeclarationSyntax declaration) =>
+        declaration.DescendantNodes(
+                descendIntoChildren: node =>
+                    node == declaration
+                    || node is not TypeDeclarationSyntax)
+            .OfType<TypeSyntax>()
+            .Where(typeSyntax => typeSyntax.Parent switch
+            {
+                ParameterSyntax parameter => parameter.Type == typeSyntax,
+                VariableDeclarationSyntax variable => variable.Type == typeSyntax,
+                MethodDeclarationSyntax method => method.ReturnType == typeSyntax,
+                PropertyDeclarationSyntax property => property.Type == typeSyntax,
+                EventDeclarationSyntax eventDeclaration => eventDeclaration.Type == typeSyntax,
+                DelegateDeclarationSyntax delegateDeclaration => delegateDeclaration.ReturnType == typeSyntax,
+                DeclarationPatternSyntax pattern => pattern.Type == typeSyntax,
+                RecursivePatternSyntax pattern => pattern.Type == typeSyntax,
+                ForEachStatementSyntax forEach => forEach.Type == typeSyntax,
+                CatchDeclarationSyntax catchDeclaration => catchDeclaration.Type == typeSyntax,
+                _ => false,
+            });
+
+    private static IEnumerable<ITypeSymbol> GetContainedTypes(ITypeSymbol? type)
+    {
+        if (type is null)
+        {
+            yield break;
+        }
+
+        yield return type;
+
+        if (type is IArrayTypeSymbol arrayType)
+        {
+            foreach (ITypeSymbol containedType in GetContainedTypes(arrayType.ElementType))
+            {
+                yield return containedType;
+            }
+        }
+
+        if (type is INamedTypeSymbol namedType)
+        {
+            foreach (ITypeSymbol typeArgument in namedType.TypeArguments)
+            {
+                foreach (ITypeSymbol containedType in GetContainedTypes(typeArgument))
+                {
+                    yield return containedType;
+                }
+            }
+        }
+    }
+
+    private static bool IsExternalApiType(ITypeSymbol type)
+    {
+        string namespaceName = type.ContainingNamespace?.ToDisplayString() ?? string.Empty;
+
+        return namespaceName == "System.Text.Json"
+            || namespaceName.StartsWith("System.Text.Json.", StringComparison.Ordinal)
+            || namespaceName == "Newtonsoft.Json"
+            || namespaceName.StartsWith("Newtonsoft.Json.", StringComparison.Ordinal)
+            || namespaceName == "System.Text.RegularExpressions";
     }
 
     internal static TypeAnalysisFacts CreateTypeAnalysisFacts(

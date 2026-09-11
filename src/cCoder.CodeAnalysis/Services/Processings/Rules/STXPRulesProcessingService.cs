@@ -54,7 +54,10 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
                 StandardElementType standardElementType = dependency.StandardElementType;
 
                 return standardElementType
-                    is StandardElementType.OrchestrationService
+                    is StandardElementType.Broker
+                    or StandardElementType.Exposure
+                    or StandardElementType.HttpExposure
+                    or StandardElementType.OrchestrationService
                     or StandardElementType.CoordinationService
                     or StandardElementType.ManagementService
                     or StandardElementType.AggregationService;
@@ -67,7 +70,7 @@ internal sealed class STXPRulesProcessingService : ISTXPRulesProcessingService
             {
                 CreateAnalysisItem(
                     code: "STXP001",
-                    description: "A processing service may use only one foundation service and no higher-level service.",
+                    description: "A processing service may use only one foundation service and must not bypass its layer boundary.",
                     context: context
                 ),
             };
