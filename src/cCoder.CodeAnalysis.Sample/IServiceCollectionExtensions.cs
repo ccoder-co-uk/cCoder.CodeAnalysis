@@ -4,6 +4,7 @@
 
 using cCoder.CodeAnalysis.Sample.Services.Processings.ServiceCollections;
 using cCoder.CodeAnalysis.Sample.Controllers;
+using cCoder.CodeAnalysis.Sample.Dependencies;
 using cCoder.CodeAnalysis.Sample.Models;
 
 namespace cCoder.CodeAnalysis.Sample;
@@ -15,6 +16,9 @@ public static class IServiceCollectionExtensions
         CodeAnalysisSampleConfiguration configuration)
     {
         services.AddExposures();
+        services.AddTransient(
+            implementationFactory: serviceProvider =>
+                new ExternalStateDependency());
         services.AddProcessings(configuration);
 
         return services;
