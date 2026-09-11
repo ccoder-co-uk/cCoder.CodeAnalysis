@@ -34,7 +34,11 @@ internal sealed class ArchitectureService(IFileBroker fileBroker) : IArchitectur
             )
             .ToArray();
 
-        SyntaxTree[] compilationSyntaxTrees = [CreateImplicitUsingsSyntaxTree(), .. projectSyntaxTrees];
+        SyntaxTree[] compilationSyntaxTrees =
+        [
+            CreateImplicitUsingsSyntaxTree(projectFilePath: projectFilePath),
+            .. projectSyntaxTrees,
+        ];
 
         CSharpCompilation compilation = CSharpCompilation.Create(
             assemblyName: Path.GetFileNameWithoutExtension(path: projectFilePath),
@@ -146,11 +150,34 @@ internal sealed class ArchitectureService(IFileBroker fileBroker) : IArchitectur
             );
     }
 
-    private static SyntaxTree CreateImplicitUsingsSyntaxTree() =>
+    private static SyntaxTree CreateImplicitUsingsSyntaxTree(
+        string projectFilePath)
+    {
+        string projectDirectory = Path.GetDirectoryName(path: projectFilePath)!;
+        string projectName = Path.GetFileNameWithoutExtension(path: projectFilePath);
 
-        CSharpSyntaxTree.ParseText(
-            text: "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Net.Http;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;"
-        );
+        string intermediateDirectory = Path.Combine(
+            path1: projectDirectory,
+            path2: "obj");
+
+        string? generatedGlobalUsingsPath = Directory.Exists(path: intermediateDirectory)
+            ? Directory
+                .GetFiles(
+                    path: intermediateDirectory,
+                    searchPattern: projectName + ".GlobalUsings.g.cs",
+                    searchOption: SearchOption.AllDirectories)
+                .OrderByDescending(keySelector: File.GetLastWriteTimeUtc)
+                .FirstOrDefault()
+            : null;
+
+        return generatedGlobalUsingsPath is null
+            ? CSharpSyntaxTree.ParseText(
+                text: "global using System;\r\nglobal using System.Collections.Generic;\r\nglobal using System.IO;\r\nglobal using System.Linq;\r\nglobal using System.Net.Http;\r\nglobal using System.Threading;\r\nglobal using System.Threading.Tasks;")
+            : CSharpSyntaxTree.ParseText(
+                text: File.ReadAllText(path: generatedGlobalUsingsPath),
+                options: null,
+                path: generatedGlobalUsingsPath);
+    }
 
     private static bool IsBuildOutput(string path, string projectDirectory)
     {
