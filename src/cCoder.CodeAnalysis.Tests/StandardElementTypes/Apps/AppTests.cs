@@ -40,4 +40,21 @@ public sealed class AppTests(SampleArchitectureFixture fixture)
             ""
         );
     }
+
+    [Fact]
+    public void App_WhenRegisteringLocalDependency_DoesNotReportSTXD001()
+    {
+        // Given
+        const string appType =
+            "cCoder.CodeAnalysis.Sample.IServiceCollectionExtensions";
+
+        // When
+        IEnumerable<AnalysisItem> dependencyBoundaryItems =
+            Architecture.AnalysisItems.Where(
+                predicate: item => item.Code == "STXD001");
+
+        // Then
+        dependencyBoundaryItems.Should().NotContain(
+            predicate: item => item.Type == appType);
+    }
 }

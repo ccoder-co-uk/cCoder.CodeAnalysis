@@ -30,7 +30,8 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         );
 
         bool mayConsumeDependency =
-            architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Broker
+            architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.App
+            || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Broker
             || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Dependency
             || architectureModelQueries.DeclaresDependencyIntent(context: context)
             || IsHostedService(context: context);
