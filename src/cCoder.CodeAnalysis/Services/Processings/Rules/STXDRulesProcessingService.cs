@@ -141,7 +141,10 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
 
         foreach (MethodCall call in (context.ArchitectureElement.AnalysisMethods ?? [])
             .SelectMany(method => method.DirectCalls ?? [])
-            .Where(call => call.IsExternalApiCall))
+            .Where(call => call.IsExternalApiCall)
+            .Where(call => !IsMiddlewarePipelineContinuation(
+                context: context,
+                call: call)))
         {
             yield return new AnalysisItem
             {
@@ -188,10 +191,24 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             expectedTypeName: "IServiceCollection")
         || IsTypeOrQualifiedType(
             typeName: typeName,
+            expectedTypeName: "IApplicationBuilder")
+        || IsTypeOrQualifiedType(
+            typeName: typeName,
             expectedTypeName: "IMvcBuilder")
         || IsTypeOrQualifiedType(
             typeName: typeName,
             expectedTypeName: "ODataConventionModelBuilder");
+
+    private static bool IsMiddlewarePipelineContinuation(
+        EvaluationContext context,
+        MethodCall call) =>
+        architectureModelQueries.GetTypeName(context: context).EndsWith(
+            value: "Middleware",
+            comparisonType: StringComparison.Ordinal)
+        && IsTypeOrQualifiedType(
+            typeName: call.TypeName,
+            expectedTypeName: "RequestDelegate")
+        && call.MethodName == "Invoke";
 
     private static bool IsTypeOrQualifiedType(
         string typeName,
