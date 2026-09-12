@@ -25,9 +25,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
     {
         bool consumesDependency = architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) =>
-                (dependency.IsInCurrentProject
-                    && dependency.StandardElementType == StandardElementType.Dependency)
-                || IsExternallyOwnedDependency(dependency)
+                IsBrokerOnlyDependency(dependency: dependency)
         );
 
         bool mayConsumeDependency =
@@ -43,7 +41,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             {
                 Code = "STXD001",
                 Description =
-                    "Dependency and externally owned elements may only be consumed by brokers or other dependencies.",
+                    "Dependency elements and event hubs may only be consumed by brokers or other dependencies.",
                 Severity = AnalysisSeverity.Warning,
                 Type = architectureModelQueries.GetTypeName(context: context),
                 LineNumber = architectureModelQueries.GetLineNumber(context: context),
@@ -51,14 +49,17 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         }
     }
 
-    private static bool IsExternallyOwnedDependency(
+    private static bool IsBrokerOnlyDependency(
         TypeDependency dependency) =>
-        !dependency.IsInCurrentProject
-        && !dependency.TypeName.StartsWith(
+        (dependency.StandardElementType == StandardElementType.Dependency
+            && !dependency.TypeName.StartsWith(
             value: "System.",
             comparisonType: StringComparison.Ordinal)
-        && !dependency.TypeName.StartsWith(
+            && !dependency.TypeName.StartsWith(
             value: "Microsoft.Extensions.Logging.ILogger",
+            comparisonType: StringComparison.Ordinal))
+        || dependency.TypeName.EndsWith(
+            value: ".IEventHub",
             comparisonType: StringComparison.Ordinal);
 
     private static bool IsHostedService(

@@ -71,6 +71,34 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void ExternalDomainExposure_WhenInjectedIntoHostExposure_IsNotReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class PackageController(ThirdParty.Exposures.IPackageManager packageManager) { }",
+            externalSource:
+                "namespace ThirdParty.Exposures; public interface IPackageManager { }",
+            typeName: "Example.Exposures.PackageController");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.AnalysisDependencies.Should()
+            .ContainSingle(
+                dependency =>
+                    dependency.TypeName == "ThirdParty.Exposures.IPackageManager"
+                    && dependency.StandardElementType == StandardElementType.Exposure
+                    && !dependency.IsInCurrentProject);
+
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void EventHandlerExposure_WhenUsingLocalEventBroker_IsAllowed()
     {
         // Given
