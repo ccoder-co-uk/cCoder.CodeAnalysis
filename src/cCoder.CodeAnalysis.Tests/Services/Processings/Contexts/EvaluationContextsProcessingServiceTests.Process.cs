@@ -413,6 +413,32 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
+    public void ProcessShouldClassifyRootConfigurationFactoryAsApp()
+    {
+        // Given
+        const string source =
+            """
+            namespace ExternalServiceTarget;
+
+            internal static class CoreConfigurationFactory
+            {
+            }
+            """;
+
+        ArchitectureBuild architectureBuild =
+            CreateArchitectureBuild(source: source);
+
+        // When
+        EvaluationContext context = service
+            .Process(architectureBuild: architectureBuild)
+            .Single();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.App);
+    }
+
+    [Fact]
     public void ProcessShouldClassifyRootUrlResolverAsApp()
     {
         // Given
