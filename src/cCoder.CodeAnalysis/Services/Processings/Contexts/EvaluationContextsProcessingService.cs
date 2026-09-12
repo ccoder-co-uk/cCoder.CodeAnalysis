@@ -200,6 +200,22 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 dependency.TypeName,
                 StringComparison.Ordinal));
 
+        Class[] implementations = architecture.Classes
+            .Where(candidate => candidate.Interfaces.Any(contract =>
+                string.Equals(
+                    contract.FullName,
+                    dependency.TypeName,
+                    StringComparison.Ordinal)))
+            .Take(count: 2)
+            .ToArray();
+
+        if (implementations.Length == 1
+            && implementations[0].StandardElementType
+                != StandardElementType.Unknown)
+        {
+            localType = implementations[0];
+        }
+
         if (localType is not null)
         {
             dependency.StandardElementType = localType.StandardElementType;
