@@ -32,6 +32,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.App
             || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Broker
             || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Dependency
+            || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Test
             || architectureModelQueries.DeclaresDependencyIntent(context: context)
             || IsHostedService(context: context);
 
