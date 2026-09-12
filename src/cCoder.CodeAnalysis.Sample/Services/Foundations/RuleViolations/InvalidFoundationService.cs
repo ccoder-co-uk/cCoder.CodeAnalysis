@@ -25,7 +25,7 @@ public sealed class InvalidFoundationService : System.ComponentModel.Component, 
     {
         for (int index = 0; index < 1; index++)
         {
-            Student? student = studentService.GetStudent(studentId: index);
+            Student? student = studentService.GetStudent(studentId: System.Text.RegularExpressions.Regex.Match(input: index.ToString(), pattern: string.Empty).Length);
         }
     }
 

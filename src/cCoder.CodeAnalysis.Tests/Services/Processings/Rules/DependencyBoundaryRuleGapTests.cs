@@ -18,6 +18,101 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void ExternalDependency_WhenInjectedIntoExposure_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class StudentEventHandlers(ThirdParty.IEventHub eventHub) "
+                + "{ public void ListenToEvents() { } }",
+            externalSource:
+                "namespace ThirdParty; public interface IEventHub "
+                + "{ void ListenToEvent(string name, System.Action handler); }",
+            typeName: "Example.Exposures.StudentEventHandlers");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.AnalysisDependencies.Should()
+            .ContainSingle(
+                dependency =>
+                    dependency.TypeName == "ThirdParty.IEventHub"
+                    && dependency.StandardElementType == StandardElementType.Exposure
+                    && !dependency.IsInCurrentProject);
+
+        results.Should().ContainSingle(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void ExternalDependency_WhenInjectedIntoBroker_IsNotReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers; "
+                + "public sealed class EventBroker(ThirdParty.IEventHub eventHub) "
+                + "{ public void ListenToEvents() { } }",
+            externalSource:
+                "namespace ThirdParty; public interface IEventHub "
+                + "{ void ListenToEvent(string name, System.Action handler); }",
+            typeName: "Example.Brokers.EventBroker");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void EventHandlerExposure_WhenUsingLocalEventBroker_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers { public interface IEventBroker { } } "
+                + "namespace Example.Exposures.EventHandlers { "
+                + "public sealed class StudentEventHandlers(Example.Brokers.IEventBroker eventBroker) "
+                + "{ public void ListenToEvents() { } } }",
+            typeName: "Example.Exposures.EventHandlers.StudentEventHandlers");
+
+        // When
+        AnalysisItem[] results = new STXERulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXE004");
+    }
+
+    [Fact]
+    public void LoggingDependency_WhenInjectedIntoExposure_IsNotReportedAsBusinessDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class StudentManager(Microsoft.Extensions.Logging.ILogger<StudentManager> logger) { }",
+            externalSource:
+                "namespace Microsoft.Extensions.Logging; public interface ILogger<T> { }",
+            typeName: "Example.Exposures.StudentManager");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void EventRegistrationExposure_WhenRegisteringMultipleHandlers_DoesNotSequenceBusinessOperations()
     {
         // Given

@@ -2,13 +2,13 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Sample.Brokers.Events;
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
 using cCoder.CodeAnalysis.Sample.Brokers.Storage;
 using cCoder.CodeAnalysis.Sample.Exposures.Courses;
 using cCoder.CodeAnalysis.Sample.Exposures.EventHandlers;
 using cCoder.CodeAnalysis.Sample.Exposures.SchoolImports;
 using cCoder.CodeAnalysis.Sample.Exposures.Schools;
-using cCoder.CodeAnalysis.Sample.Exposures.Storage;
 using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Exposures.Teachers;
 using cCoder.CodeAnalysis.Sample.Services.Aggregations.SchoolImports;
@@ -49,7 +49,7 @@ internal sealed partial class ServiceCollectionProcessingService : IServiceColle
             );
 
             services.AddScoped<ILoggingBroker, LoggingBroker>();
-            services.AddScoped<ISchoolContextFactory, SchoolContextFactory>();
+            services.AddScoped<IEventBroker, EventBroker>();
             services.AddScoped<ISchoolBroker, SchoolBroker>();
             services.AddScoped<IStudentBroker, StudentBroker>();
             services.AddScoped<ITeacherBroker, TeacherBroker>();

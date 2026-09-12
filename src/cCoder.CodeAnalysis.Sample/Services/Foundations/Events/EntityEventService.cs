@@ -2,12 +2,12 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.Eventing;
+using cCoder.CodeAnalysis.Sample.Brokers.Events;
 using cCoder.Eventing.Models;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Foundations.Events;
 
-internal sealed partial class EntityEventService(IEventHub eventHub) : IEntityEventService
+internal sealed partial class EntityEventService(IEventBroker eventBroker) : IEntityEventService
 {
     public ValueTask RaiseAddEventAsync<T>(string entityName, T entity) =>
         TryCatch(operation: () =>
@@ -31,7 +31,7 @@ internal sealed partial class EntityEventService(IEventHub eventHub) : IEntityEv
         });
 
     private ValueTask RaiseAsync<T>(string eventName, T entity) =>
-        eventHub.RaiseEventAsync(
+        eventBroker.RaiseEventAsync(
             name: eventName,
             message: new EventMessage<T>
             {
