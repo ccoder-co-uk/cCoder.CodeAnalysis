@@ -25,8 +25,9 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
     {
         bool consumesDependency = architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) =>
-                dependency.StandardElementType == StandardElementType.Dependency
-                && architectureModelQueries.GetLocalDependencyTypeNames(context: context).Contains(value: dependency.TypeName)
+                (dependency.IsInCurrentProject
+                    && dependency.StandardElementType == StandardElementType.Dependency)
+                || IsExternallyOwnedDependency(dependency)
         );
 
         bool mayConsumeDependency =
@@ -41,13 +42,24 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             yield return new AnalysisItem
             {
                 Code = "STXD001",
-                Description = "Dependency elements may only be consumed by brokers or other dependencies.",
+                Description =
+                    "Dependency and externally owned elements may only be consumed by brokers or other dependencies.",
                 Severity = AnalysisSeverity.Warning,
                 Type = architectureModelQueries.GetTypeName(context: context),
                 LineNumber = architectureModelQueries.GetLineNumber(context: context),
             };
         }
     }
+
+    private static bool IsExternallyOwnedDependency(
+        TypeDependency dependency) =>
+        !dependency.IsInCurrentProject
+        && !dependency.TypeName.StartsWith(
+            value: "System.",
+            comparisonType: StringComparison.Ordinal)
+        && !dependency.TypeName.StartsWith(
+            value: "Microsoft.Extensions.Logging.ILogger",
+            comparisonType: StringComparison.Ordinal);
 
     private static bool IsHostedService(
         EvaluationContext context) =>

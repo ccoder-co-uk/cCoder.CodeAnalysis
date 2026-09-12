@@ -2,9 +2,9 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using cCoder.CodeAnalysis.Sample.Brokers.Events;
 using cCoder.CodeAnalysis.Sample.Exposures.EventHandlers;
 using cCoder.CodeAnalysis.Sample.Services.Processings.Teachers;
-using cCoder.Eventing;
 using FluentAssertions;
 using Moq;
 
@@ -16,8 +16,8 @@ public sealed partial class TeacherEventHandlersTests
     public void ListenToTeacherEventsRegistersEveryTeacherHandler()
     {
         // Given
-        Mock<IEventHub> eventHubMock = new();
-        TeacherEventHandlers eventHandlers = new(eventHub: eventHubMock.Object);
+        Mock<IEventBroker> eventHubMock = new();
+        TeacherEventHandlers eventHandlers = new(eventBroker: eventHubMock.Object);
 
         // When
         eventHandlers.ListenToTeacherEvents();

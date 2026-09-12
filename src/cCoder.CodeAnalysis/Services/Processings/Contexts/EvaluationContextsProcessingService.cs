@@ -421,6 +421,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             {
                 TypeName = GetTypeName(type: declaredType),
                 StandardElementType = StandardElementType.Exposure,
+                IsInCurrentProject = declaredTypes.Contains(
+                    value: declaredType,
+                    comparer: SymbolEqualityComparer.Default),
                 IsConfigurationModel =
                     IsConfigurationModel(type: dependency),
             };
@@ -472,6 +475,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             TypeName = GetTypeName(type: dependency),
             StandardElementType =
                 elementType == StandardElementType.Unknown ? StandardElementType.Dependency : elementType,
+            IsInCurrentProject = false,
             IsConfigurationModel =
                 IsConfigurationModel(type: dependency),
         };

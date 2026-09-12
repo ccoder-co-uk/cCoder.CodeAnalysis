@@ -250,7 +250,8 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
 
     private IEnumerable<AnalysisItem> EvaluateSTXE004(EvaluationContext context)
     {
-        return !architectureModelQueries.GetDependencies(context: context).Any(
+        return IsEventHandlerRegistration(context: context)
+            || !architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) => dependency.StandardElementType == StandardElementType.Broker
         )
             ? []
@@ -262,6 +263,19 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                     context: context
                 ),
             ];
+    }
+
+    private static bool IsEventHandlerRegistration(
+        EvaluationContext context)
+    {
+        string typeName = architectureModelQueries.GetTypeName(context: context);
+
+        return typeName.Contains(
+                value: ".Exposures.EventHandlers.",
+                comparisonType: StringComparison.Ordinal)
+            && typeName.EndsWith(
+                value: "EventHandlers",
+                comparisonType: StringComparison.Ordinal);
     }
 
     private IEnumerable<AnalysisItem> EvaluateSTXE005(
