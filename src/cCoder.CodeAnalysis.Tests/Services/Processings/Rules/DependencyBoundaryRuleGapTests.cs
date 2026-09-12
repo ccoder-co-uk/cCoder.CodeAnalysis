@@ -18,6 +18,36 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void DependencyImplementation_WhenInjectedThroughExposureContractAboveBroker_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures.Caching "
+                + "{ public interface ICommonObjectCache { void Refresh(); } } "
+                + "namespace Example.Dependencies.Caching "
+                + "{ internal sealed class CommonObjectCacheDependency "
+                + ": System.IO.MemoryStream, Example.Exposures.Caching.ICommonObjectCache "
+                + "{ public void Refresh() { } } } "
+                + "namespace Example.Services.Aggregations "
+                + "{ internal sealed class CacheAggregationService("
+                + "Example.Exposures.Caching.ICommonObjectCache cache) "
+                + "{ public void Invalidate() => cache.Refresh(); } }",
+            typeName: "Example.Services.Aggregations.CacheAggregationService");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.AnalysisDependencies.Should()
+            .ContainSingle(dependency =>
+                dependency.StandardElementType == StandardElementType.Dependency);
+        results.Should().ContainSingle(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void ExternalDependency_WhenInjectedIntoExposure_IsReported()
     {
         // Given
