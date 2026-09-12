@@ -99,6 +99,31 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void Test_WhenUsingExternalTestDependency_IsNotReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Tests; "
+                + "public sealed class PackageTests(ThirdParty.ExternalFixture fixture) { }",
+            externalSource:
+                "namespace ThirdParty; public sealed class ExternalFixture { }",
+            typeName: "Example.Tests.PackageTests");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType
+            .Should()
+            .Be(expected: StandardElementType.Test);
+
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void EventHandlerExposure_WhenUsingLocalEventBroker_IsAllowed()
     {
         // Given
