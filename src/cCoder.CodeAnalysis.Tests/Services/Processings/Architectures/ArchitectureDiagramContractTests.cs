@@ -16,6 +16,29 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Architectures;
 public sealed class ArchitectureDiagramContractTests
 {
     [Fact]
+    public void Process_WhenRootConfigurationFactoryComposesConfiguration_ClassifiesItAsApp()
+    {
+        // Given
+        CSharpCompilation compilation = CreateCompilation(
+            source:
+                """
+                namespace Example;
+
+                public static class CoreConfigurationFactory
+                {
+                    public static object Create() => new object();
+                }
+                """);
+
+        // When
+        Architecture architecture = Process(compilation: compilation);
+
+        // Then
+        architecture.Classes.Single()
+            .StandardElementType.Should().Be(StandardElementType.App, "configuration composition belongs to the app composition root");
+    }
+
+    [Fact]
     public void Process_WhenKnownWebBoundaryTypesUseExternalInfrastructure_ClassifiesThemAsExposures()
     {
         // Given

@@ -703,6 +703,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 value: "ConfigurationMapper",
                 comparisonType: StringComparison.Ordinal)
             || type.Name.EndsWith(
+                value: "ConfigurationFactory",
+                comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(
                 value: "UrlResolver",
                 comparisonType: StringComparison.Ordinal)
         );

@@ -1714,6 +1714,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 value: "ConfigurationMapper",
                 comparisonType: StringComparison.Ordinal)
             || type.Name.EndsWith(
+                value: "ConfigurationFactory",
+                comparisonType: StringComparison.Ordinal)
+            || type.Name.EndsWith(
                 value: "UrlResolver",
                 comparisonType: StringComparison.Ordinal)
         );
