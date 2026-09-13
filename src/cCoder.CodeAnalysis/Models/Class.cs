@@ -35,6 +35,9 @@ public sealed class Class
     internal bool AnalysisIsApiController { get; set; }
 
     [JsonIgnore]
+    internal bool AnalysisIsAzureFunctionExposure { get; set; }
+
+    [JsonIgnore]
     internal IReadOnlyList<string> AnalysisPublicApiModelTypes { get; set; }
 
     [JsonIgnore]

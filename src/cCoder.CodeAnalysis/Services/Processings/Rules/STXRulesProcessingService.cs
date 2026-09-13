@@ -354,6 +354,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         StandardElementType elementType,
         TypeDependency dependency) =>
         (elementType == StandardElementType.HttpExposure
+            || context.ArchitectureElement.AnalysisIsAzureFunctionExposure
             || IsSignalRHubExposure(
                 context: context,
                 elementType: elementType))
