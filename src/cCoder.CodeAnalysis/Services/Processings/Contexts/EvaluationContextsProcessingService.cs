@@ -698,10 +698,20 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         method.DeclaredAccessibility == Accessibility.Public
         && method.MethodKind == MethodKind.Ordinary
         && method.Name is "Invoke" or "InvokeAsync"
-        && method.Parameters.Length is 1 or 2
+        && method.Parameters.Length >= 1
         && method.Parameters[0].Type.Name == "HttpContext"
-        && (method.Parameters.Length == 1
-            || method.Parameters[1].Type.Name == "RequestDelegate");
+        && method.Parameters.Skip(count: 1)
+            .All(predicate: IsFrameworkMiddlewareParameter);
+
+    private static bool IsFrameworkMiddlewareParameter(
+        IParameterSymbol parameter) =>
+        parameter.Type.Name == "RequestDelegate"
+        || parameter.Type is INamedTypeSymbol namedType
+            && namedType.TypeKind == TypeKind.Interface
+            && namedType.DeclaredAccessibility == Accessibility.Public
+            && namedType.ContainingNamespace.ToDisplayString().Contains(
+                value: ".Exposures",
+                comparisonType: StringComparison.Ordinal);
 
     private static bool InheritsFromTypeNamed(
         INamedTypeSymbol type,
