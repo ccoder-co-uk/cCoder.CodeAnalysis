@@ -34,12 +34,46 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
-    public void Exposure_WhenDependingOnExposure_IsReported()
+    public void HttpExposure_WhenDependingOnPublicExposureContract_IsNotReported()
     {
         EvaluationContext context = CreateContext(
             elementType: StandardElementType.HttpExposure,
             dependencyType: StandardElementType.Exposure,
             dependencyName: "Example.Exposures.Templates.ITemplateManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.AnalysisIsApiController = true;
+        context.ArchitectureModel.Interfaces.Add(item: new Class
+        {
+            Name = "Example.Exposures.Templates.ITemplateManager",
+            IsPublic = true,
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.Exposure,
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void HttpExposure_WhenDependingOnConcreteExposure_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.HttpExposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Templates.TemplateManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.AnalysisIsApiController = true;
+        context.ArchitectureModel.Classes.Add(item: new Class
+        {
+            Name = "Example.Exposures.Templates.TemplateManager",
+            IsPublic = true,
+            Kind = ArchitectureTypeKind.Class,
+            StandardElementType = StandardElementType.Exposure,
+        });
 
         new STXRulesProcessingService()
             .Evaluate(context: context)

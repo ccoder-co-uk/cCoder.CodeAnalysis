@@ -308,7 +308,11 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 predicate: (TypeDependency dependency) =>
                     IsSameArchitecturalLayer(
                         elementType: elementType,
-                        dependencyType: dependency.StandardElementType))
+                        dependencyType: dependency.StandardElementType)
+                    && !IsPermittedHttpExposureContractDependency(
+                        context: context,
+                        elementType: elementType,
+                        dependency: dependency))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -344,6 +348,19 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         StandardElementType elementType) =>
         elementType is StandardElementType.Exposure
             or StandardElementType.HttpExposure;
+
+    private static bool IsPermittedHttpExposureContractDependency(
+        EvaluationContext context,
+        StandardElementType elementType,
+        TypeDependency dependency) =>
+        elementType == StandardElementType.HttpExposure
+        && context.ArchitectureElement.IsPublic
+        && dependency.StandardElementType == StandardElementType.Exposure
+        && context.ArchitectureModel.Interfaces.Any(predicate: element =>
+            element.Name == dependency.TypeName
+            && element.IsPublic
+            && element.Kind == ArchitectureTypeKind.Interface
+            && element.StandardElementType == StandardElementType.Exposure);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 
@@ -471,7 +488,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         CreateWhenInvalid(
             isInvalid: !ImplementsMatchingInterface(context: context),
             code: "STX0014",
-            description: "A service contract must be named after its implementation with an I prefix.",
+            description: "A service contract must be named after its implementation with an I prefix unless it is shared by multiple service implementations.",
             context: context);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0015(EvaluationContext context) =>
@@ -873,10 +890,37 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
         string expectedInterfaceName = "I" + typeName;
 
-        return architectureModelQueries.GetImplementedInterfaces(context: context).Any(
-            predicate: (string interfaceName) => interfaceName.Split(separator: ['.'])
-            .Last() == expectedInterfaceName
-        );
+        IReadOnlyList<string> implementedInterfaces =
+            architectureModelQueries.GetImplementedInterfaces(context: context);
+
+        return implementedInterfaces.Any(predicate: interfaceName =>
+                interfaceName.Split(separator: ['.']).Last() == expectedInterfaceName)
+            || implementedInterfaces.Any(predicate: interfaceName =>
+                IsSharedLocalServiceContract(
+                    context: context,
+                    interfaceName: interfaceName));
+    }
+
+    private static bool IsSharedLocalServiceContract(
+        EvaluationContext context,
+        string interfaceName)
+    {
+        StandardElementType serviceType =
+            architectureModelQueries.GetStandardElementType(context: context);
+
+        bool isInternalLocalContract = context.ArchitectureModel.Interfaces.Any(
+            predicate: element =>
+                element.Name == interfaceName
+                && element.Kind == ArchitectureTypeKind.Interface
+                && !element.IsPublic
+                && element.StandardElementType == serviceType);
+
+        return isInternalLocalContract
+            && context.ArchitectureModel.Classes.Count(predicate: element =>
+                element.Kind == ArchitectureTypeKind.Class
+                && element.StandardElementType == serviceType
+                && (element.AnalysisImplementedInterfaces ?? [])
+                    .Contains(value: interfaceName)) > 1;
     }
 
     private static bool ContractContainsPublicMethods(EvaluationContext context)

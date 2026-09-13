@@ -68,7 +68,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
         CreateClassProjectionHash().Should()
             .Be("3114CE64936AF41F47F01D5ADBFAB0B57C1DAC0DC55F5769CE9521CFDE9424DD", "");
         CreateLinkProjectionHash().Should()
-            .Be("8685F79D70613CD2880E1269D140B7DCF1232FF6C3BE4182BC561BC3CD2398A2", "");
+            .Be("FD80E35345F417224B20A1547E15F39B0CB37B342D59761051ECD733908ED1B5", "");
     }
 
     private string CreateClassProjectionHash()

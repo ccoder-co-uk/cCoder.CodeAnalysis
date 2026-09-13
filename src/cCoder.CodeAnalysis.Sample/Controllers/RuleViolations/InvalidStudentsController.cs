@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
+using cCoder.CodeAnalysis.Sample.Exposures.Students;
+using cCoder.CodeAnalysis.Sample.Exposures.Teachers;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
-using cCoder.CodeAnalysis.Sample.Services.Orchestrations.Students;
-using cCoder.CodeAnalysis.Sample.Services.Orchestrations.Teachers;
 using Microsoft.AspNetCore.Mvc;
 
 namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
@@ -13,8 +13,8 @@ namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 [ApiController]
 [Route("api/[controller]")]
 public sealed class InvalidStudentsController(
-    IStudentOrchestrationService studentOrchestrationService,
-    ITeacherOrchestrationService teacherOrchestrationService,
+    IStudentManager studentManager,
+    ITeacherManager teacherManager,
     ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpGet("students")]
@@ -22,7 +22,7 @@ public sealed class InvalidStudentsController(
     {
         try
         {
-            return Ok(value: studentOrchestrationService.GetStudents());
+            return Ok(value: studentManager.GetStudents());
         }
         catch (Exception exception)
         {
@@ -36,7 +36,7 @@ public sealed class InvalidStudentsController(
     {
         try
         {
-            return Ok(value: teacherOrchestrationService.GetTeachers());
+            return Ok(value: teacherManager.GetTeachers());
         }
         catch (Exception)
         {
