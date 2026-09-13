@@ -18,6 +18,34 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void HttpMiddleware_WhenDelegatingToLocalPublicExposureContract_DoesNotReportMissingOutcomeMapping()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public interface IRequestManager "
+                + "{ System.Threading.Tasks.Task ProcessRequestAsync(ThirdParty.HttpContext context); } } "
+                + "namespace Example.Exposures.Middleware "
+                + "{ public sealed class ExampleMiddleware(ThirdParty.RequestDelegate next) "
+                + "{ public async System.Threading.Tasks.Task InvokeAsync(ThirdParty.HttpContext context, "
+                + "Example.Exposures.IRequestManager manager) "
+                + "{ await manager.ProcessRequestAsync(context); } } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { } "
+                + "public delegate object RequestDelegate(HttpContext context);",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXAPIRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXAPI005");
+    }
+
+    [Fact]
     public void AzureFunctionExposure_WhenDependingOnPublicExposureContract_DoesNotReportSameLayerDependency()
     {
         // Given

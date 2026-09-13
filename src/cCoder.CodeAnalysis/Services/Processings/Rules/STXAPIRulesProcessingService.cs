@@ -208,11 +208,16 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
         MethodCall call = method.Calls[0];
 
         return call.StandardElementType == StandardElementType.Exposure
-            && architectureModelQueries.GetDependencies(context: context)
-                .Any(dependency =>
-                    dependency.TypeName == call.TypeName
-                    && dependency.StandardElementType == StandardElementType.Exposure
-                    && dependency.IsPublicInterface);
+            && (architectureModelQueries.GetDependencies(context: context)
+                    .Any(dependency =>
+                        dependency.TypeName == call.TypeName
+                        && dependency.StandardElementType == StandardElementType.Exposure
+                        && dependency.IsPublicInterface)
+                || context.ArchitectureModel.Interfaces.Any(element =>
+                    element.Name == call.TypeName
+                    && element.IsPublic
+                    && element.Kind == ArchitectureTypeKind.Interface
+                    && element.StandardElementType == StandardElementType.Exposure));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPI006(EvaluationContext context) =>
