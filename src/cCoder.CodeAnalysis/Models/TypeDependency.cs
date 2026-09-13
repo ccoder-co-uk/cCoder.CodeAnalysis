@@ -10,6 +10,7 @@ public sealed class TypeDependency
     public StandardElementType StandardElementType { get; set; }
     public bool IsConfigurationModel { get; set; }
     public bool IsInCurrentProject { get; set; } = true;
+    public bool IsPublicInterface { get; set; }
 
     public bool IsUtilityBroker
     {

@@ -437,6 +437,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             {
                 TypeName = GetTypeName(type: declaredType),
                 StandardElementType = StandardElementType.Exposure,
+                IsPublicInterface = IsPublicInterface(type: declaredType),
                 IsInCurrentProject = declaredTypes.Contains(
                     value: declaredType,
                     comparer: SymbolEqualityComparer.Default),
@@ -473,6 +474,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             {
                 TypeName = GetTypeName(type: declaredType!),
                 StandardElementType = Classify(type: declaredType!),
+                IsPublicInterface = IsPublicInterface(type: declaredType!),
                 IsConfigurationModel = IsConfigurationModel(type: declaredType!),
             }
             : CreateReferencedTypeDependency(dependency: dependency);
@@ -489,6 +491,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         return new TypeDependency
         {
             TypeName = GetTypeName(type: dependency),
+            IsPublicInterface = IsPublicInterface(type: dependency),
             StandardElementType =
                 elementType == StandardElementType.Unknown ? StandardElementType.Dependency : elementType,
             IsInCurrentProject = false,
@@ -496,6 +499,10 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 IsConfigurationModel(type: dependency),
         };
     }
+
+    private static bool IsPublicInterface(ITypeSymbol type) =>
+        type.TypeKind == TypeKind.Interface
+        && type.DeclaredAccessibility == Accessibility.Public;
 
     private static bool IsConfigurationModel(
         ITypeSymbol type)
