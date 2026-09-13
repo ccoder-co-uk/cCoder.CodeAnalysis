@@ -131,7 +131,7 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
     }
 
     [Fact]
-    public void PublicServiceContractConsumedByLocalPublicExposureShouldNotProduceDiagnostic()
+    public void PublicServiceContractConsumedByLocalPublicExposureShouldProduceDiagnostic()
     {
         EvaluationContext context = CreateInterfaceContext(
             typeName: "Example.IStudentRequestService",
@@ -167,7 +167,7 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
 
         AnalysisItem[] items = service.Evaluate(context:context).ToArray();
 
-        items.Should().NotContain(item => item.Code == "STXSTRUCT003", "");
+        items.Should().ContainSingle(item => item.Code == "STXSTRUCT003", "");
     }
 
     [Theory]

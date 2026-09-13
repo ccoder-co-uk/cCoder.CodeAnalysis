@@ -6,7 +6,7 @@ using cCoder.CodeAnalysis.Sample.Models.Schools;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Orchestrations.Teachers;
 
-public interface ITeacherOrchestrationService
+internal interface ITeacherOrchestrationService
 {
     Teacher? GetTeacher(int teacherId);
 

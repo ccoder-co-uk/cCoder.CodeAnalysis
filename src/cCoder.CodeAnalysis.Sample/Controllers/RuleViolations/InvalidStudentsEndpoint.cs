@@ -3,8 +3,8 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
+using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
-using cCoder.CodeAnalysis.Sample.Services.Orchestrations.Students;
 using Microsoft.AspNetCore.Mvc;
 
 namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
@@ -12,7 +12,7 @@ namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 [ApiController]
 [Route("api/students-invalid-name")]
 public sealed class InvalidStudentsEndpoint(
-    IStudentOrchestrationService studentOrchestrationService,
+    IStudentManager studentManager,
     ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpGet]
@@ -20,7 +20,7 @@ public sealed class InvalidStudentsEndpoint(
     {
         try
         {
-            return Ok(value: studentOrchestrationService.GetStudents());
+            return Ok(value: studentManager.GetStudents());
         }
         catch (Exception exception)
         {
