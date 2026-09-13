@@ -18,6 +18,74 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void HttpMiddleware_WhenConstructorRequiresRequestDelegate_DoesNotReportDependencyBoundary()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures.Middleware; "
+                + "public sealed class ExampleMiddleware(ThirdParty.RequestDelegate next) "
+                + "{ public object InvokeAsync(ThirdParty.HttpContext context) => next(context); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { } "
+                + "public delegate object RequestDelegate(HttpContext context);",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void HttpMiddleware_WhenInvokeAsyncRequiresHttpContext_DoesNotReportDependencyBoundary()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures.Middleware; "
+                + "public sealed class ExampleMiddleware "
+                + "{ public object InvokeAsync(ThirdParty.HttpContext context) => context; }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { }",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void HttpMiddleware_WhenConstructorRequiresBusinessDependency_ReportsDependencyBoundary()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures.Middleware; "
+                + "public sealed class ExampleMiddleware(ThirdParty.ExternalDependency dependency) "
+                + "{ public object InvokeAsync(ThirdParty.HttpContext context) => dependency; }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { } "
+                + "public sealed class ExternalDependency { }",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void DependencyImplementation_WhenInjectedThroughExposureContractAboveBroker_IsReported()
     {
         // Given

@@ -26,6 +26,9 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         bool consumesDependency = architectureModelQueries.GetDependencies(context: context).Any(
             predicate: (TypeDependency dependency) =>
                 IsBrokerOnlyDependency(dependency: dependency)
+                && !IsPermittedFrameworkHttpSignatureDependency(
+                    context: context,
+                    dependency: dependency)
         );
 
         bool mayConsumeDependency =
@@ -62,6 +65,44 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         || dependency.TypeName.EndsWith(
             value: ".IEventHub",
             comparisonType: StringComparison.Ordinal);
+
+    private static bool IsPermittedFrameworkHttpSignatureDependency(
+        EvaluationContext context,
+        TypeDependency dependency)
+    {
+        if (architectureModelQueries.GetStandardElementType(context: context)
+                != StandardElementType.HttpExposure
+            || !architectureModelQueries.GetTypeName(context: context).EndsWith(
+                value: "Middleware",
+                comparisonType: StringComparison.Ordinal))
+        {
+            return false;
+        }
+
+        if (IsTypeOrQualifiedType(
+            typeName: dependency.TypeName,
+            expectedTypeName: "RequestDelegate"))
+        {
+            return (context.ArchitectureElement.AnalysisConstructors ?? [])
+                .Any(predicate: constructor =>
+                    constructor.Inputs.Any(predicate: input =>
+                        IsTypeOrQualifiedType(
+                            typeName: input.Type,
+                            expectedTypeName: "RequestDelegate")));
+        }
+
+        return IsTypeOrQualifiedType(
+                typeName: dependency.TypeName,
+                expectedTypeName: "HttpContext")
+            && (context.ArchitectureElement.AnalysisMethods ?? [])
+                .Where(predicate: method =>
+                    method.Name is "Invoke" or "InvokeAsync")
+                .Any(predicate: method =>
+                    method.Inputs.Any(predicate: input =>
+                        IsTypeOrQualifiedType(
+                            typeName: input.Type,
+                            expectedTypeName: "HttpContext")));
+    }
 
     private static bool IsHostedService(
         EvaluationContext context) =>
