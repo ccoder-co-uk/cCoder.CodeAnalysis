@@ -128,6 +128,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 StringComparison.Ordinal));
 
         architectureElement.AnalysisIsApiController = IsApiController(type);
+        architectureElement.AnalysisIsAzureFunctionExposure = IsAzureFunctionExposure(type: type);
         architectureElement.AnalysisHasExternalBaseType = InheritsFromExternalType(type);
         architectureElement.AnalysisImplementsExternalInterface = ImplementsExternalInterface(type);
         architectureElement.AnalysisHasExternalStateDependency = HasExternalStateDependency(type);
@@ -794,6 +795,16 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .GetMembers()
             .OfType<IMethodSymbol>()
             .Any(predicate: (IMethodSymbol method) => method.MethodKind == MethodKind.Ordinary && !method.IsOverride);
+
+    private static bool IsAzureFunctionExposure(INamedTypeSymbol type) =>
+        type.DeclaredAccessibility == Accessibility.Public
+        && type.GetMembers()
+            .OfType<IMethodSymbol>()
+            .SelectMany(method => method.GetAttributes())
+            .Any(attribute =>
+                attribute.AttributeClass?.ToDisplayString()
+                    is "Microsoft.Azure.Functions.Worker.FunctionAttribute"
+                    or "Microsoft.Azure.WebJobs.FunctionNameAttribute");
 
     private static bool InheritsFromExternalType(INamedTypeSymbol type) =>
 

@@ -18,6 +18,58 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void AzureFunctionExposure_WhenDependingOnPublicExposureContract_DoesNotReportSameLayerDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public interface IWorkflowFunctionsManager { object Execute(); } "
+                + "public sealed class Execute(IWorkflowFunctionsManager manager) "
+                + "{ [Microsoft.Azure.Functions.Worker.FunctionAttribute(\"Execute\")] "
+                + "public object Run() => manager.Execute(); } }",
+            externalSource:
+                "namespace Microsoft.Azure.Functions.Worker; "
+                + "[System.AttributeUsage(System.AttributeTargets.Method)] "
+                + "public sealed class FunctionAttribute(string name) : System.Attribute { }",
+            typeName: "Example.Exposures.Execute");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void AzureFunctionExposure_WhenDependingOnConcreteExposure_IsReportedAsSameLayerDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public sealed class WorkflowFunctionsManager { public object Execute() => new(); } "
+                + "public sealed class Execute(WorkflowFunctionsManager manager) "
+                + "{ [Microsoft.Azure.Functions.Worker.FunctionAttribute(\"Execute\")] "
+                + "public object Run() => manager.Execute(); } }",
+            externalSource:
+                "namespace Microsoft.Azure.Functions.Worker; "
+                + "[System.AttributeUsage(System.AttributeTargets.Method)] "
+                + "public sealed class FunctionAttribute(string name) : System.Attribute { }",
+            typeName: "Example.Exposures.Execute");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
     public void HttpMiddleware_WhenConstructorRequiresRequestDelegate_DoesNotReportDependencyBoundary()
     {
         // Given
