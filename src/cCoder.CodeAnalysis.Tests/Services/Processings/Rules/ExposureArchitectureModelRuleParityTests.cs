@@ -135,6 +135,45 @@ public sealed class ExposureArchitectureModelRuleParityTests
             .Should().NotContain(item => item.Code == "STXAPI005");
     }
 
+    [Fact]
+    public void HttpOutcomeRuleShouldRejectMiddlewareDelegatingToConcreteExposure()
+    {
+        TypeDependency concreteExposure = new()
+        {
+            TypeName = "Example.Exposures.RequestManager",
+            StandardElementType = StandardElementType.Exposure,
+            IsPublicInterface = false,
+        };
+
+        EvaluationContext context = CreateContext(
+            typeName: "RequestMiddleware",
+            isApiController: false,
+            dependencies: [concreteExposure]);
+
+        context.ArchitectureElement.Methods.Add(
+            new Method
+            {
+                Name = "InvokeAsync",
+                LineNumber = 12,
+                IsHttpRequestHandler = true,
+                HasTryCatch = false,
+                IncomingExceptionTypes = ["RequestServiceException"],
+                HttpResponses = [],
+                Calls =
+                [
+                    new MethodCall
+                    {
+                        TypeName = concreteExposure.TypeName,
+                        MethodName = "ProcessRequestAsync",
+                        StandardElementType = StandardElementType.Exposure,
+                    },
+                ],
+            });
+
+        new STXAPIRulesProcessingService().Evaluate(context: context)
+            .Should().ContainSingle(item => item.Code == "STXAPI005");
+    }
+
     private static EvaluationContext CreateContext(
         string typeName,
         bool isApiController,
