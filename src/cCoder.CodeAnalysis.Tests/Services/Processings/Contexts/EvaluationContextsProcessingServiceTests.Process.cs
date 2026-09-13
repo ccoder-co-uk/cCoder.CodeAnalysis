@@ -222,6 +222,8 @@ public sealed partial class EvaluationContextsProcessingServiceTests
 
         dependency.StandardElementType.Should()
             .Be(expected: StandardElementType.Exposure);
+
+        dependency.IsPublicInterface.Should().BeTrue();
     }
 
     [Fact]

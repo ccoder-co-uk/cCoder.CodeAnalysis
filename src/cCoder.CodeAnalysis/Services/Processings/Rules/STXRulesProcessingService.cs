@@ -356,11 +356,12 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         elementType == StandardElementType.HttpExposure
         && context.ArchitectureElement.IsPublic
         && dependency.StandardElementType == StandardElementType.Exposure
-        && context.ArchitectureModel.Interfaces.Any(predicate: element =>
-            element.Name == dependency.TypeName
-            && element.IsPublic
-            && element.Kind == ArchitectureTypeKind.Interface
-            && element.StandardElementType == StandardElementType.Exposure);
+        && (dependency.IsPublicInterface
+            || context.ArchitectureModel.Interfaces.Any(predicate: element =>
+                element.Name == dependency.TypeName
+                && element.IsPublic
+                && element.Kind == ArchitectureTypeKind.Interface
+                && element.StandardElementType == StandardElementType.Exposure));
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 

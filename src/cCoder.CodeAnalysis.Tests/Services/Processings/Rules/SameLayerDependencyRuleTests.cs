@@ -82,6 +82,24 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
+    public void HttpExposure_WhenDependingOnReferencedPublicExposureContract_IsNotReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.HttpExposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Templates.ITemplateManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.AnalysisDependencies.Single().IsInCurrentProject = false;
+        context.ArchitectureElement.AnalysisDependencies.Single().IsPublicInterface = true;
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
     public void Exposure_WhenDependingOnOrchestrationService_IsNotReported()
     {
         EvaluationContext context = CreateContext(
