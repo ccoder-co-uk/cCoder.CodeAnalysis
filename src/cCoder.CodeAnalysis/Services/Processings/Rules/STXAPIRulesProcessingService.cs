@@ -153,7 +153,7 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
             ? []
             : (context.ArchitectureElement?.Methods ?? [])
             .Where(method => method.IsHttpRequestHandler)
-            .Where(method => !HasCompleteHttpOutcomeMapping(method: method))
+            .Where(method => !HasCompleteHttpOutcomeMapping(context: context, method: method))
             .Select(method => new AnalysisItem
             {
                 Code = "STXAPI005",
@@ -163,8 +163,17 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                 LineNumber = method.LineNumber,
             });
 
-    private static bool HasCompleteHttpOutcomeMapping(Method method)
+    private static bool HasCompleteHttpOutcomeMapping(
+        EvaluationContext context,
+        Method method)
     {
+        if (IsMiddlewareDelegatingToPublicExposureContract(
+            context: context,
+            method: method))
+        {
+            return true;
+        }
+
         if (!method.HasTryCatch
             || !method.HttpResponses.Any(response => response.IsExceptionPath
                 && response.StatusCode is >= 400 and <= 599)
@@ -181,6 +190,29 @@ internal sealed class STXAPIRulesProcessingService : ISTXAPIRulesProcessingServi
                 && response.StatusCode is >= 400 and <= 599
                 && (response.ExceptionType == exceptionType
                     || response.ExceptionType == "System.Exception")));
+    }
+
+    private static bool IsMiddlewareDelegatingToPublicExposureContract(
+        EvaluationContext context,
+        Method method)
+    {
+        if (architectureModelQueries.IsApiController(context: context)
+            || !architectureModelQueries.GetTypeName(context: context)
+                .EndsWith(value: "Middleware", comparisonType: StringComparison.Ordinal)
+            || method.Name is not ("Invoke" or "InvokeAsync")
+            || method.Calls?.Count != 1)
+        {
+            return false;
+        }
+
+        MethodCall call = method.Calls[0];
+
+        return call.StandardElementType == StandardElementType.Exposure
+            && architectureModelQueries.GetDependencies(context: context)
+                .Any(dependency =>
+                    dependency.TypeName == call.TypeName
+                    && dependency.StandardElementType == StandardElementType.Exposure
+                    && dependency.IsPublicInterface);
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXAPI006(EvaluationContext context) =>
