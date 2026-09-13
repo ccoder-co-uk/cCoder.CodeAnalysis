@@ -6,7 +6,7 @@ using cCoder.CodeAnalysis.Sample.Models.Schools;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.SchoolImports;
 
-internal interface ISchoolImportAggregationService
+public interface ISchoolImportAggregationService
 {
     ValueTask ImportSchoolAsync(School school);
 }
