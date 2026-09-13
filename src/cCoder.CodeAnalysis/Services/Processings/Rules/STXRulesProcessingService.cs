@@ -309,7 +309,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     IsSameArchitecturalLayer(
                         elementType: elementType,
                         dependencyType: dependency.StandardElementType)
-                    && !IsPermittedHttpExposureContractDependency(
+                    && !IsPermittedFrameworkExposureContractDependency(
                         context: context,
                         elementType: elementType,
                         dependency: dependency))
@@ -349,11 +349,14 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         elementType is StandardElementType.Exposure
             or StandardElementType.HttpExposure;
 
-    private static bool IsPermittedHttpExposureContractDependency(
+    private static bool IsPermittedFrameworkExposureContractDependency(
         EvaluationContext context,
         StandardElementType elementType,
         TypeDependency dependency) =>
-        elementType == StandardElementType.HttpExposure
+        (elementType == StandardElementType.HttpExposure
+            || IsSignalRHubExposure(
+                context: context,
+                elementType: elementType))
         && context.ArchitectureElement.IsPublic
         && dependency.StandardElementType == StandardElementType.Exposure
         && (dependency.IsPublicInterface
@@ -362,6 +365,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 && element.IsPublic
                 && element.Kind == ArchitectureTypeKind.Interface
                 && element.StandardElementType == StandardElementType.Exposure));
+
+    private static bool IsSignalRHubExposure(
+        EvaluationContext context,
+        StandardElementType elementType) =>
+        elementType == StandardElementType.Exposure
+        && context.ArchitectureElement.BaseType is TypeReference baseType
+        && !baseType.IsInCurrentProject
+        && (baseType.FullName == "Microsoft.AspNetCore.SignalR.Hub"
+            || baseType.FullName.StartsWith(
+                value: "Microsoft.AspNetCore.SignalR.Hub<",
+                comparisonType: StringComparison.Ordinal));
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 

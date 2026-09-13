@@ -63,6 +63,62 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void HttpMiddleware_WhenInvokeAsyncInjectsPublicExposureContract_DoesNotReportDependencyBoundary()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public interface IRequestManager { object Process(ThirdParty.HttpContext context); } } "
+                + "namespace Example.Exposures.Middleware "
+                + "{ public sealed class ExampleMiddleware(ThirdParty.RequestDelegate next) "
+                + "{ public object InvokeAsync(ThirdParty.HttpContext context, "
+                + "Example.Exposures.IRequestManager manager) => manager.Process(context); } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { } "
+                + "public delegate object RequestDelegate(HttpContext context);",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.HttpExposure);
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void HttpMiddleware_WhenInvokeAsyncInjectsNonExposureDependency_ReportsDependencyBoundary()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Dependencies "
+                + "{ public sealed class RequestDependency { } } "
+                + "namespace Example.Exposures.Middleware "
+                + "{ public sealed class ExampleMiddleware(ThirdParty.RequestDelegate next) "
+                + "{ public object InvokeAsync(ThirdParty.HttpContext context, "
+                + "Example.Dependencies.RequestDependency dependency) => dependency; } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class HttpContext { } "
+                + "public delegate object RequestDelegate(HttpContext context);",
+            typeName: "Example.Exposures.Middleware.ExampleMiddleware");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.Exposure);
+        results.Should().ContainSingle(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void HttpMiddleware_WhenConstructorRequiresBusinessDependency_ReportsDependencyBoundary()
     {
         // Given
