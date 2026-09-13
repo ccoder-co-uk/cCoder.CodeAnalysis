@@ -100,6 +100,64 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
+    public void SignalRHubExposure_WhenDependingOnPublicExposureContract_IsNotReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Notifications.INotificationManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.BaseType = new TypeReference
+        {
+            Name = "Hub",
+            FullName = "Microsoft.AspNetCore.SignalR.Hub",
+            IsInCurrentProject = false,
+        };
+        context.ArchitectureModel.Interfaces.Add(item: new Class
+        {
+            Name = "Example.Exposures.Notifications.INotificationManager",
+            IsPublic = true,
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.Exposure,
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void SignalRHubExposure_WhenDependingOnConcreteExposure_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Notifications.NotificationManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.BaseType = new TypeReference
+        {
+            Name = "Hub",
+            FullName = "Microsoft.AspNetCore.SignalR.Hub",
+            IsInCurrentProject = false,
+        };
+        context.ArchitectureModel.Classes.Add(item: new Class
+        {
+            Name = "Example.Exposures.Notifications.NotificationManager",
+            IsPublic = true,
+            Kind = ArchitectureTypeKind.Class,
+            StandardElementType = StandardElementType.Exposure,
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "STX0004");
+    }
+
+    [Fact]
     public void Exposure_WhenDependingOnOrchestrationService_IsNotReported()
     {
         EvaluationContext context = CreateContext(
