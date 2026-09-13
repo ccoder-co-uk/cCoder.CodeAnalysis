@@ -62,7 +62,6 @@ internal sealed partial class ServiceCollectionProcessingService : IServiceColle
             services.AddScoped<IStudentEventHandlers, StudentEventHandlers>();
             services.AddScoped<ITeacherEventHandlers, TeacherEventHandlers>();
             services.AddScoped<ICourseEventHandlers, CourseEventHandlers>();
-            services.AddScoped<ISampleEventHandlers, SampleEventHandlers>();
             services.AddScoped<ISchoolOrchestrationService, SchoolOrchestrationService>();
             services.AddScoped<IStudentOrchestrationService, StudentOrchestrationService>();
             services.AddScoped<ITeacherOrchestrationService, TeacherOrchestrationService>();

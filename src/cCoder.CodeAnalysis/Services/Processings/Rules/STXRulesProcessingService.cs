@@ -20,6 +20,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             .Concat(second: ImplementsInfrastructureService(context: context)
                 ? []
                 : EvaluateSTX0001(context: context)
+                    .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateStandardElementTypeRules(context: context)));
     }
 
@@ -51,7 +52,6 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 EvaluateSTX0002(context: context)
                     .Concat(second: EvaluateSTX0003(context: context))
                     .Concat(second: EvaluateSTX0025(context: context))
-                    .Concat(second: EvaluateSTX0004(context: context))
                     .Concat(second: EvaluateSTX0005(context: context))
                     .Concat(second: EvaluateSTX0006(context: context))
                     .Concat(second: EvaluateSTX0007(context: context))
@@ -300,21 +300,50 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0004(EvaluationContext context)
     {
-        return (
-            !architectureModelQueries.GetDependencies(context: context).Any(
-                predicate: (TypeDependency dependency) => dependency.StandardElementType == architectureModelQueries.GetStandardElementType(context: context)
-            )
-        )
+        StandardElementType elementType = architectureModelQueries
+            .GetStandardElementType(context: context);
+
+        return !IsArchitecturalLayer(elementType: elementType)
+            || !architectureModelQueries.GetDependencies(context: context).Any(
+                predicate: (TypeDependency dependency) =>
+                    IsSameArchitecturalLayer(
+                        elementType: elementType,
+                        dependencyType: dependency.StandardElementType))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
                 CreateAnalysisItem(
                     code: "STX0004",
-                    description: "A service must not depend on another service at the same layer.",
+                    description: "An architectural element must not depend on another element at the same layer.",
                     context: context
                 ),
             };
     }
+
+    private static bool IsArchitecturalLayer(
+        StandardElementType elementType) =>
+        elementType is StandardElementType.Dependency
+            or StandardElementType.Broker
+            or StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService
+            or StandardElementType.Exposure
+            or StandardElementType.HttpExposure;
+
+    private static bool IsSameArchitecturalLayer(
+        StandardElementType elementType,
+        StandardElementType dependencyType) =>
+        elementType == dependencyType
+            || IsExposureLayer(elementType: elementType)
+                && IsExposureLayer(elementType: dependencyType);
+
+    private static bool IsExposureLayer(
+        StandardElementType elementType) =>
+        elementType is StandardElementType.Exposure
+            or StandardElementType.HttpExposure;
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 

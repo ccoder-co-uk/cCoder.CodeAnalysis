@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
-using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Sample.Services.Orchestrations.Students;
 using Microsoft.AspNetCore.Mvc;
 
 namespace cCoder.CodeAnalysis.Sample.Controllers;
@@ -13,7 +13,7 @@ namespace cCoder.CodeAnalysis.Sample.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 public sealed class StudentsController(
-    IStudentManager studentManager,
+    IStudentOrchestrationService studentOrchestrationService,
     ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpGet]
@@ -21,7 +21,7 @@ public sealed class StudentsController(
     {
         try
         {
-            return Ok(value: studentManager.GetStudents());
+            return Ok(value: studentOrchestrationService.GetStudents());
         }
         catch (Exception exception)
         {
@@ -35,7 +35,7 @@ public sealed class StudentsController(
     {
         try
         {
-            Student? student = studentManager.GetStudent(studentId: studentId);
+            Student? student = studentOrchestrationService.GetStudent(studentId: studentId);
 
             return (student == null)
                 ? ((ActionResult<Student>)NotFound())
@@ -53,7 +53,7 @@ public sealed class StudentsController(
     {
         try
         {
-            Student addedStudent = await studentManager.AddStudentAsync(newStudent: newStudent);
+            Student addedStudent = await studentOrchestrationService.AddStudentAsync(newStudent: newStudent);
 
             return CreatedAtAction(
                 actionName: "GetStudent",
@@ -73,7 +73,7 @@ public sealed class StudentsController(
     {
         try
         {
-            return Ok(value: await studentManager.UpdateStudentAsync(updatedStudent: updatedStudent));
+            return Ok(value: await studentOrchestrationService.UpdateStudentAsync(updatedStudent: updatedStudent));
         }
         catch (Exception exception)
         {
@@ -87,14 +87,14 @@ public sealed class StudentsController(
     {
         try
         {
-            Student? student = studentManager.GetStudent(studentId: studentId);
+            Student? student = studentOrchestrationService.GetStudent(studentId: studentId);
 
             if (student == null)
             {
                 return NotFound();
             }
 
-            await studentManager.DeleteStudentAsync(studentId: studentId);
+            await studentOrchestrationService.DeleteStudentAsync(studentId: studentId);
             return NoContent();
         }
         catch (ServiceValidationException exception)

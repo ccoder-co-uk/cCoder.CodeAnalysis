@@ -15,7 +15,7 @@ namespace cCoder.CodeAnalysis.Tests.StandardElementTypes;
 public sealed class PublicApiTests
 {
     [Fact]
-    public void SampleShouldOnlyExposeModelsExposuresAndRegistration()
+    public void SampleShouldOnlyExposeModelsExposuresRegistrationAndControllerContracts()
     {
         Assembly sampleAssembly = typeof(Student).Assembly;
         Type[] unexpectedTypes = sampleAssembly.GetExportedTypes()
@@ -27,6 +27,9 @@ public sealed class PublicApiTests
                 && !type.Namespace.Contains(".RuleViolations", StringComparison.Ordinal)
                 && type.Name != "ILoggingBroker"
                 && type.Name != "IServiceCollectionExtensions"
+                && !IsControllerContract(
+                    type: type,
+                    assembly: sampleAssembly)
             )
             .ToArray();
         ((IEnumerable<Type>)unexpectedTypes).Should().BeEmpty("");
@@ -44,6 +47,18 @@ public sealed class PublicApiTests
                 ""
             );
     }
+
+    private static bool IsControllerContract(
+        Type type,
+        Assembly assembly) =>
+        type.IsInterface
+        && assembly.GetExportedTypes()
+            .Where(candidate => candidate.Namespace?.Contains(
+                value: ".Controllers",
+                comparisonType: StringComparison.Ordinal) == true)
+            .SelectMany(selector: candidate => candidate.GetConstructors())
+            .SelectMany(selector: constructor => constructor.GetParameters())
+            .Any(predicate: parameter => parameter.ParameterType == type);
 
     [Fact]
     public void CodeAnalysisShouldOnlyExposeModelsExposuresAndRegistration()
