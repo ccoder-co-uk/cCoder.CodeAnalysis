@@ -18,7 +18,7 @@ internal sealed partial class StudentProcessingService(IStudentService studentSe
     public ValueTask AddOrUpdateStudentsAsync(IEnumerable<Student> students, int schoolId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: [students, schoolId]);
+            ValidateOrUpdateStudentsOnAdd(inputs: [students, schoolId]);
 
             foreach (Student student in students)
             {
@@ -38,7 +38,7 @@ internal sealed partial class StudentProcessingService(IStudentService studentSe
     public ValueTask DeleteStudentsAsync(IEnumerable<Student> deletedStudents) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: deletedStudents);
+            ValidateStudentsOnDelete(inputs: deletedStudents);
 
             foreach (Student deletedStudent in deletedStudents)
             {

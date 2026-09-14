@@ -38,7 +38,7 @@ internal sealed partial class ServiceCollectionProcessingService : IServiceColle
     public IServiceCollection AddCodeAnalysisSample(IServiceCollection services, string connectionString) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: [services, connectionString]);
+            ValidateCodeAnalysisSampleOnAdd(inputs: [services, connectionString]);
             services.AddEventing();
 
             services.AddDbContextFactory<SchoolContext>(

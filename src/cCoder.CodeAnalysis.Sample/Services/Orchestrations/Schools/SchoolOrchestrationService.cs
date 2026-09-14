@@ -14,7 +14,7 @@ internal sealed partial class SchoolOrchestrationService(ISchoolService schoolSe
     public School? GetSchool(int schoolId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: schoolId);
+            ValidateSchoolOnGet(inputs: schoolId);
             return schoolService.GetSchool(schoolId: schoolId);
         });
 
@@ -26,7 +26,7 @@ internal sealed partial class SchoolOrchestrationService(ISchoolService schoolSe
     public ValueTask<School> AddSchoolAsync(School newSchool) =>
         TryCatch<School>(operation: async () =>
         {
-            Validate(inputs: newSchool);
+            ValidateSchoolOnAdd(inputs: newSchool);
             School result = await schoolService.AddSchoolAsync(newSchool: WithoutRelationships(school: newSchool));
             newSchool.Id = result.Id;
             await eventService.RaiseAddEventAsync(entityName: "newSchool", entity: newSchool);
@@ -36,7 +36,7 @@ internal sealed partial class SchoolOrchestrationService(ISchoolService schoolSe
     public ValueTask<School> UpdateSchoolAsync(School updatedSchool) =>
         TryCatch<School>(operation: async () =>
         {
-            Validate(inputs: updatedSchool);
+            ValidateSchoolOnUpdate(inputs: updatedSchool);
             await schoolService.UpdateSchoolAsync(updatedSchool: WithoutRelationships(school: updatedSchool));
             await eventService.RaiseUpdateEventAsync(entityName: "updatedSchool", entity: updatedSchool);
             return updatedSchool;
@@ -45,7 +45,7 @@ internal sealed partial class SchoolOrchestrationService(ISchoolService schoolSe
     public ValueTask DeleteSchoolAsync(int schoolId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: schoolId);
+            ValidateSchoolOnDelete(inputs: schoolId);
             School? updatedSchool = schoolService.GetSchool(schoolId: schoolId);
 
             if (updatedSchool != null)

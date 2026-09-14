@@ -18,6 +18,112 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class DependencyBoundaryRuleGapTests
 {
     [Fact]
+    public void FoundationValidation_WhenDelegatedToSharedRulesEngine_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Processings.Validations "
+                + "{ internal static class ValidationRulesEngine "
+                + "{ internal static void Validate(params object[] inputs) { } } } "
+                + "namespace Example.Services.Foundations "
+                + "{ internal sealed partial class StudentService "
+                + "{ public void AddStudent(object student) "
+                + "=> TryCatch(() => { ValidateStudentOnAdd(student); }); "
+                + "private static void ValidateStudentOnAdd(object student) "
+                + "=> Example.Services.Processings.Validations.ValidationRulesEngine.Validate(student); "
+                + "private static void TryCatch(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Foundations.StudentService",
+            sourcePath: "StudentService.Validations.cs");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0012");
+    }
+
+    [Fact]
+    public void FoundationValidation_WhenDelegatedToLocalCollector_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Foundations "
+                + "{ internal sealed partial class StudentService "
+                + "{ public void AddStudent(object student) "
+                + "=> TryCatch(() => { ValidateStudentOnAdd(student); }); "
+                + "private static void ValidateStudentOnAdd(object student) "
+                + "=> Validate(student); "
+                + "private static void Validate(object student) { } "
+                + "private static void TryCatch(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Foundations.StudentService",
+            sourcePath: "StudentService.Validations.cs");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0012");
+    }
+
+    [Fact]
+    public void ProcessingValidation_WhenDelegatedToSharedRulesEngine_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Processings.Validations "
+                + "{ internal static class ValidationRulesEngine "
+                + "{ internal static void Validate(params object[] inputs) { } } } "
+                + "namespace Example.Services.Processings "
+                + "{ internal sealed partial class StudentProcessingService "
+                + "{ public void AddStudent(object student) "
+                + "=> TryCatch(() => { ValidateStudentOnAdd(student); }); "
+                + "private static void ValidateStudentOnAdd(object student) "
+                + "=> Example.Services.Processings.Validations.ValidationRulesEngine.Validate(student); "
+                + "private static void TryCatch(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Processings.StudentProcessingService",
+            sourcePath: "StudentProcessingService.Validations.cs");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0012");
+    }
+
+    [Fact]
+    public void ProcessingOperation_WhenCallingGenericCollectorDirectly_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Processings "
+                + "{ internal sealed partial class StudentProcessingService "
+                + "{ public void AddStudent(object student) "
+                + "=> TryCatch(() => { Validate(student); }); "
+                + "private static void Validate(object student) { } "
+                + "private static void TryCatch(System.Action operation) => operation(); } }",
+            typeName: "Example.Services.Processings.StudentProcessingService",
+            sourcePath: "StudentProcessingService.Validations.cs");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0023");
+    }
+
+    [Fact]
     public void HttpMiddleware_WhenDelegatingToLocalPublicExposureContract_DoesNotReportMissingOutcomeMapping()
     {
         // Given
@@ -1491,7 +1597,8 @@ public sealed class DependencyBoundaryRuleGapTests
     private static EvaluationContext CreateContext(
         string source,
         string typeName,
-        string? externalSource = null)
+        string? externalSource = null,
+        string sourcePath = "DependencyBoundary.cs")
     {
         MetadataReference[] additionalReferences = externalSource is null
             ? []
@@ -1499,7 +1606,7 @@ public sealed class DependencyBoundaryRuleGapTests
 
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
             text: source,
-            path: "DependencyBoundary.cs");
+            path: sourcePath);
 
         CSharpCompilation compilation = CSharpCompilation.Create(
             assemblyName: "Example",

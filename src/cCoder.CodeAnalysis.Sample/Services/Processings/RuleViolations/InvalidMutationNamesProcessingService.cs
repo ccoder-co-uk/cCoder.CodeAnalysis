@@ -20,7 +20,7 @@ internal sealed partial class InvalidMutationNamesProcessingService : IInvalidMu
 =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: [student]);
+            ValidateStudentOnAdd(inputs: [student]);
             return student;
         });
 
@@ -28,7 +28,7 @@ internal sealed partial class InvalidMutationNamesProcessingService : IInvalidMu
 =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: [student]);
+            ValidateStudentOnUpdate(inputs: [student]);
             return student;
         });
 
@@ -36,7 +36,7 @@ internal sealed partial class InvalidMutationNamesProcessingService : IInvalidMu
 =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: [student]);
+            ValidateStudentOnDelete(inputs: [student]);
             return student;
         });
 }

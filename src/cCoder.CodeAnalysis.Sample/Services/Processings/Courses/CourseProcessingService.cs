@@ -12,7 +12,7 @@ internal sealed partial class CourseProcessingService(ICourseService courseServi
     public ValueTask AddOrUpdateCoursesAsync(IEnumerable<Course> courses, int schoolId, int? teacherId = null) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: [courses, schoolId]);
+            ValidateOrUpdateCoursesOnAdd(inputs: [courses, schoolId]);
 
             foreach (Course course in courses)
             {
@@ -33,7 +33,7 @@ internal sealed partial class CourseProcessingService(ICourseService courseServi
     public ValueTask DeleteCoursesAsync(IEnumerable<Course> deletedCourses) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: deletedCourses);
+            ValidateCoursesOnDelete(inputs: deletedCourses);
 
             foreach (Course deletedCourse in deletedCourses)
             {

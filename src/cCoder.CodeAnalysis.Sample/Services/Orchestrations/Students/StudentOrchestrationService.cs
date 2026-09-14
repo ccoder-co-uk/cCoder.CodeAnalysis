@@ -16,7 +16,7 @@ internal sealed partial class StudentOrchestrationService(
     public Student? GetStudent(int studentId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: studentId);
+            ValidateStudentOnGet(inputs: studentId);
             return studentService.GetStudent(studentId: studentId);
         });
 
@@ -28,7 +28,7 @@ internal sealed partial class StudentOrchestrationService(
     public ValueTask<Student> AddStudentAsync(Student newStudent) =>
         TryCatch<Student>(operation: async () =>
         {
-            Validate(inputs: newStudent);
+            ValidateStudentOnAdd(inputs: newStudent);
 
             Student result = await studentService.AddStudentAsync(
                 newStudent: WithoutRelationships(student: newStudent)
@@ -42,7 +42,7 @@ internal sealed partial class StudentOrchestrationService(
     public ValueTask<Student> UpdateStudentAsync(Student updatedStudent) =>
         TryCatch<Student>(operation: async () =>
         {
-            Validate(inputs: updatedStudent);
+            ValidateStudentOnUpdate(inputs: updatedStudent);
             await studentService.UpdateStudentAsync(updatedStudent: WithoutRelationships(student: updatedStudent));
             await eventService.RaiseUpdateEventAsync(entityName: "updatedStudent", entity: updatedStudent);
             return updatedStudent;
@@ -51,7 +51,7 @@ internal sealed partial class StudentOrchestrationService(
     public ValueTask DeleteStudentAsync(int studentId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: studentId);
+            ValidateStudentOnDelete(inputs: studentId);
             Student? updatedStudent = studentService.GetStudent(studentId: studentId);
 
             if (updatedStudent != null)
