@@ -36,12 +36,20 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 .Concat(second: extensionContainerRules);
         }
 
+        IEnumerable<AnalysisItem> extensionMethodNamingRules = facts is null
+            ? []
+            : EvaluateSTXE007(
+                context: context,
+                facts: facts,
+                extensionContainerName: typeName);
+
         return EvaluateSTXE001(context: context, facts: facts)
             .Concat(second: EvaluateSTXE002(context: context, facts: facts))
             .Concat(second: EvaluateSTXE003(context: context))
             .Concat(second: EvaluateSTXE004(context: context))
             .Concat(second: EvaluateSTXE005(context: context, facts: facts))
-            .Concat(second: EvaluateSTXE008(context: context));
+            .Concat(second: EvaluateSTXE008(context: context))
+            .Concat(second: extensionMethodNamingRules);
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXE006(
