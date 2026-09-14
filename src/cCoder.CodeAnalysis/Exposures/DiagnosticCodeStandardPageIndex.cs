@@ -260,6 +260,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXF002", standardPageUri: $"{FoundationsPage}#2121-single-entity-integration"),
         new(diagnosticCode: "STXF003", standardPageUri: $"{FoundationsPage}#2120-pure-primitive"),
         new(diagnosticCode: "STXF004", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
+        new(diagnosticCode: "STXF005", standardPageUri: $"{FoundationsPage}#2121-single-entity-integration"),
         new(
             diagnosticCode: "STXFORMAT001",
             firstStandardPageUri: $"{PrinciplesPage}#029-readability-over-optimization",

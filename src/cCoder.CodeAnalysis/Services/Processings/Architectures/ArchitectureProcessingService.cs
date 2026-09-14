@@ -974,9 +974,17 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         string targetTypeName = targetMethod.ContainingType.ToDisplayString();
 
         bool isBehavioralPlatformApi =
-            targetTypeName == "System.Text.RegularExpressions.Regex"
+            targetTypeName == "System.Environment"
+            || targetTypeName == "System.Random"
+            || targetTypeName == "System.Text.Encoding"
+            || targetTypeName == "System.Text.RegularExpressions.Regex"
             || targetTypeName is "System.Text.Json.JsonSerializer"
-                or "System.Text.Json.JsonDocument";
+                or "System.Text.Json.JsonDocument"
+            || targetTypeName.StartsWith("System.Diagnostics.", StringComparison.Ordinal)
+            || targetTypeName.StartsWith("System.IO.", StringComparison.Ordinal)
+            || targetTypeName.StartsWith("System.Net.", StringComparison.Ordinal)
+            || targetTypeName.StartsWith("System.Reflection.", StringComparison.Ordinal)
+            || targetTypeName.StartsWith("System.Security.Cryptography.", StringComparison.Ordinal);
 
         if (isPlatformAssembly && !isBehavioralPlatformApi)
         {

@@ -18,4 +18,11 @@ internal sealed partial class InvalidAtomicFoundationService(IStudentBroker stud
 
         return newStudent;
     }
+
+    private static void UseSecondBroker() =>
+        new global::cCoder.CodeAnalysis.Sample.Brokers.RuleViolations.InvalidBroker(
+            httpClient: null!,
+            random: null!,
+            studentService: null!)
+        .Execute(shouldExecute: false);
 }

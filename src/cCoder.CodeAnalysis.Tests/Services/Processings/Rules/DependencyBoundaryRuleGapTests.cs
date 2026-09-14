@@ -1318,6 +1318,148 @@ public sealed class DependencyBoundaryRuleGapTests
         results.Should().NotContain(result => result.Code == "STXD005");
     }
 
+    [Fact]
+    public void FoundationService_WhenDependingOnExposure_IsRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures { public interface IAuthorizationManager { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Exposures.IAuthorizationManager authorizationManager) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXF002");
+    }
+
+    [Fact]
+    public void FoundationService_WhenDependingOnMultipleOrdinaryBrokers_IsRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } public interface ICourseBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Brokers.IStudentBroker studentBroker, "
+                + "Example.Brokers.ICourseBroker courseBroker) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXF005");
+    }
+
+    [Fact]
+    public void ProcessingService_WhenConstructingBrokerInsideOrdinaryMethod_IsRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public sealed class StudentBroker { public void Select() { } } } "
+                + "namespace Example.Services.Processings "
+                + "{ public sealed class StudentProcessingService "
+                + "{ public void Execute() => new Example.Brokers.StudentBroker().Select(); } }",
+            typeName: "Example.Services.Processings.StudentProcessingService");
+
+        // When
+        AnalysisItem[] results = new STXPRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.AnalysisDependencies.Should().ContainSingle(
+            dependency => dependency.TypeName == "Example.Brokers.StudentBroker");
+        results.Should().ContainSingle(result => result.Code == "STXP001");
+    }
+
+    [Fact]
+    public void ProcessingService_WhenCallingFileOpen_IsReportedAsExternalApiUsage()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Processings; "
+                + "public sealed class StudentProcessingService "
+                + "{ public System.IO.Stream Execute(string path) "
+                + "=> System.IO.File.Open(path, System.IO.FileMode.Open); }",
+            typeName: "Example.Services.Processings.StudentProcessingService");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXD005");
+    }
+
+    [Fact]
+    public void FoundationService_WhenBrokerImplementsUtilityMarker_IsAllowedAlongsideSubjectBroker()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface IUtilityBroker { } } "
+                + "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } "
+                + "public interface ITelemetryBroker : "
+                + "cCoder.CodeAnalysis.Exposures.IUtilityBroker { } "
+                + "internal sealed class StudentBroker : IStudentBroker { } "
+                + "internal sealed class TelemetryBroker : ITelemetryBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Brokers.IStudentBroker studentBroker, "
+                + "Example.Brokers.ITelemetryBroker telemetryBroker) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result =>
+            result.Code == "STXF002" || result.Code == "STXF005");
+    }
+
+    [Fact]
+    public void FoundationService_WhenLoggingBrokerLacksUtilityMarker_IsNotImplicitlyExempt()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } public interface ILoggingBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Brokers.IStudentBroker studentBroker, "
+                + "Example.Brokers.ILoggingBroker loggingBroker) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXF005");
+    }
+
     private static EvaluationContext CreateNewtonsoftContext(
         string namespaceName,
         string methodBody) =>

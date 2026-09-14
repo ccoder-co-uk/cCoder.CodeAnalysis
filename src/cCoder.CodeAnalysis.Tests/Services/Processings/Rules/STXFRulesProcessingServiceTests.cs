@@ -61,7 +61,8 @@ public sealed class STXFRulesProcessingServiceTests
                 new TypeDependency
                 {
                     TypeName = "Example.Brokers.Loggings.LoggingBroker",
-                    StandardElementType = StandardElementType.Broker
+                    StandardElementType = StandardElementType.Broker,
+                    IsUtilityBroker = true,
                 }
             ]
         };

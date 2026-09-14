@@ -12,20 +12,5 @@ public sealed class TypeDependency
     public bool IsInCurrentProject { get; set; } = true;
     public bool IsPublicInterface { get; set; }
 
-    public bool IsUtilityBroker
-    {
-        get
-        {
-            if (StandardElementType != StandardElementType.Broker)
-            {
-                return false;
-            }
-
-            string shortName = TypeName.Split(separator: ['.']).Last();
-
-            return shortName is "LoggingBroker" or "ILoggingBroker"
-                || shortName.StartsWith(value: "LoggingBroker<", comparisonType: StringComparison.Ordinal)
-                || shortName.StartsWith(value: "ILoggingBroker<", comparisonType: StringComparison.Ordinal);
-        }
-    }
+    public bool IsUtilityBroker { get; set; }
 }

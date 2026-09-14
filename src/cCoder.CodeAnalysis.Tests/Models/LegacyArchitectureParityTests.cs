@@ -24,7 +24,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToArray();
 
-        diagnosticGroups.Should().HaveCount(90, "");
+        diagnosticGroups.Should().HaveCount(91, "");
         diagnosticGroups
             .Where(group => group.Key != "STXM001")
             .Should()
