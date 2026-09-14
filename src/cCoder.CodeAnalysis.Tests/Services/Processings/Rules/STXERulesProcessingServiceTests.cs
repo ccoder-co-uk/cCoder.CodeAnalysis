@@ -13,6 +13,52 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
 public sealed class STXERulesProcessingServiceTests
 {
+    [Fact]
+    public void ExtensionMethod_WhenContainerIsNotNamedForReceiver_IsReported()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            public static class TypeDependency
+            {
+                public static bool IsModel(this Type type) => true;
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "Example.Dependencies.TypeDependency");
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .ContainSingle(
+                predicate: item => item.Code == "STXE007");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenContainerIsNamedForReceiver_IsNotReported()
+    {
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            public static class TypeExtensions
+            {
+                public static bool IsModel(this Type type) => true;
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "Example.Exposures.TypeExtensions");
+
+        STXERulesProcessingService service = new();
+
+        service.Evaluate(context: context)
+            .Should()
+            .NotContain(
+                predicate: item => item.Code == "STXE007");
+    }
+
     [Theory]
     [InlineData("AIConfigurationExtensions")]
     [InlineData("AIConfigurationProviderExtensions")]
