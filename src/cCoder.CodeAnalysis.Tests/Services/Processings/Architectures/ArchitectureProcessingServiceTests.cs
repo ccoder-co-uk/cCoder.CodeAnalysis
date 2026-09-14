@@ -185,7 +185,7 @@ public sealed class ArchitectureProcessingServiceTests
     }
 
     [Fact]
-    public void ProcessShouldClassifyFrameworkControllerWrapperAsDependency()
+    public void ProcessShouldClassifyFrameworkControllerWrapperAsHttpExposure()
     {
         SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(
             text:
@@ -216,7 +216,7 @@ public sealed class ArchitectureProcessingServiceTests
         Architecture architecture = service.Process(compilation).Architecture;
 
         architecture.Classes.Single(element => element.Name.EndsWith("ControllerDependency"))
-            .StandardElementType.Should().Be(StandardElementType.Dependency, "");
+            .StandardElementType.Should().Be(StandardElementType.HttpExposure, "");
     }
 
     [Fact]

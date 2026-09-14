@@ -312,6 +312,10 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                     && !IsPermittedFrameworkExposureContractDependency(
                         context: context,
                         elementType: elementType,
+                        dependency: dependency)
+                    && !IsPermittedFrameworkHttpResultAdapterDependency(
+                        context: context,
+                        elementType: elementType,
                         dependency: dependency))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
@@ -377,6 +381,22 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             || baseType.FullName.StartsWith(
                 value: "Microsoft.AspNetCore.SignalR.Hub<",
                 comparisonType: StringComparison.Ordinal));
+
+    private static bool IsPermittedFrameworkHttpResultAdapterDependency(
+        EvaluationContext context,
+        StandardElementType elementType,
+        TypeDependency dependency) =>
+        elementType == StandardElementType.HttpExposure
+        && context.ArchitectureElement.AnalysisIsApiController
+        && dependency.StandardElementType == StandardElementType.HttpExposure
+        && context.ArchitectureModel.Classes.Any(element =>
+            element.Name == dependency.TypeName
+            && element.IsPublic
+            && element.Name.EndsWith(
+                value: "Result",
+                comparisonType: StringComparison.Ordinal)
+            && element.BaseType is TypeReference baseType
+            && !baseType.IsInCurrentProject);
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0005(EvaluationContext context) =>
 

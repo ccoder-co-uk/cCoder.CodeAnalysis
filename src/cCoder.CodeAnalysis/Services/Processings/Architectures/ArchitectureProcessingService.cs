@@ -1575,6 +1575,18 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Model;
         }
 
+        if (IsHttpController(type: type)
+            || IsFrameworkHttpResult(type: type))
+        {
+            return StandardElementType.HttpExposure;
+        }
+
+        if (InheritsFromTypeNamed(type: type, typeName: "Hub")
+            || InheritsFromTypeNamed(type: type, typeName: "BackgroundService"))
+        {
+            return StandardElementType.Exposure;
+        }
+
         if (DeclaresDependencyIntent(type: type)
             && (InheritsFromExternalType(type: type)
                 || ImplementsExternalInterface(type: type)
@@ -1584,10 +1596,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Dependency;
         }
 
-        if (
-            IsHttpController(type: type)
-            || IsHttpMiddleware(type: type)
-        )
+        if (IsHttpMiddleware(type: type))
         {
             return StandardElementType.HttpExposure;
         }
@@ -1696,6 +1705,16 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         || InheritsFromTypeNamed(type: type, typeName: "ODataController")
         || type.GetAttributes().Any(attribute =>
             attribute.AttributeClass?.Name == "ApiControllerAttribute");
+
+    private static bool IsFrameworkHttpResult(INamedTypeSymbol type) =>
+        type.DeclaredAccessibility == Accessibility.Public
+        && (InheritsFromTypeNamed(type: type, typeName: "ActionResult")
+            || type.AllInterfaces.Any(contract => contract.Name == "IActionResult")
+            || (type.Name.EndsWith(value: "Result", comparisonType: StringComparison.Ordinal)
+                && type.ContainingNamespace.ToDisplayString().Contains(
+                    value: ".Api",
+                    comparisonType: StringComparison.Ordinal)
+                && InheritsFromExternalType(type: type)));
 
     private static bool IsHttpMiddleware(INamedTypeSymbol type) =>
         type.AllInterfaces.Any(contract => contract.Name == "IMiddleware")
