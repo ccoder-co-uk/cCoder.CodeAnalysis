@@ -452,11 +452,6 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0012(EvaluationContext context)
     {
-        if (architectureModelQueries.GetStandardElementType(context: context) != StandardElementType.FoundationService)
-        {
-            return [];
-        }
-
         MethodDeclarationSyntax[] publicMethods = GetPublicMethods(context: context);
 
         if (!publicMethods.Any(predicate: RequiresOperationSpecificValidation))
@@ -481,10 +476,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             && operationValidationMethods.All(predicate: method =>
                 method.DescendantNodes()
                     .OfType<InvocationExpressionSyntax>()
-                    .Any(predicate: invocation =>
-                        invocation.Expression.ToString().EndsWith(
-                            value: "Validate",
-                            comparisonType: StringComparison.Ordinal)));
+                    .Any(predicate: IsLocalValidationCollectorInvocation));
 
         return CreateWhenInvalid(
             isInvalid: !usesValidationCollector,
@@ -492,6 +484,17 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             description: "Business-operation validation methods must evaluate their rules through a validation collector.",
             context: context);
     }
+
+    private static bool IsLocalValidationCollectorInvocation(
+        InvocationExpressionSyntax invocation) =>
+        invocation.Expression is IdentifierNameSyntax
+        {
+            Identifier.Text: "Validate"
+        }
+        || invocation.Expression is GenericNameSyntax
+        {
+            Identifier.Text: "Validate"
+        };
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0013(EvaluationContext context) =>
         CreateWhenInvalid(
@@ -516,8 +519,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static IEnumerable<AnalysisItem> EvaluateSTX0023(EvaluationContext context) =>
         CreateWhenInvalid(
-            isInvalid: architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.FoundationService
-                && !GetPublicMethods(context: context).All(predicate: UsesOperationSpecificValidation),
+            isInvalid: !GetPublicMethods(context: context).All(predicate: UsesOperationSpecificValidation),
             code: "STX0023",
             description: "Each business operation must call its operation-specific validation method.",
             context: context);

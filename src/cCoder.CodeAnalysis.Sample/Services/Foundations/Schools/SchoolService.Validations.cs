@@ -3,7 +3,6 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Models.Schools;
-using cCoder.CodeAnalysis.Sample.Services.Processings.Validations;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Foundations.Schools;
 
@@ -11,7 +10,10 @@ internal sealed partial class SchoolService
 {
     private static void Validate(params object?[] inputs)
     {
-        ValidationRulesEngine.Validate(inputs: inputs);
+        if (inputs.Any(predicate: (object? input) => input is null))
+        {
+            throw new ArgumentNullException(nameof(inputs));
+        }
     }
 
     private static void ValidateSchoolOnGet(int schoolId) =>

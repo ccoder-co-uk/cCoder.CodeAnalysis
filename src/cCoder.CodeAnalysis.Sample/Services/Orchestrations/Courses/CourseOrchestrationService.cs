@@ -14,7 +14,7 @@ internal sealed partial class CourseOrchestrationService(ICourseService courseSe
     public Course? GetCourse(int courseId) =>
         TryCatch(operation: () =>
         {
-            Validate(inputs: courseId);
+            ValidateCourseOnGet(inputs: courseId);
             return courseService.GetCourse(courseId: courseId);
         });
 
@@ -26,7 +26,7 @@ internal sealed partial class CourseOrchestrationService(ICourseService courseSe
     public ValueTask<Course> AddCourseAsync(Course newCourse) =>
         TryCatch<Course>(operation: async () =>
         {
-            Validate(inputs: newCourse);
+            ValidateCourseOnAdd(inputs: newCourse);
             Course result = await courseService.AddCourseAsync(newCourse: WithoutRelationships(course: newCourse));
             newCourse.Id = result.Id;
             await eventService.RaiseAddEventAsync(entityName: "newCourse", entity: newCourse);
@@ -36,7 +36,7 @@ internal sealed partial class CourseOrchestrationService(ICourseService courseSe
     public ValueTask<Course> UpdateCourseAsync(Course updatedCourse) =>
         TryCatch<Course>(operation: async () =>
         {
-            Validate(inputs: updatedCourse);
+            ValidateCourseOnUpdate(inputs: updatedCourse);
             await courseService.UpdateCourseAsync(updatedCourse: WithoutRelationships(course: updatedCourse));
             await eventService.RaiseUpdateEventAsync(entityName: "updatedCourse", entity: updatedCourse);
             return updatedCourse;
@@ -45,7 +45,7 @@ internal sealed partial class CourseOrchestrationService(ICourseService courseSe
     public ValueTask DeleteCourseAsync(int courseId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: courseId);
+            ValidateCourseOnDelete(inputs: courseId);
             Course? updatedCourse = courseService.GetCourse(courseId: courseId);
 
             if (updatedCourse != null)

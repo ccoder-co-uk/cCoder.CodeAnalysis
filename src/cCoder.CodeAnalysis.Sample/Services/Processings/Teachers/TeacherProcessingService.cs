@@ -12,7 +12,7 @@ internal sealed partial class TeacherProcessingService(ITeacherService teacherSe
     public ValueTask AddOrUpdateTeachersAsync(IEnumerable<Teacher> teachers, int schoolId) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: [teachers, schoolId]);
+            ValidateOrUpdateTeachersOnAdd(inputs: [teachers, schoolId]);
 
             foreach (Teacher teacher in teachers)
             {
@@ -32,7 +32,7 @@ internal sealed partial class TeacherProcessingService(ITeacherService teacherSe
     public ValueTask DeleteTeachersAsync(IEnumerable<Teacher> deletedTeachers) =>
         TryCatch(operation: async () =>
         {
-            Validate(inputs: deletedTeachers);
+            ValidateTeachersOnDelete(inputs: deletedTeachers);
 
             foreach (Teacher deletedTeacher in deletedTeachers)
             {
