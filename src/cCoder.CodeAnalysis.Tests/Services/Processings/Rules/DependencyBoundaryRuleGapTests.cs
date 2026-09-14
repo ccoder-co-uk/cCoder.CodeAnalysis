@@ -227,6 +227,113 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void HttpControllerDependency_WhenInheritingFrameworkController_IsClassifiedAsHttpExposure()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Dependencies; "
+                + "public sealed class StudentControllerDependency : ThirdParty.ODataController "
+                + "{ public StudentControllerDependency() { } }",
+            externalSource:
+                "namespace ThirdParty; public abstract class ODataController { }",
+            typeName: "Example.Dependencies.StudentControllerDependency");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.HttpExposure);
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void HttpController_WhenConstructingFrameworkResultAdapter_DoesNotReportLayerViolation()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Api.OData "
+                + "{ public sealed class BadRequestResult : "
+                + "Microsoft.AspNetCore.Mvc.BadRequestObjectResult { } } "
+                + "namespace Example.Exposures.Controllers "
+                + "{ public sealed class StudentController : "
+                + "Microsoft.AspNetCore.Mvc.ControllerBase "
+                + "{ public object Post() => new Example.Api.OData.BadRequestResult(); } }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.Mvc "
+                + "{ public abstract class ControllerBase { } "
+                + "public abstract class ActionResult { } "
+                + "public class BadRequestObjectResult : ActionResult { } }",
+            typeName: "Example.Exposures.Controllers.StudentController");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureModel.Classes
+            .Single(element => element.Name == "Example.Api.OData.BadRequestResult")
+            .StandardElementType.Should().Be(StandardElementType.HttpExposure);
+
+        results.Should().NotContain(result =>
+            result.Code == "STXD001" || result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void HubDependency_WhenInheritingFrameworkHub_IsClassifiedAsExposure()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Dependencies; "
+                + "public sealed class NotificationHubDependency : "
+                + "Microsoft.AspNetCore.SignalR.Hub { }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.SignalR; public abstract class Hub { }",
+            typeName: "Example.Dependencies.NotificationHubDependency");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(StandardElementType.Exposure);
+        results.Should().NotContain(result => result.Code == "STXD002");
+    }
+
+    [Fact]
+    public void BackgroundServiceDependency_WhenInheritingFrameworkBackgroundService_IsClassifiedAsExposure()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Dependencies; "
+                + "public sealed class QueueBackgroundServiceDependency : "
+                + "Microsoft.Extensions.Hosting.BackgroundService { }",
+            externalSource:
+                "namespace Microsoft.Extensions.Hosting; "
+                + "public abstract class BackgroundService { }",
+            typeName: "Example.Dependencies.QueueBackgroundServiceDependency");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(StandardElementType.Exposure);
+        results.Should().NotContain(result => result.Code == "STXD002");
+    }
+
+    [Fact]
     public void HttpMiddleware_WhenInvokeAsyncRequiresHttpContext_DoesNotReportDependencyBoundary()
     {
         // Given
@@ -1541,6 +1648,32 @@ public sealed class DependencyBoundaryRuleGapTests
         // Then
         results.Should().NotContain(result =>
             result.Code == "STXF002" || result.Code == "STXF005");
+    }
+
+    [Fact]
+    public void Exposure_WhenLocalBrokerContractIsUtilityMarked_IsAllowedToConsumeIt()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface IUtilityBroker { } } "
+                + "namespace Example.Brokers "
+                + "{ public interface ILoggingBroker : "
+                + "cCoder.CodeAnalysis.Exposures.IUtilityBroker { } "
+                + "internal sealed class LoggingBroker : ILoggingBroker { } } "
+                + "namespace Example.Exposures "
+                + "{ public sealed class StudentManager("
+                + "Example.Brokers.ILoggingBroker loggingBroker) { } }",
+            typeName: "Example.Exposures.StudentManager");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
     }
 
     [Fact]

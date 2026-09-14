@@ -339,7 +339,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
     }
 
     [Fact]
-    public void ProcessShouldClassifyFrameworkControllerWrapperAsDependency()
+    public void ProcessShouldClassifyFrameworkControllerWrapperAsHttpExposure()
     {
         const string source =
             """
@@ -358,7 +358,7 @@ public sealed partial class EvaluationContextsProcessingServiceTests
             .Single();
 
         context.ArchitectureElement.StandardElementType.Should()
-            .Be(expected: StandardElementType.Dependency);
+            .Be(expected: StandardElementType.HttpExposure);
     }
 
     [Fact]
