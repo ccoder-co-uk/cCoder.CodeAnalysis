@@ -147,6 +147,7 @@ public sealed class ServiceArchitectureModelRuleParityTests
                 {
                     TypeName = "ILoggingBroker",
                     StandardElementType = StandardElementType.Broker,
+                    IsUtilityBroker = true,
                 },
                 new TypeDependency
                 {

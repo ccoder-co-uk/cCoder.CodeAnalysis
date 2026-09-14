@@ -18,7 +18,8 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
         return EvaluateSTXF001(context: context)
             .Concat(second: EvaluateSTXF002(context: context))
             .Concat(second: EvaluateSTXF003(context: context))
-            .Concat(second: EvaluateSTXF004(context: context));
+            .Concat(second: EvaluateSTXF004(context: context))
+            .Concat(second: EvaluateSTXF005(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -85,8 +86,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                 {
                     StandardElementType standardElementType = dependency.StandardElementType;
 
-                    return standardElementType != StandardElementType.Broker
-                        && standardElementType != StandardElementType.Exposure;
+                    return standardElementType != StandardElementType.Broker;
                 }
             )
         )
@@ -96,7 +96,7 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                 new AnalysisItem
                 {
                     Code = "STXF002",
-                    Description = "A foundation service may only depend on brokers, exposures, or nothing.",
+                    Description = "A foundation service may only depend on brokers or nothing.",
                     Severity = AnalysisSeverity.Warning,
                     Type = architectureModelQueries.GetTypeName(context: context),
                     LineNumber = architectureModelQueries.GetLineNumber(context: context),
@@ -180,4 +180,16 @@ internal sealed class STXFRulesProcessingService : ISTXFRulesProcessingService
                 Type = architectureModelQueries.GetTypeName(context: context),
                 LineNumber = method.LineNumber,
             });
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXF005(EvaluationContext context) =>
+        architectureModelQueries.GetDependencies(context: context).Count(
+            dependency => dependency.StandardElementType == StandardElementType.Broker) <= 1
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXF005",
+                    description: "A foundation service may depend on only one ordinary broker; utility brokers are excluded.",
+                    context: context)
+            ];
 }

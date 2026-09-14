@@ -220,6 +220,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         if (localType is not null)
         {
             dependency.StandardElementType = localType.StandardElementType;
+
+            dependency.IsUtilityBroker = ImplementsUtilityBrokerMarker(
+                interfaceNames: localType.AnalysisImplementedInterfaces);
         }
 
         return dependency;
@@ -246,9 +249,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
 
         IEnumerable<TypeDependency> localCallDependencies = analysisMethods
             .SelectMany(method => (method.DirectCalls ?? [])
-                .Where(call =>
-                    method.Symbol.MethodKind == MethodKind.Constructor
-                    || call.IsInsideLambda))
+            )
             .Where(call => !call.IsDependencyBoundary)
             .Where(call => !call.IsTargetCallbackParameter)
             .Where(call =>
@@ -444,6 +445,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                     comparer: SymbolEqualityComparer.Default),
                 IsConfigurationModel =
                     IsConfigurationModel(type: dependency),
+                IsUtilityBroker = ImplementsUtilityBrokerMarker(type: declaredType),
             };
         }
 
@@ -477,6 +479,7 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
                 StandardElementType = Classify(type: declaredType!),
                 IsPublicInterface = IsPublicInterface(type: declaredType!),
                 IsConfigurationModel = IsConfigurationModel(type: declaredType!),
+                IsUtilityBroker = ImplementsUtilityBrokerMarker(type: declaredType!),
             }
             : CreateReferencedTypeDependency(dependency: dependency);
     }
@@ -498,8 +501,25 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             IsInCurrentProject = false,
             IsConfigurationModel =
                 IsConfigurationModel(type: dependency),
+            IsUtilityBroker = ImplementsUtilityBrokerMarker(type: dependency),
         };
     }
+
+    private static bool ImplementsUtilityBrokerMarker(ITypeSymbol type) =>
+        type is INamedTypeSymbol namedType
+        && (IsUtilityBrokerMarker(type: namedType)
+            || namedType.AllInterfaces.Any(predicate: IsUtilityBrokerMarker));
+
+    private static bool ImplementsUtilityBrokerMarker(
+        IEnumerable<string>? interfaceNames) =>
+        interfaceNames?.Any(interfaceName => interfaceName.EndsWith(
+            value: ".Exposures.IUtilityBroker",
+            comparisonType: StringComparison.Ordinal)) == true;
+
+    private static bool IsUtilityBrokerMarker(INamedTypeSymbol type) =>
+        GetTypeName(type: type).EndsWith(
+            value: ".Exposures.IUtilityBroker",
+            comparisonType: StringComparison.Ordinal);
 
     private static bool IsPublicInterface(ITypeSymbol type) =>
         type.TypeKind == TypeKind.Interface
