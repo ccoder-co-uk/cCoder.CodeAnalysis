@@ -136,7 +136,7 @@ public sealed class ArchitectureServiceTests
     }
 
     [Fact]
-    public void BuildShouldPreserveExposureInterfaceClassification()
+    public void BuildShouldReportLocalExposureInterfaceDependencyFromBroker()
     {
         // Given
         const string source = """
@@ -188,7 +188,7 @@ public sealed class ArchitectureServiceTests
             compilation: compilation);
 
         // Then
-        architecture.AnalysisItems.Should().NotContain(
+        architecture.AnalysisItems.Should().Contain(
             predicate: item =>
                 item.Code == "STXB006"
                 && item.Type == "Sample.Brokers.MetadataBroker");
