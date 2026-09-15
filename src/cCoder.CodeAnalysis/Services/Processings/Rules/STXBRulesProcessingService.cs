@@ -129,7 +129,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
                     StandardElementType standardElementType = dependency.StandardElementType;
 
                     return standardElementType != StandardElementType.Dependency
-                        && standardElementType != StandardElementType.Exposure
+                        && !(standardElementType == StandardElementType.Exposure
+                            && !dependency.IsInCurrentProject)
                         && !IsConfigurationDependency(dependency: dependency);
                 }
             )
