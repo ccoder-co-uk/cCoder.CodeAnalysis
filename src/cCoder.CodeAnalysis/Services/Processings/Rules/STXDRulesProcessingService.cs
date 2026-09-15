@@ -37,6 +37,7 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Dependency
             || architectureModelQueries.GetStandardElementType(context: context) == StandardElementType.Test
             || architectureModelQueries.DeclaresDependencyIntent(context: context)
+            || IsFrameworkHttpResultExposure(context: context)
             || IsHostedService(context: context);
 
         if (!mayConsumeDependency && consumesDependency)
@@ -52,6 +53,14 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             };
         }
     }
+
+    private static bool IsFrameworkHttpResultExposure(
+        EvaluationContext context) =>
+        architectureModelQueries.GetStandardElementType(context: context)
+            == StandardElementType.HttpExposure
+        && architectureModelQueries.GetTypeName(context: context).EndsWith(
+            value: "Result",
+            comparisonType: StringComparison.Ordinal);
 
     private static bool IsBrokerOnlyDependency(
         TypeDependency dependency) =>
