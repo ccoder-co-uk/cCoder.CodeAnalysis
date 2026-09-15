@@ -285,6 +285,73 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void FrameworkHttpResult_WhenEvaluated_DoesNotReportSTXD001()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Api.OData "
+                + "{ public sealed class BadRequestResult : "
+                + "Microsoft.AspNetCore.Mvc.BadRequestObjectResult "
+                + "{ public BadRequestResult(Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary modelState) "
+                + ": base(modelState) { } } }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.Mvc "
+                + "{ public abstract class ActionResult { } "
+                + "public class BadRequestObjectResult : ActionResult "
+                + "{ public BadRequestObjectResult(ModelBinding.ModelStateDictionary modelState) { } } } "
+                + "namespace Microsoft.AspNetCore.Mvc.ModelBinding "
+                + "{ public sealed class ModelStateDictionary : External.IFrameworkState { } } "
+                + "namespace External { public interface IFrameworkState { } }",
+            typeName: "Example.Api.OData.BadRequestResult");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(expected: StandardElementType.HttpExposure);
+        context.ArchitectureElement.AnalysisDependencies.Should()
+            .ContainSingle(dependency =>
+                dependency.TypeName.EndsWith("ModelStateDictionary")
+                && dependency.StandardElementType == StandardElementType.Dependency);
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
+    public void FrameworkHttpResultModel_WhenItContainsFrameworkDependencies_DoesNotReportSTXD001()
+    {
+        // Given
+        EvaluationContext context = new()
+        {
+            ArchitectureModel = new Architecture(),
+            ArchitectureElement = new Class
+            {
+                Name = "Example.Api.OData.BadRequestResult",
+                StandardElementType = StandardElementType.HttpExposure,
+                AnalysisDependencies =
+                [
+                    new TypeDependency
+                    {
+                        TypeName = "Microsoft.AspNetCore.Mvc.ModelBinding.ModelStateDictionary",
+                        StandardElementType = StandardElementType.Dependency
+                    }
+                ]
+            }
+        };
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXD001");
+    }
+
+    [Fact]
     public void HubDependency_WhenInheritingFrameworkHub_IsClassifiedAsExposure()
     {
         // Given
