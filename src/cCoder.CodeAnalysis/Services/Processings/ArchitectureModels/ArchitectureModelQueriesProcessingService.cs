@@ -28,6 +28,13 @@ internal sealed class ArchitectureModelQueriesProcessingService
     public bool HasExternalBaseType(EvaluationContext context) =>
         context.ArchitectureElement.AnalysisHasExternalBaseType;
 
+    public bool OverridesExternalMember(EvaluationContext context) =>
+        (context.ArchitectureElement.AnalysisMethods ?? [])
+            .Any(predicate: method =>
+                method.Symbol?.IsOverride == true
+                && method.Symbol.OverriddenMethod?.ContainingType.Locations.All(
+                    predicate: location => !location.IsInSource) == true);
+
     public bool ImplementsExternalInterface(EvaluationContext context) =>
         context.ArchitectureElement.AnalysisImplementsExternalInterface;
 

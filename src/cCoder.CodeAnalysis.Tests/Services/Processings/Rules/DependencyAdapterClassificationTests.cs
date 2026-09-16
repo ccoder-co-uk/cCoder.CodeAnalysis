@@ -11,7 +11,7 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed partial class STXDRulesProcessingServiceTests
 {
     [Fact]
-    public void DependencyAdapter_WhenCallingSealedExternalApi_IsClassifiedAndValid()
+    public void DependencyAdapter_WhenOnlyCallingSealedExternalApi_IsReported()
     {
         // Given
         EvaluationContext context = CreateDependencyAdapterContext(
@@ -31,11 +31,7 @@ public sealed partial class STXDRulesProcessingServiceTests
             .ToArray();
 
         // Then
-        context.ArchitectureElement.StandardElementType
-            .Should().Be(StandardElementType.Dependency);
-        results.Should().NotContain(result =>
-            result.Code == "STXD002"
-            || result.Code == "STXD003");
+        results.Should().ContainSingle(result => result.Code == "STXD002");
     }
 
     [Fact]

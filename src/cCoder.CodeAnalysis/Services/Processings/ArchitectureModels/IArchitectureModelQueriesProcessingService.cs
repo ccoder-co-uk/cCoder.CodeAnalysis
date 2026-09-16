@@ -15,6 +15,7 @@ internal interface IArchitectureModelQueriesProcessingService
     bool IsPublic(EvaluationContext context);
     TypeReference? GetBaseType(EvaluationContext context);
     bool HasExternalBaseType(EvaluationContext context);
+    bool OverridesExternalMember(EvaluationContext context);
     bool ImplementsExternalInterface(EvaluationContext context);
     bool HasExternalStateDependency(EvaluationContext context);
     bool DirectlyConsumesExternalApi(EvaluationContext context);
