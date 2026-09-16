@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
+using Microsoft.CodeAnalysis;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
@@ -29,6 +30,9 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             predicate: (TypeDependency dependency) =>
                 IsBrokerOnlyDependency(dependency: dependency)
                 && !IsPermittedFrameworkHttpSignatureDependency(
+                    context: context,
+                    dependency: dependency)
+                && !IsPermittedExtensionReceiverAdapter(
                     context: context,
                     dependency: dependency)
         );
@@ -63,6 +67,20 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
         && architectureModelQueries.GetTypeName(context: context).EndsWith(
             value: "Result",
             comparisonType: StringComparison.Ordinal);
+
+    private static bool IsPermittedExtensionReceiverAdapter(
+        EvaluationContext context,
+        TypeDependency dependency) =>
+        (context.ArchitectureElement.AnalysisMethods ?? [])
+            .Where(method => method.Symbol?.IsExtensionMethod == true)
+            .Where(method => method.Symbol!.Parameters.Length > 0)
+            .Any(method => (method.DirectCalls ?? [])
+                .Where(call => call.TypeName == dependency.TypeName)
+                .Where(call => call.TargetSymbol?.MethodKind == MethodKind.Constructor)
+                .Any(call => call.TargetSymbol!.Parameters.Any(parameter =>
+                    IsSameOrDerivedType(
+                        type: method.Symbol!.Parameters[0].Type,
+                        expectedType: parameter.Type))));
 
     private static bool IsBrokerOnlyDependency(
         TypeDependency dependency) =>
@@ -209,22 +227,27 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             (context.ArchitectureElement.AnalysisMethods ?? [])
                 .Concat(second: context.ArchitectureElement.AnalysisConstructors ?? []);
 
-        foreach (MethodCall call in methods
-            .SelectMany(method => method.DirectCalls ?? [])
-            .Where(call => call.IsExternalApiCall)
-            .Where(call => !IsMiddlewarePipelineContinuation(
-                context: context,
-                call: call)))
+        foreach (Method method in methods)
         {
-            yield return new AnalysisItem
+            foreach (MethodCall call in (method.DirectCalls ?? [])
+                .Where(call => call.IsExternalApiCall)
+                .Where(call => !IsMiddlewarePipelineContinuation(
+                    context: context,
+                    call: call))
+                .Where(call => !IsExtensionReceiverApiCall(
+                    method: method,
+                    call: call)))
             {
-                Code = "STXD005",
-                Description =
-                    $"External API call '{call.MethodId}' must be isolated behind a broker or dependency.",
-                Severity = AnalysisSeverity.Warning,
-                Type = architectureModelQueries.GetTypeName(context: context),
-                LineNumber = call.SourceLineNumber,
-            };
+                yield return new AnalysisItem
+                {
+                    Code = "STXD005",
+                    Description =
+                        $"External API call '{call.MethodId}' must be isolated behind a broker or dependency.",
+                    Severity = AnalysisSeverity.Warning,
+                    Type = architectureModelQueries.GetTypeName(context: context),
+                    LineNumber = call.SourceLineNumber,
+                };
+            }
         }
 
         foreach (ExternalApiTypeUsageAnalysisFacts usage in
@@ -240,6 +263,71 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
                 LineNumber = usage.LineNumber,
             };
         }
+    }
+
+    private static bool IsExtensionReceiverApiCall(
+        Method method,
+        MethodCall call)
+    {
+        if (method.Symbol?.IsExtensionMethod != true
+            || method.Symbol.Parameters.Length == 0
+            || call.TargetSymbol is null)
+        {
+            return false;
+        }
+
+        ITypeSymbol receiverType = method.Symbol.Parameters[0].Type;
+
+        IMethodSymbol targetMethod = call.TargetSymbol.ReducedFrom
+            ?? call.TargetSymbol;
+
+        ITypeSymbol targetReceiverType = targetMethod.IsExtensionMethod
+            && targetMethod.Parameters.Length > 0
+                ? targetMethod.Parameters[0].Type
+                : targetMethod.ContainingType;
+
+        return IsSameOrDerivedType(
+            type: receiverType,
+            expectedType: targetReceiverType);
+    }
+
+    private static bool IsSameOrDerivedType(
+        ITypeSymbol type,
+        ITypeSymbol expectedType)
+    {
+        if (SymbolEqualityComparer.Default.Equals(
+            x: type.OriginalDefinition,
+            y: expectedType.OriginalDefinition))
+        {
+            return true;
+        }
+
+        if (type is not INamedTypeSymbol namedType)
+        {
+            return false;
+        }
+
+        if (namedType.AllInterfaces.Any(@interface =>
+            SymbolEqualityComparer.Default.Equals(
+                x: @interface.OriginalDefinition,
+                y: expectedType.OriginalDefinition)))
+        {
+            return true;
+        }
+
+        for (INamedTypeSymbol? baseType = namedType.BaseType;
+            baseType is not null;
+            baseType = baseType.BaseType)
+        {
+            if (SymbolEqualityComparer.Default.Equals(
+                x: baseType.OriginalDefinition,
+                y: expectedType.OriginalDefinition))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static bool IsAboveBroker(StandardElementType elementType) =>
