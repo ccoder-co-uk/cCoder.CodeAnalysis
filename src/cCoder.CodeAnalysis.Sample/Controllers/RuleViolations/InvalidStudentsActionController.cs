@@ -2,19 +2,19 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
-using cCoder.CodeAnalysis.Sample.Exposures.Students;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Sample.Services.Orchestrations.Students;
 using Microsoft.AspNetCore.Mvc;
 
 namespace cCoder.CodeAnalysis.Sample.Controllers.RuleViolations;
 
 [ApiController]
 [Route("api/students-invalid-action")]
-public sealed class InvalidStudentsActionController(IStudentManager studentManager) : ControllerBase
+public sealed class InvalidStudentsActionController(IStudentOrchestrationService studentOrchestrationService) : ControllerBase
 {
     [HttpGet]
     public ActionResult<IQueryable<Student>> RetrieveStudents()
     {
-        return Ok(value: studentManager.GetStudents());
+        return Ok(value: studentOrchestrationService.GetStudents());
     }
 }

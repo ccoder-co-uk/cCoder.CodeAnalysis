@@ -3,9 +3,9 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
-using cCoder.CodeAnalysis.Sample.Exposures.SchoolImports;
 using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
+using cCoder.CodeAnalysis.Sample.Services.Aggregations.SchoolImports;
 using Microsoft.AspNetCore.Mvc;
 
 namespace cCoder.CodeAnalysis.Sample.Controllers;
@@ -13,7 +13,7 @@ namespace cCoder.CodeAnalysis.Sample.Controllers;
 [ApiController]
 [Route("api/schools/import")]
 public sealed class SchoolImportController(
-    ISchoolImportManager schoolImportManager,
+    ISchoolImportAggregationService schoolImportAggregationService,
     ILoggingBroker loggingBroker) : ControllerBase
 {
     [HttpPost]
@@ -21,7 +21,7 @@ public sealed class SchoolImportController(
     {
         try
         {
-            await schoolImportManager.ImportSchoolAsync(school: newSchool);
+            await schoolImportAggregationService.ImportSchoolAsync(school: newSchool);
             return Accepted();
         }
         catch (ServiceValidationException exception)

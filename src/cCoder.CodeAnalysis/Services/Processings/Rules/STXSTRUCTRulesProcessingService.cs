@@ -78,6 +78,11 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             return [];
         }
 
+        if (IsFrameworkHttpExposureConstructorContract(context: context))
+        {
+            return [];
+        }
+
         return architectureModelQueries.GetDeclarations(context: context)
             .OfType<InterfaceDeclarationSyntax>()
             .Where(predicate: declaration =>
@@ -91,6 +96,25 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
                         "Service contracts must be internal; expose cross-library operations through a public exposure contract.",
                     context: context,
                     location: declaration.GetLocation()));
+    }
+
+    private static bool IsFrameworkHttpExposureConstructorContract(
+        EvaluationContext context)
+    {
+        string contractTypeName = architectureModelQueries.GetTypeName(context: context);
+
+        return context.ArchitectureModel.Classes.Any(predicate: exposure =>
+            exposure.IsPublic
+            && exposure.StandardElementType == StandardElementType.HttpExposure
+            && exposure.AnalysisIsApiController
+            && exposure.AnalysisHasExternalBaseType
+            && (exposure.AnalysisDependencies ?? []).Any(dependency =>
+                dependency.TypeName == contractTypeName
+                && dependency.IsInCurrentProject
+                && dependency.IsPublicInterface)
+            && (exposure.AnalysisConstructors ?? []).Any(constructor =>
+                (constructor.Inputs ?? []).Any(input =>
+                    input.Type == contractTypeName)));
     }
 
     private static bool IsService(StandardElementType elementType) =>

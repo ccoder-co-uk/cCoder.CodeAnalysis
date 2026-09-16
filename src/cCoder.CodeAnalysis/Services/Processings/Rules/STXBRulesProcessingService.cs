@@ -21,7 +21,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
             .Concat(second: EvaluateSTXB004(context: context))
             .Concat(second: EvaluateSTXB005(context: context))
             .Concat(second: EvaluateSTXB006(context: context))
-            .Concat(second: EvaluateSTXB007(context: context));
+            .Concat(second: EvaluateSTXB007(context: context))
+            .Concat(second: EvaluateSTXB008(context: context));
     }
 
     private IEnumerable<AnalysisItem> EvaluateSTXB001(EvaluationContext context)
@@ -185,6 +186,49 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
             .GetLineSpan().StartLinePosition.Line + 1
                     )
             );
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXB008(EvaluationContext context) =>
+        architectureModelQueries.GetDependencies(context: context).Any(
+            predicate: dependency =>
+                dependency.IsInCurrentProject
+                && IsDbContextType(
+                    typeName: dependency.TypeName,
+                    architecture: context.ArchitectureModel,
+                    visitedTypes: []))
+            ? new AnalysisItem[1]
+            {
+                CreateAnalysisItem(
+                    code: "STXB008",
+                    description: "A broker must consume a factory or abstraction instead of depending directly on a concrete DbContext type.",
+                    context: context),
+            }
+            : Array.Empty<AnalysisItem>();
+
+    private static bool IsDbContextType(
+        string typeName,
+        Architecture architecture,
+        HashSet<string> visitedTypes)
+    {
+        if (!visitedTypes.Add(item: typeName))
+        {
+            return false;
+        }
+
+        Class? dependencyType = architecture.Classes.SingleOrDefault(
+            predicate: element => element.Name == typeName);
+
+        if (dependencyType?.BaseType is not TypeReference baseType)
+        {
+            return false;
+        }
+
+        return baseType.FullName == "Microsoft.EntityFrameworkCore.DbContext"
+            || baseType.IsInCurrentProject
+                && IsDbContextType(
+                    typeName: baseType.FullName,
+                    architecture: architecture,
+                    visitedTypes: visitedTypes);
     }
 
     private static AnalysisItem CreateAnalysisItem(

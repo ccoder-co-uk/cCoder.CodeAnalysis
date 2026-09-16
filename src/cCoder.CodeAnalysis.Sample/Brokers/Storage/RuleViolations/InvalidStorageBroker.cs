@@ -6,10 +6,9 @@ using cCoder.CodeAnalysis.Sample.Models.Schools;
 
 namespace cCoder.CodeAnalysis.Sample.Brokers.Storage.RuleViolations;
 
-internal sealed class InvalidStorageBroker : IInvalidStorageBroker
+internal sealed class InvalidStorageBroker(SchoolContext context) : IInvalidStorageBroker
 {
     public IQueryable<Student> GetStudents()
 =>
-        Array.Empty<Student>()
-            .AsQueryable();
+        context.Students;
 }
