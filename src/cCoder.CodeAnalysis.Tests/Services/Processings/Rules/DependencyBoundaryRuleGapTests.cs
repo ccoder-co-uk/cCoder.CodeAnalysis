@@ -659,6 +659,55 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void Broker_WhenUsingLocalExposureContract_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures { internal interface IRenderSessionManager { } } "
+                + "namespace Example.Brokers { internal sealed class RenderBroker("
+                + "Example.Exposures.IRenderSessionManager renderSessionManager) "
+                + "{ public void Render() { } } }",
+            typeName: "Example.Brokers.RenderBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.AnalysisDependencies.Should()
+            .ContainSingle(dependency =>
+                dependency.TypeName == "Example.Exposures.IRenderSessionManager"
+                && dependency.StandardElementType == StandardElementType.Exposure
+                && dependency.IsInCurrentProject);
+
+        results.Should().ContainSingle(result => result.Code == "STXB006");
+    }
+
+    [Fact]
+    public void Broker_WhenUsingExternalExposureContract_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers { internal sealed class PackageBroker("
+                + "ThirdParty.Exposures.IPackageManager packageManager) "
+                + "{ public void Read() { } } }",
+            externalSource:
+                "namespace ThirdParty.Exposures; public interface IPackageManager { }",
+            typeName: "Example.Brokers.PackageBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB006");
+    }
+
+    [Fact]
     public void LoggingDependency_WhenInjectedIntoExposure_IsNotReportedAsBusinessDependency()
     {
         // Given

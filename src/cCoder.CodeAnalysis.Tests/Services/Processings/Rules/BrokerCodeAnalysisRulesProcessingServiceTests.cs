@@ -25,7 +25,11 @@ public sealed class STXBRulesProcessingServiceTests
             .Single();
         TypeDependency[] dependencies =
         [
-            new TypeDependency { StandardElementType = StandardElementType.Exposure },
+            new TypeDependency
+            {
+                StandardElementType = StandardElementType.Exposure,
+                IsInCurrentProject = false
+            },
             new TypeDependency { StandardElementType = StandardElementType.Dependency },
         ];
         EvaluationContext context = CreateContext(
