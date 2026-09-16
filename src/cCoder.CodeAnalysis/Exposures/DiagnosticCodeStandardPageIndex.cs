@@ -241,6 +241,8 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXD004", standardPageUri: $"{TheoryPage}#0021-dependency"),
         new(diagnosticCode: "STXD005", standardPageUri: $"{TheoryPage}#0021-dependency"),
         new(diagnosticCode: "STXD006", standardPageUri: $"{TheoryPage}#0021-dependency"),
+        new(diagnosticCode: "STXD007", standardPageUri: $"{TheoryPage}#0021-dependency"),
+        new(diagnosticCode: "STXD008", standardPageUri: $"{TheoryPage}#0021-dependency"),
         new(diagnosticCode: "STXE001", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE002", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE003", standardPageUri: $"{ExposersPage}#302-single-point-of-contact"),

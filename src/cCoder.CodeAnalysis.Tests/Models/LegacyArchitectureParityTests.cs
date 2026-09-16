@@ -24,7 +24,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToArray();
 
-        diagnosticGroups.Should().HaveCount(91, "");
+        diagnosticGroups.Should().HaveCount(93, "");
         diagnosticGroups
             .Where(group => group.Key != "STXM001")
             .Should()
@@ -49,7 +49,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             [StandardElementType.Model] = 15,
             [StandardElementType.OrchestrationService] = 8,
             [StandardElementType.ProcessingService] = 15,
-            [StandardElementType.Unknown] = 4,
+            [StandardElementType.Unknown] = 2,
         };
 
         Dictionary<StandardElementType, int> actual = Architecture
@@ -62,13 +62,13 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
     [Fact]
     public void SampleShouldPreserveLegacyArchitectureProjection()
     {
-        Architecture.Classes.Should().HaveCount(96, "");
-        Architecture.Links.Should().HaveCount(90, "");
+        Architecture.Classes.Should().HaveCount(94, "");
+        Architecture.Links.Should().HaveCount(89, "");
 
         CreateClassProjectionHash().Should()
-            .Be("3114CE64936AF41F47F01D5ADBFAB0B57C1DAC0DC55F5769CE9521CFDE9424DD", "");
+            .Be("13704E0AA1717D1C6E53E07D763418854A4444BC87463F5E64CC6F9EFF6835A6", "");
         CreateLinkProjectionHash().Should()
-            .Be("FD80E35345F417224B20A1547E15F39B0CB37B342D59761051ECD733908ED1B5", "");
+            .Be("4E55AF46DC9C4ECE7F34308333E4F11F67BBCC290658E83ABCD549575B35320E", "");
     }
 
     private string CreateClassProjectionHash()

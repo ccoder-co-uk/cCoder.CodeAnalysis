@@ -18,7 +18,9 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             .Concat(second: EvaluateSTXD003(context: context))
             .Concat(second: EvaluateSTXD004(context: context))
             .Concat(second: EvaluateSTXD005(context: context))
-            .Concat(second: EvaluateSTXD006(context: context));
+            .Concat(second: EvaluateSTXD006(context: context))
+            .Concat(second: EvaluateSTXD007(context: context))
+            .Concat(second: EvaluateSTXD008(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXD001(EvaluationContext context)
@@ -129,9 +131,6 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             architectureModelQueries.DeclaresDependencyIntent(context: context)
             && !architectureModelQueries.HasExternalBaseType(context: context)
             && !architectureModelQueries.ImplementsExternalInterface(context: context)
-            && !architectureModelQueries.ImplementsContract(context: context)
-            && !architectureModelQueries.HasExternalStateDependency(context: context)
-            && !architectureModelQueries.DirectlyConsumesExternalApi(context: context)
         )
         {
             yield return new AnalysisItem
@@ -273,6 +272,72 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
                 Code = "STXD006",
                 Description =
                     "Service layers must isolate external base types behind a broker or dependency.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = architectureModelQueries.GetLineNumber(context: context),
+            };
+        }
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD007(
+        EvaluationContext context)
+    {
+        if (!architectureModelQueries.DeclaresDependencyIntent(context: context))
+        {
+            yield break;
+        }
+
+        string? localTypeName = architectureModelQueries
+            .GetDependencies(context: context)
+            .FirstOrDefault(predicate: dependency => dependency.IsInCurrentProject)
+            ?.TypeName;
+
+        TypeReference? baseType = architectureModelQueries.GetBaseType(
+            context: context);
+
+        if (localTypeName is null && baseType?.IsInCurrentProject == true)
+        {
+            localTypeName = baseType.FullName;
+        }
+
+        if (localTypeName is null)
+        {
+            HashSet<string> projectTypeNames = new(
+                collection: architectureModelQueries.GetProjectTypeNames(
+                    context: context),
+                comparer: StringComparer.Ordinal);
+
+            localTypeName = architectureModelQueries
+                .GetImplementedInterfaces(context: context)
+                .FirstOrDefault(predicate: projectTypeNames.Contains);
+        }
+
+        if (localTypeName is not null)
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD007",
+                Description =
+                    $"A dependency must not depend on locally defined type '{localTypeName}'.",
+                Severity = AnalysisSeverity.Warning,
+                Type = architectureModelQueries.GetTypeName(context: context),
+                LineNumber = architectureModelQueries.GetLineNumber(context: context),
+            };
+        }
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXD008(
+        EvaluationContext context)
+    {
+        if (architectureModelQueries.DeclaresDependencyIntent(context: context)
+            && architectureModelQueries.HasExternalBaseType(context: context)
+            && !architectureModelQueries.OverridesExternalMember(context: context))
+        {
+            yield return new AnalysisItem
+            {
+                Code = "STXD008",
+                Description =
+                    "A dependency that inherits an external base type must override a framework member.",
                 Severity = AnalysisSeverity.Warning,
                 Type = architectureModelQueries.GetTypeName(context: context),
                 LineNumber = architectureModelQueries.GetLineNumber(context: context),

@@ -6,7 +6,7 @@ using System.Security.Cryptography;
 
 namespace cCoder.CodeAnalysis.Sample.Dependencies;
 
-internal sealed class ExternalStateDependency
+internal sealed class ExternalStateDependency : IDisposable
 {
     private readonly RandomNumberGenerator randomNumberGenerator =
         RandomNumberGenerator.Create();
@@ -18,4 +18,7 @@ internal sealed class ExternalStateDependency
 
         return bytes;
     }
+
+    public void Dispose() =>
+        randomNumberGenerator.Dispose();
 }
