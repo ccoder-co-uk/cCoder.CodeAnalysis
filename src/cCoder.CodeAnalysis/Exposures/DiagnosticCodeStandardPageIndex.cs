@@ -229,6 +229,7 @@ internal static class DiagnosticCodeStandardPageIndex
             firstStandardPageUri: $"{BrokersPage}#126-language",
             secondStandardPageUri: $"{FoundationsPage}#2122-business-language"
         ),
+        new(diagnosticCode: "STXB008", standardPageUri: $"{BrokersPage}#127-up--sideways"),
         new(
             diagnosticCode: "STXC001",
             firstStandardPageUri: $"{ServicesPage}#2021-two-three-florance-pattern",

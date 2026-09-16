@@ -34,7 +34,7 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
-    public void HttpExposure_WhenDependingOnPublicExposureContract_IsNotReported()
+    public void HttpExposure_WhenDependingOnLocalPublicExposureContract_IsReported()
     {
         EvaluationContext context = CreateContext(
             elementType: StandardElementType.HttpExposure,
@@ -54,7 +54,7 @@ public sealed class SameLayerDependencyRuleTests
         new STXRulesProcessingService()
             .Evaluate(context: context)
             .Should()
-            .NotContain(item => item.Code == "STX0004");
+            .ContainSingle(item => item.Code == "STX0004");
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
-    public void SignalRHubExposure_WhenDependingOnPublicExposureContract_IsNotReported()
+    public void SignalRHubExposure_WhenDependingOnLocalPublicExposureContract_IsReported()
     {
         EvaluationContext context = CreateContext(
             elementType: StandardElementType.Exposure,
@@ -125,7 +125,55 @@ public sealed class SameLayerDependencyRuleTests
         new STXRulesProcessingService()
             .Evaluate(context: context)
             .Should()
+            .ContainSingle(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void SignalRHubExposure_WhenDependingOnReferencedPublicExposureContract_IsNotReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Notifications.INotificationManager");
+
+        context.ArchitectureElement.IsPublic = true;
+        context.ArchitectureElement.BaseType = new TypeReference
+        {
+            Name = "Hub",
+            FullName = "Microsoft.AspNetCore.SignalR.Hub",
+            IsInCurrentProject = false,
+        };
+        context.ArchitectureElement.AnalysisDependencies.Single().IsInCurrentProject = false;
+        context.ArchitectureElement.AnalysisDependencies.Single().IsPublicInterface = true;
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
             .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void EventHandlerExposure_WhenDependingOnLocalExposureContract_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Events.IEventManager");
+
+        context.ArchitectureElement.Name =
+            "Example.Exposures.EventHandlers.StudentEventHandlers";
+        context.ArchitectureModel.Interfaces.Add(item: new Class
+        {
+            Name = "Example.Exposures.Events.IEventManager",
+            IsPublic = true,
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.Exposure,
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "STX0004");
     }
 
     [Fact]
@@ -195,6 +243,58 @@ public sealed class SameLayerDependencyRuleTests
 
         context.ArchitectureElement.AnalysisImplementedInterfaces =
             ["Example.Exposures.Templates.ITemplateManager"];
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void OrchestrationContract_WhenInheritingLocalExposureContract_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.OrchestrationService,
+            dependencyType: StandardElementType.FoundationService,
+            dependencyName: "Example.Services.Foundations.ITemplateService");
+
+        context.ArchitectureElement.Name =
+            "Example.Services.Orchestrations.ITemplateOrchestrationService";
+        context.ArchitectureElement.Kind = ArchitectureTypeKind.Interface;
+        context.ArchitectureElement.AnalysisDependencies = [];
+        context.ArchitectureElement.AnalysisImplementedInterfaces =
+            ["Example.Exposures.Templates.ITemplateManager"];
+        context.ArchitectureModel.Interfaces.Add(context.ArchitectureElement);
+        context.ArchitectureModel.Interfaces.Add(new Class
+        {
+            Name = "Example.Exposures.Templates.ITemplateManager",
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.Exposure,
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void OrchestrationService_WhenImplementingOwnContract_IsNotReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.OrchestrationService,
+            dependencyType: StandardElementType.FoundationService,
+            dependencyName: "Example.Services.Foundations.ITemplateService");
+
+        context.ArchitectureElement.AnalysisDependencies = [];
+        context.ArchitectureElement.AnalysisImplementedInterfaces =
+            ["Example.Services.Orchestrations.ITemplateOrchestrationService"];
+        context.ArchitectureModel.Interfaces.Add(new Class
+        {
+            Name = "Example.Services.Orchestrations.ITemplateOrchestrationService",
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.OrchestrationService,
+        });
 
         new STXRulesProcessingService()
             .Evaluate(context: context)

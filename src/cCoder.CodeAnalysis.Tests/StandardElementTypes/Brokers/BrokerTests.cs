@@ -62,6 +62,16 @@ public sealed class BrokerTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXB008EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXB008",
+            "cCoder.CodeAnalysis.Sample.Brokers.Storage.RuleViolations.InvalidStorageBroker",
+            9
+        );
+    }
+
+    [Fact]
     public void ShouldNotApplyBrokerRulesToSchoolContext()
     {
         ((IEnumerable<AnalysisItem>)Architecture.AnalysisItems)

@@ -152,7 +152,7 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
-    public void AzureFunctionExposure_WhenDependingOnPublicExposureContract_DoesNotReportSameLayerDependency()
+    public void AzureFunctionExposure_WhenDependingOnLocalPublicExposureContract_ReportsSameLayerDependency()
     {
         // Given
         EvaluationContext context = CreateContext(
@@ -166,6 +166,33 @@ public sealed class DependencyBoundaryRuleGapTests
                 "namespace Microsoft.Azure.Functions.Worker; "
                 + "[System.AttributeUsage(System.AttributeTargets.Method)] "
                 + "public sealed class FunctionAttribute(string name) : System.Attribute { }",
+            typeName: "Example.Exposures.Execute");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void AzureFunctionExposure_WhenDependingOnExternalPublicExposureContract_DoesNotReportSameLayerDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures "
+                + "{ public sealed class Execute(ThirdParty.Exposures.IWorkflowFunctionsManager manager) "
+                + "{ [Microsoft.Azure.Functions.Worker.FunctionAttribute(\"Execute\")] "
+                + "public object Run() => manager.Execute(); } }",
+            externalSource:
+                "namespace Microsoft.Azure.Functions.Worker "
+                + "{ [System.AttributeUsage(System.AttributeTargets.Method)] "
+                + "public sealed class FunctionAttribute(string name) : System.Attribute { } } "
+                + "namespace ThirdParty.Exposures "
+                + "{ public interface IWorkflowFunctionsManager { object Execute(); } }",
             typeName: "Example.Exposures.Execute");
 
         // When
@@ -201,6 +228,51 @@ public sealed class DependencyBoundaryRuleGapTests
 
         // Then
         results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void OrchestrationContract_WhenInheritingLocalExposureContract_ReportsDependencyViolation()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Exposures.Layouts "
+                + "{ public interface ILayoutManager { object Retrieve(); } } "
+                + "namespace Example.Services.Orchestrations.Layouts "
+                + "{ internal interface ILayoutOrchestrationService : "
+                + "Example.Exposures.Layouts.ILayoutManager { } }",
+            typeName:
+                "Example.Services.Orchestrations.Layouts.ILayoutOrchestrationService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void OrchestrationService_WhenImplementingOwnContract_DoesNotReportDependencyViolation()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Services.Orchestrations.Layouts "
+                + "{ internal interface ILayoutOrchestrationService { object Retrieve(); } "
+                + "internal sealed class LayoutOrchestrationService : "
+                + "ILayoutOrchestrationService { public object Retrieve() => new(); } }",
+            typeName:
+                "Example.Services.Orchestrations.Layouts.LayoutOrchestrationService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0004");
     }
 
     [Fact]
@@ -705,6 +777,80 @@ public sealed class DependencyBoundaryRuleGapTests
 
         // Then
         results.Should().NotContain(result => result.Code == "STXB006");
+    }
+
+    [Theory]
+    [InlineData("public StudentBroker(SchoolContext context) { }")]
+    [InlineData("private readonly SchoolContext context; public StudentBroker(SchoolContext context) { this.context = context; }")]
+    public void Broker_WhenDirectlyDependingOnConcreteDbContext_IsReported(
+        string brokerMember)
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers.Storage "
+                + "{ public interface IStudentBroker { } "
+                + "public sealed class SchoolContext : Microsoft.EntityFrameworkCore.DbContext { } "
+                + "public sealed class StudentBroker : IStudentBroker { "
+                + brokerMember
+                + " } }",
+            externalSource:
+                "namespace Microsoft.EntityFrameworkCore; "
+                + "public abstract class DbContext { }",
+            typeName: "Example.Brokers.Storage.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXB008");
+    }
+
+    [Fact]
+    public void Broker_WhenDependingOnDbContextFactoryInterface_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers.Storage "
+                + "{ public interface IStudentBroker { } "
+                + "public interface ICoreContextFactory { } "
+                + "public sealed class StudentBroker(ICoreContextFactory contextFactory) "
+                + ": IStudentBroker { } }",
+            typeName: "Example.Brokers.Storage.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB008");
+    }
+
+    [Fact]
+    public void Broker_WhenDependingOnOrdinaryExternalType_IsNotReportedAsDbContextDependency()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } "
+                + "public sealed class StudentBroker(ThirdParty.ExternalClient client) "
+                + ": IStudentBroker { } }",
+            externalSource:
+                "namespace ThirdParty; public sealed class ExternalClient { }",
+            typeName: "Example.Brokers.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB008");
     }
 
     [Fact]

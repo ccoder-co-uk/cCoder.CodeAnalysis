@@ -170,6 +170,64 @@ public sealed class STXSTRUCTRulesProcessingServiceTests
         items.Should().ContainSingle(item => item.Code == "STXSTRUCT003", "");
     }
 
+    [Fact]
+    public void PublicServiceContractConsumedByFrameworkHttpExposureConstructorShouldNotProduceDiagnostic()
+    {
+        EvaluationContext context = CreateInterfaceContext(
+            typeName: "Example.Services.Orchestrations.IStudentOrchestrationService",
+            standardElementType: StandardElementType.OrchestrationService,
+            sourceCode:
+                """
+                namespace Example.Services.Orchestrations;
+
+                public interface IStudentOrchestrationService
+                {
+                }
+                """);
+
+        context.ArchitectureModel.Classes.Add(item: new Class
+        {
+            Name = "Example.Controllers.StudentsController",
+            IsPublic = true,
+            StandardElementType = StandardElementType.HttpExposure,
+            AnalysisIsApiController = true,
+            AnalysisHasExternalBaseType = true,
+            BaseType = new TypeReference
+            {
+                FullName = "Microsoft.AspNetCore.Mvc.ControllerBase",
+                IsInCurrentProject = false,
+            },
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    TypeName = "Example.Services.Orchestrations.IStudentOrchestrationService",
+                    IsInCurrentProject = true,
+                    IsPublicInterface = true,
+                    StandardElementType = StandardElementType.OrchestrationService,
+                },
+            ],
+            AnalysisConstructors =
+            [
+                new Method
+                {
+                    Inputs =
+                    [
+                        new Input
+                        {
+                            Name = "studentOrchestrationService",
+                            Type = "Example.Services.Orchestrations.IStudentOrchestrationService",
+                        },
+                    ],
+                },
+            ],
+        });
+
+        AnalysisItem[] items = service.Evaluate(context: context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXSTRUCT003", "");
+    }
+
     [Theory]
     [InlineData("Project/Controllers/StudentController.cs")]
     [InlineData("Project/Middleware/ErrorMiddleware.cs")]

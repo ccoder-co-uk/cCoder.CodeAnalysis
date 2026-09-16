@@ -304,19 +304,20 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             .GetStandardElementType(context: context);
 
         return !IsArchitecturalLayer(elementType: elementType)
-            || !architectureModelQueries.GetDependencies(context: context).Any(
-                predicate: (TypeDependency dependency) =>
-                    IsSameArchitecturalLayer(
-                        elementType: elementType,
-                        dependencyType: dependency.StandardElementType)
-                    && !IsPermittedFrameworkExposureContractDependency(
-                        context: context,
-                        elementType: elementType,
-                        dependency: dependency)
-                    && !IsPermittedFrameworkHttpResultAdapterDependency(
-                        context: context,
-                        elementType: elementType,
-                        dependency: dependency))
+            || (!architectureModelQueries.GetDependencies(context: context).Any(
+                    predicate: (TypeDependency dependency) =>
+                        IsSameArchitecturalLayer(
+                            elementType: elementType,
+                            dependencyType: dependency.StandardElementType)
+                        && !IsPermittedFrameworkExposureContractDependency(
+                            context: context,
+                            elementType: elementType,
+                            dependency: dependency)
+                        && !IsPermittedFrameworkHttpResultAdapterDependency(
+                            context: context,
+                            elementType: elementType,
+                            dependency: dependency))
+                && !HasLocalExposureContractInheritance(context: context))
             ? Array.Empty<AnalysisItem>()
             : new AnalysisItem[1]
             {
@@ -327,6 +328,15 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 ),
             };
     }
+
+    private static bool HasLocalExposureContractInheritance(
+        EvaluationContext context) =>
+        context.ArchitectureElement.Kind == ArchitectureTypeKind.Interface
+        && (context.ArchitectureElement.AnalysisImplementedInterfaces ?? [])
+            .Any(inheritedInterfaceName =>
+                context.ArchitectureModel.Interfaces.Any(element =>
+                    element.Name == inheritedInterfaceName
+                    && element.StandardElementType == StandardElementType.Exposure));
 
     private static bool IsArchitecturalLayer(
         StandardElementType elementType) =>
@@ -364,6 +374,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 elementType: elementType))
         && context.ArchitectureElement.IsPublic
         && dependency.StandardElementType == StandardElementType.Exposure
+        && !dependency.IsInCurrentProject
         && (dependency.IsPublicInterface
             || context.ArchitectureModel.Interfaces.Any(predicate: element =>
                 element.Name == dependency.TypeName
