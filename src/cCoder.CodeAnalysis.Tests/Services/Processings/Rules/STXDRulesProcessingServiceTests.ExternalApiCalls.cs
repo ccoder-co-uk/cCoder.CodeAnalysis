@@ -54,6 +54,107 @@ public sealed partial class STXDRulesProcessingServiceTests
             typeName: "ExampleManager");
 
     [Fact]
+    public void ExtensionReceiver_WhenExternal_DoesNotReportSTXD001()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class WidgetExtensions "
+                + "{ public static string Inspect(this ThirdParty.Widget widget) "
+                + "=> widget.Inspect(); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Widget "
+                + "{ public string Inspect() => string.Empty; }",
+            typeName: "Example.Exposures.WidgetExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD001");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenConstructingReceiverAdapter_DoesNotReportSTXD001()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class WidgetDependency : ThirdParty.WidgetAdapter "
+                + "{ public WidgetDependency(ThirdParty.Widget widget) : base(widget) { } "
+                + "public override string Inspect() => string.Empty; } "
+                + "public static class WidgetExtensions "
+                + "{ public static ThirdParty.WidgetAdapter Adapt(this ThirdParty.Widget widget) "
+                + "=> new WidgetDependency(widget); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Widget { } "
+                + "public abstract class WidgetAdapter "
+                + "{ protected WidgetAdapter(Widget widget) { } "
+                + "public abstract string Inspect(); }",
+            typeName: "Example.Exposures.WidgetExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD001");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenConstructingUnrelatedDependency_ReportsSTXD001()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public sealed class FileDependency : ThirdParty.FileAdapter "
+                + "{ public FileDependency(string path) : base(path) { } "
+                + "public override string Read() => string.Empty; } "
+                + "public static class WidgetExtensions "
+                + "{ public static ThirdParty.FileAdapter Read(this ThirdParty.Widget widget) "
+                + "=> new FileDependency(string.Empty); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Widget { } "
+                + "public abstract class FileAdapter "
+                + "{ protected FileAdapter(string path) { } "
+                + "public abstract string Read(); }",
+            typeName: "Example.Exposures.WidgetExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXD001");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenCallingReceiverApi_DoesNotReportSTXD005()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class WidgetExtensions "
+                + "{ public static string Inspect(this ThirdParty.Widget widget) "
+                + "=> widget.Inspect(); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Widget "
+                + "{ public string Inspect() => string.Empty; }",
+            typeName: "Example.Exposures.WidgetExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().NotContain(item => item.Code == "STXD005");
+    }
+
+    [Fact]
+    public void ExtensionMethod_WhenCallingUnrelatedExternalApi_ReportsSTXD005()
+    {
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Exposures; "
+                + "public static class WidgetExtensions "
+                + "{ public static string Inspect(this ThirdParty.Widget widget) "
+                + "=> ThirdParty.ExternalApi.Serialize(widget); }",
+            externalSource:
+                "namespace ThirdParty; public sealed class Widget { } "
+                + "public static class ExternalApi "
+                + "{ public static string Serialize(object value) => string.Empty; }",
+            typeName: "Example.Exposures.WidgetExtensions");
+
+        new STXDRulesProcessingService().Evaluate(context)
+            .Should().ContainSingle(item => item.Code == "STXD005");
+    }
+
+    [Fact]
     public void ExternalApiCall_WhenMadeFromHttpExposure_IsReported()
     {
         EvaluationContext context = CreateExternalApiContext(
