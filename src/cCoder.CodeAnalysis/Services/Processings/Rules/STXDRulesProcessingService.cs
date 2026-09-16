@@ -292,6 +292,12 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
             .FirstOrDefault(predicate: dependency => dependency.IsInCurrentProject)
             ?.TypeName;
 
+        localTypeName ??= context.ArchitectureElement
+            .AnalysisTypeFacts?
+            .LocalTypeUsages
+            .FirstOrDefault()
+            ?.TypeName;
+
         TypeReference? baseType = architectureModelQueries.GetBaseType(
             context: context);
 

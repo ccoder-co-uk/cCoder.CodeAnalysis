@@ -21,9 +21,16 @@ internal sealed class TypeAnalysisFacts
     internal IReadOnlyList<int> MvcActionResponseBranchingLineNumbers { get; set; } = [];
     internal IReadOnlyList<int> LoopLineNumbers { get; set; } = [];
     internal IReadOnlyList<ExternalApiTypeUsageAnalysisFacts> ExternalApiTypeUsages { get; set; } = [];
+    internal IReadOnlyList<LocalTypeUsageAnalysisFacts> LocalTypeUsages { get; set; } = [];
 }
 
 internal sealed class ExternalApiTypeUsageAnalysisFacts
+{
+    internal string TypeName { get; set; }
+    internal int LineNumber { get; set; }
+}
+
+internal sealed class LocalTypeUsageAnalysisFacts
 {
     internal string TypeName { get; set; }
     internal int LineNumber { get; set; }

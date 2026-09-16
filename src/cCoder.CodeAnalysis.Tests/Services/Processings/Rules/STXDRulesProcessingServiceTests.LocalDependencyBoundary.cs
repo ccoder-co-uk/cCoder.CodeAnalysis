@@ -10,6 +10,56 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
 public sealed partial class STXDRulesProcessingServiceTests
 {
+    public static TheoryData<string> LocalTypeUsageScenarios => new()
+    {
+        {
+            "private readonly Example.Models.LocalValue value;"
+        },
+        {
+            "public Example.Models.LocalValue Value { get; set; }"
+        },
+        {
+            "public Example.Models.LocalValue Map(Example.Models.LocalValue value) => value;"
+        },
+        {
+            "public object Create() => new Example.Models.LocalValue();"
+        },
+        {
+            "public object Create() => Example.Models.LocalValue.Create();"
+        }
+    };
+
+    [Theory]
+    [MemberData(nameof(LocalTypeUsageScenarios))]
+    public void Dependency_WhenUsingAnyLocallyDefinedType_IsReported(
+        string localTypeUsage)
+    {
+        // Given
+        EvaluationContext context = CreateExternalApiContext(
+            source:
+                "namespace Example.Models "
+                + "{ public sealed class LocalValue "
+                + "{ public static LocalValue Create() => new(); } } "
+                + "namespace Example.Dependencies "
+                + "{ public sealed class ExternalFrameworkDependency "
+                + ": ThirdParty.FrameworkBase "
+                + "{ public override void Configure() { } "
+                + localTypeUsage
+                + " } }",
+            externalSource:
+                "namespace ThirdParty; public abstract class FrameworkBase "
+                + "{ public abstract void Configure(); }",
+            typeName: "Example.Dependencies.ExternalFrameworkDependency");
+
+        // When
+        AnalysisItem[] results = new STXDRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXD007");
+    }
+
     [Fact]
     public void Dependency_WhenDependingOnLocallyDefinedType_IsReported()
     {
