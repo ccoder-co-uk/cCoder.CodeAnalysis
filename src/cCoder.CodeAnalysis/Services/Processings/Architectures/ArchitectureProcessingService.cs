@@ -323,7 +323,61 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             type: type,
             compilation: compilation);
 
+        facts.LocalTypeUsages = GetLocalTypeUsages(
+            type: type,
+            compilation: compilation,
+            declaredTypes: declaredTypes);
+
         return facts;
+    }
+
+    private static IReadOnlyList<LocalTypeUsageAnalysisFacts> GetLocalTypeUsages(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation,
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes) =>
+        type.DeclaringSyntaxReferences
+            .Select(reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(declaration => declaration.DescendantNodes(
+                descendIntoChildren: node =>
+                    node == declaration
+                    || node is not TypeDeclarationSyntax))
+            .SelectMany(node => GetReferencedTypes(
+                node: node,
+                compilation: compilation)
+                .Where(referencedType => !SymbolEqualityComparer.Default.Equals(
+                    x: referencedType,
+                    y: type))
+                .Where(referencedType => declaredTypes.Contains(
+                    value: referencedType,
+                    comparer: SymbolEqualityComparer.Default))
+                .Select(referencedType => new LocalTypeUsageAnalysisFacts
+                {
+                    TypeName = GetTypeName(type: referencedType),
+                    LineNumber = GetLineNumber(node),
+                }))
+            .GroupBy(usage => (usage.TypeName, usage.LineNumber))
+            .Select(usages => usages.First())
+            .OrderBy(usage => usage.LineNumber)
+            .ThenBy(usage => usage.TypeName, StringComparer.Ordinal)
+            .ToArray();
+
+    private static IEnumerable<INamedTypeSymbol> GetReferencedTypes(
+        SyntaxNode node,
+        CSharpCompilation compilation)
+    {
+        SemanticModel semanticModel = compilation.GetSemanticModel(
+            syntaxTree: node.SyntaxTree);
+
+        ITypeSymbol? referencedType = node is TypeSyntax typeSyntax
+            ? semanticModel.GetTypeInfo(node: typeSyntax).Type
+            : node is InvocationExpressionSyntax invocation
+                ? (semanticModel.GetSymbolInfo(node: invocation).Symbol
+                    as IMethodSymbol)?.ContainingType
+                : null;
+
+        return GetContainedTypes(type: referencedType)
+            .OfType<INamedTypeSymbol>();
     }
 
     private static IReadOnlyList<ExternalApiTypeUsageAnalysisFacts> GetExternalApiTypeUsages(
