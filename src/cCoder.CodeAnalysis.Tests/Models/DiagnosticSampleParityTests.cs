@@ -80,11 +80,6 @@ public sealed class DiagnosticSampleParityTests(
             return "School.Cli.MissingHost";
         }
 
-        if (diagnosticCode == "STXAPP007")
-        {
-            return "School.Cli.BadHost";
-        }
-
         if (diagnosticCode.StartsWith("STXAPP", StringComparison.Ordinal))
         {
             return "School.Cli";

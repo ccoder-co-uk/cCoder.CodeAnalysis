@@ -159,11 +159,6 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{ExposersPage}#3011-user-interfaces"
         ),
         new(
-            diagnosticCode: "STXAPP007",
-            firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
-            secondStandardPageUri: $"{ModelingPage}#012012-exposure-models-exposers"
-        ),
-        new(
             diagnosticCode: "STXAPP008",
             firstStandardPageUri: $"{ModelingPage}#01202-configuration-models",
             secondStandardPageUri: $"{PrinciplesPage}#0200-simplicity"
