@@ -29,7 +29,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             .Concat(second: EvaluateSTXAPP003(context: context))
             .Concat(second: EvaluateSTXAPP004(context: context))
             .Concat(second: EvaluateSTXAPP006(context: context))
-            .Concat(second: EvaluateSTXAPP007(context: context))
             .Concat(second: EvaluateSTXAPP008(context: context))
             .Concat(second: EvaluateSTXAPP009(context: context))
             .Concat(second: EvaluateSTXAPP010(context: context))
@@ -90,19 +89,6 @@ internal sealed class STXAPPRulesProcessingService : ISTXAPPRulesProcessingServi
             && IsCommandApplication(facts.SourceCode)
             && !facts.ProjectTypeNames.Any(name => name.EndsWith(".IHostExtensions", StringComparison.Ordinal))
                 ? [Create("STXAPP006", "Console command applications must declare a root IHostExtensions composition class.", context)]
-                : [];
-    }
-
-    private static IEnumerable<AnalysisItem> EvaluateSTXAPP007(EvaluationContext context)
-    {
-        TypeAnalysisFacts facts = GetFacts(context);
-
-        return IsApplicationElement(context)
-            && GetTypeName(context) == "IHostExtensions"
-            && !facts.Methods.Any(method => method.HasCommandDetailsParameter
-                && method.ResolvesServiceFromProvider
-                && method.PassesCommandDetails)
-                ? [Create("STXAPP007", "IHostExtensions must route requested command details to a handling service resolved from the service provider.", context)]
                 : [];
     }
 

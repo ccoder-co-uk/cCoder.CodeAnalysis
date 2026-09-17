@@ -47,7 +47,7 @@ public sealed class ApplicationCompositionRuleTests
     }
 
     [Fact]
-    public void HostExtensionsWithoutProviderRoutingEvaluatesAsExpected()
+    public void HostExtensionsWithoutProviderRoutingAreTreatedAsCompositionRoot()
     {
         EvaluationContext context = CreateContext(
             typeName: "School.Cli.IHostExtensions",
@@ -63,7 +63,7 @@ public sealed class ApplicationCompositionRuleTests
 
         AnalysisItem[] items = service.Evaluate(context: context).ToArray();
 
-        items.Should().ContainSingle(item => item.Code == "STXAPP007", "");
+        items.Should().NotContain(item => item.Code == "STXAPP007", "");
     }
 
     [Fact]
@@ -85,6 +85,36 @@ public sealed class ApplicationCompositionRuleTests
                 }
                 """
         );
+
+        AnalysisItem[] items = service.Evaluate(context: context).ToArray();
+
+        items.Should().NotContain(item => item.Code == "STXAPP007", "");
+    }
+
+    [Fact]
+    public void HostExtensionsWithoutCommandDetailsEvaluatesAsExpected()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "School.Web.IHostExtensions",
+            sourceCode:
+                """
+                public static class IHostExtensions
+                {
+                    public static IHost StartEvents(this IHost host)
+                    {
+                        IEventHub eventHub =
+                            host.Services.GetRequiredService<IEventHub>();
+
+                        eventHub.ListenToEvent<Student, IStudentService>(
+                            "student_add",
+                            static (service, student) =>
+                                service.ProcessAsync(student));
+
+                        return host;
+                    }
+                }
+                """,
+            projectName: "School.Web");
 
         AnalysisItem[] items = service.Evaluate(context: context).ToArray();
 
