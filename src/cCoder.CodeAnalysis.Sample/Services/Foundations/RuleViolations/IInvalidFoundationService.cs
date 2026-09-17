@@ -12,5 +12,7 @@ internal interface IInvalidFoundationService
 
     void Perform();
 
+    IEnumerable<Student> GetStudents();
+
     Student ConvertTeacher(Teacher teacher);
 }

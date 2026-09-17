@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Models;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
@@ -88,6 +89,9 @@ internal sealed class ArchitectureModelQueriesProcessingService
 
     public IReadOnlyList<int> GetPublicMethodCallLineNumbers(EvaluationContext context) =>
         context.ArchitectureElement.AnalysisPublicMethodCallLineNumbers ?? [];
+
+    public IReadOnlyList<Location> GetPrematureQueryMaterializationLocations(EvaluationContext context) =>
+        context.ArchitectureElement.AnalysisPrematureQueryMaterializationLocations ?? [];
 
     public IReadOnlyCollection<string> GetProjectTypeNames(EvaluationContext context) =>
         context.ArchitectureModel.Classes
