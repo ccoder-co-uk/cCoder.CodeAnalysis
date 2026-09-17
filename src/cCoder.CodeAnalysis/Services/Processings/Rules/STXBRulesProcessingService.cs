@@ -189,13 +189,12 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXB008(EvaluationContext context) =>
-        architectureModelQueries.GetDependencies(context: context).Any(
-            predicate: dependency =>
-                dependency.IsInCurrentProject
-                && IsDbContextType(
-                    typeName: dependency.TypeName,
-                    architecture: context.ArchitectureModel,
-                    visitedTypes: []))
+        (context.ArchitectureElement.AnalysisConstructorDependencyTypeNames ?? [])
+            .Concat(context.ArchitectureElement.AnalysisStateDependencyTypeNames ?? [])
+            .Any(typeName => IsDbContextType(
+                typeName: typeName,
+                architecture: context.ArchitectureModel,
+                visitedTypes: []))
             ? new AnalysisItem[1]
             {
                 CreateAnalysisItem(
@@ -210,6 +209,8 @@ internal sealed class STXBRulesProcessingService : ISTXBRulesProcessingService
         Architecture architecture,
         HashSet<string> visitedTypes)
     {
+        typeName = typeName.TrimEnd('?');
+
         if (!visitedTypes.Add(item: typeName))
         {
             return false;
