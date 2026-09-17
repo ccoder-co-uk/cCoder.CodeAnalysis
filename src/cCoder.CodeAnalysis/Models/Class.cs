@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 #nullable disable
 using System.Text.Json.Serialization;
+using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Models;
@@ -96,4 +97,7 @@ public sealed class Class
 
     [JsonIgnore]
     internal IReadOnlyList<int> AnalysisPublicMethodCallLineNumbers { get; set; }
+
+    [JsonIgnore]
+    internal IReadOnlyList<Location> AnalysisPrematureQueryMaterializationLocations { get; set; }
 }

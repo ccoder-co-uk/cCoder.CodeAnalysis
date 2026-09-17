@@ -29,6 +29,10 @@ public sealed class InvalidFoundationService : System.ComponentModel.Component, 
         }
     }
 
+    public IEnumerable<Student> GetStudents() =>
+        studentService.GetStudents()
+            .ToArray();
+
     public Student ConvertTeacher(Teacher teacher)
     {
         return new Student

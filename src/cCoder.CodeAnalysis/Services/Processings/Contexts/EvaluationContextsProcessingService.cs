@@ -202,6 +202,9 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         architectureElement.AnalysisPublicMethodCallLineNumbers =
             GetPublicMethodCallLineNumbers(type, compilation);
 
+        architectureElement.AnalysisPrematureQueryMaterializationLocations =
+            GetPrematureQueryMaterializationLocations(type, compilation);
+
         architectureElement.AnalysisPublicApiModelTypes = GetPublicApiModelTypes(type);
 
         return new EvaluationContext
@@ -427,6 +430,111 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .GetLineSpan().StartLinePosition.Line + 1
             )
             .ToArray();
+
+    private static Location[] GetPrematureQueryMaterializationLocations(
+        INamedTypeSymbol type,
+        CSharpCompilation compilation) =>
+        type.DeclaringSyntaxReferences
+            .Select(selector: reference => reference.GetSyntax())
+            .OfType<TypeDeclarationSyntax>()
+            .SelectMany(selector: declaration => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .SelectMany(selector: method => GetReturnedExpressions(method)
+                .Select(expression => (method, expression)))
+            .Where(item => IsPrematureQueryMaterialization(
+                method: item.method,
+                expression: item.expression,
+                compilation: compilation))
+            .Select(selector: item => item.expression.GetLocation())
+            .ToArray();
+
+    private static IEnumerable<ExpressionSyntax> GetReturnedExpressions(
+        MethodDeclarationSyntax method)
+    {
+        if (method.ExpressionBody is not null)
+        {
+            yield return method.ExpressionBody.Expression;
+        }
+
+        if (method.Body is null)
+        {
+            yield break;
+        }
+
+        foreach (ReturnStatementSyntax returnStatement in method.Body
+            .DescendantNodes()
+            .OfType<ReturnStatementSyntax>()
+            .Where(returnStatement => returnStatement.Expression is not null))
+        {
+            yield return returnStatement.Expression!;
+        }
+    }
+
+    private static bool IsPrematureQueryMaterialization(
+        MethodDeclarationSyntax method,
+        ExpressionSyntax expression,
+        CSharpCompilation compilation)
+    {
+        SemanticModel semanticModel = compilation.GetSemanticModel(method.SyntaxTree);
+        IMethodSymbol? methodSymbol = semanticModel.GetDeclaredSymbol(method);
+
+        if (methodSymbol is null
+            || !IsDeferredSequenceContract(type: methodSymbol.ReturnType))
+        {
+            return false;
+        }
+
+        ExpressionSyntax returnedExpression = expression is AwaitExpressionSyntax awaitExpression
+            ? awaitExpression.Expression
+            : expression;
+
+        if (returnedExpression is not InvocationExpressionSyntax invocation
+            || invocation.Expression is not MemberAccessExpressionSyntax memberAccess
+            || !IsQueryMaterializer(name: memberAccess.Name.Identifier.Text))
+        {
+            return false;
+        }
+
+        ITypeSymbol? receiverType = semanticModel
+            .GetTypeInfo(memberAccess.Expression)
+            .Type;
+
+        return ImplementsQueryable(type: receiverType);
+    }
+
+    private static bool IsDeferredSequenceContract(ITypeSymbol type)
+    {
+        ITypeSymbol contractType = type is INamedTypeSymbol taskType
+            && taskType.TypeArguments.Length == 1
+            && taskType.OriginalDefinition.ToDisplayString()
+                == "System.Threading.Tasks.Task<TResult>"
+            ? taskType.TypeArguments[0]
+            : type;
+
+        return contractType is INamedTypeSymbol namedType
+            && namedType.OriginalDefinition.ToDisplayString() is
+                "System.Collections.Generic.IEnumerable<T>"
+                or "System.Linq.IQueryable<T>";
+    }
+
+    private static bool IsQueryMaterializer(string name) =>
+        name is "ToArray"
+            or "ToArrayAsync"
+            or "ToList"
+            or "ToListAsync"
+            or "ToHashSet"
+            or "ToHashSetAsync"
+            or "ToDictionary"
+            or "ToDictionaryAsync"
+            or "ToLookup";
+
+    private static bool ImplementsQueryable(ITypeSymbol? type) =>
+        type is INamedTypeSymbol namedType
+        && (namedType.OriginalDefinition.ToDisplayString()
+                == "System.Linq.IQueryable<T>"
+            || namedType.AllInterfaces.Any(contract =>
+                contract.OriginalDefinition.ToDisplayString()
+                    == "System.Linq.IQueryable<T>"));
 
     private static bool IsPublicMethodCallOnSameType(
         InvocationExpressionSyntax invocation,

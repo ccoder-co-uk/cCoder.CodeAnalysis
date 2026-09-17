@@ -17,7 +17,7 @@ public sealed class DiagnosticCodeStandardPageIndexTests
             .GetDiagnosticCodeStandardPages()
             .ToArray();
 
-        pages.Should().HaveCount(135, "");
+        pages.Should().HaveCount(136, "");
         pages.Select((DiagnosticCodeStandardPage page) => page.DiagnosticCode).Should().OnlyHaveUniqueItems("");
     }
 

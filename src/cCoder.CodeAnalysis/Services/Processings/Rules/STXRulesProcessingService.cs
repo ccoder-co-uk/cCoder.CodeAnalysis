@@ -17,6 +17,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
     {
         return EvaluateSTX0024(context: context)
             .Concat(second: EvaluateSTX0026(context: context))
+            .Concat(second: EvaluateSTX0027(context: context))
             .Concat(second: ImplementsInfrastructureService(context: context)
                 ? []
                 : EvaluateSTX0001(context: context)
@@ -38,6 +39,28 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 code: "STX0026",
                 description: "Only a broker may depend directly on Microsoft ILogger; other elements must use a LoggingBroker.",
                 context: context)];
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0027(
+        EvaluationContext context) =>
+        !IsService(elementType:
+            architectureModelQueries.GetStandardElementType(context: context))
+            ? []
+            : architectureModelQueries
+                .GetPrematureQueryMaterializationLocations(context: context)
+                .Select(location => CreateAnalysisItem(
+                    code: "STX0027",
+                    description:
+                        "A service returning a deferred sequence must not prematurely materialize an IQueryable expression.",
+                    context: context,
+                    location: location));
+
+    private static bool IsService(StandardElementType elementType) =>
+        elementType is StandardElementType.FoundationService
+            or StandardElementType.ProcessingService
+            or StandardElementType.OrchestrationService
+            or StandardElementType.CoordinationService
+            or StandardElementType.ManagementService
+            or StandardElementType.AggregationService;
 
     private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
         EvaluationContext context) =>
@@ -1160,9 +1183,9 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             Severity = AnalysisSeverity.Warning,
             Type = architectureModelQueries.GetTypeName(context: context),
             FilePath = location?.SourceTree?.FilePath,
-            LineNumber = (
-                location is not null ? location.GetLineSpan().StartLinePosition.Line + 1 : architectureModelQueries.GetLineNumber(context: context)
-            ),
+            LineNumber = location is not null
+                ? location.GetLineSpan().StartLinePosition.Line + 1
+                : architectureModelQueries.GetLineNumber(context: context),
         };
     }
 

@@ -2153,6 +2153,139 @@ public sealed class DependencyBoundaryRuleGapTests
                 + " }",
             typeName: $"{namespaceName}.RegexService");
 
+    [Fact]
+    public void ServiceQuery_WhenMaterializedForEnumerableReturn_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ internal interface IStudentBroker "
+                + "{ System.Linq.IQueryable<Student> SelectAllStudents(); } "
+                + "internal sealed class Student { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ internal sealed class StudentService("
+                + "Example.Brokers.IStudentBroker broker) "
+                + "{ public System.Collections.Generic.IEnumerable<Example.Brokers.Student> "
+                + "GetStudents() => broker.SelectAllStudents().ToArray(); } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0027");
+    }
+
+    [Fact]
+    public void ServiceQuery_WhenReturnedDeferred_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ internal interface IStudentBroker "
+                + "{ System.Linq.IQueryable<Student> SelectAllStudents(); } "
+                + "internal sealed class Student { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ internal sealed class StudentService("
+                + "Example.Brokers.IStudentBroker broker) "
+                + "{ public System.Linq.IQueryable<Example.Brokers.Student> "
+                + "GetStudents() => broker.SelectAllStudents(); } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0027");
+    }
+
+    [Fact]
+    public void ServiceQuery_WhenConcreteArrayIsTheContract_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ internal interface IStudentBroker "
+                + "{ System.Linq.IQueryable<Student> SelectAllStudents(); } "
+                + "internal sealed class Student { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ internal sealed class StudentService("
+                + "Example.Brokers.IStudentBroker broker) "
+                + "{ public Example.Brokers.Student[] GetStudents() "
+                + "=> broker.SelectAllStudents().ToArray(); } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0027");
+    }
+
+    [Fact]
+    public void BrokerQuery_WhenMaterializedAtDependencyBoundary_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ internal interface IStudentBroker "
+                + "{ System.Collections.Generic.IEnumerable<Student> SelectAllStudents(); } "
+                + "internal sealed class StudentBroker : IStudentBroker "
+                + "{ private readonly System.Linq.IQueryable<Student> students = "
+                + "System.Array.Empty<Student>().AsQueryable(); "
+                + "public System.Collections.Generic.IEnumerable<Student> SelectAllStudents() "
+                + "=> students.ToArray(); } internal sealed class Student { } }",
+            typeName: "Example.Brokers.StudentBroker");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0027");
+    }
+
+    [Fact]
+    public void ServiceQuery_WhenMaterializedAsStableMutationSnapshot_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Example.Brokers "
+                + "{ internal interface IStudentBroker "
+                + "{ System.Linq.IQueryable<Student> SelectAllStudents(); "
+                + "void DeleteStudent(Student student); } "
+                + "internal sealed class Student { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ internal sealed class StudentService("
+                + "Example.Brokers.IStudentBroker broker) "
+                + "{ public void DeleteStudents() "
+                + "{ Example.Brokers.Student[] students = "
+                + "broker.SelectAllStudents().ToArray(); "
+                + "foreach (Example.Brokers.Student student in students) "
+                + "{ broker.DeleteStudent(student); } } } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0027");
+    }
+
     private static EvaluationContext CreateContext(
         string source,
         string typeName,
