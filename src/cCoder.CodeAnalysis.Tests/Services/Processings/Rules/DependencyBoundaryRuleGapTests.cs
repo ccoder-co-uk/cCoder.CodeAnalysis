@@ -854,6 +854,170 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void SecurityDbContextFactory_WhenCreatingContextInsideFactoryMethod_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Brokers.Storages "
+                + "{ public interface ISecurityDbContextFactory "
+                + "{ SecurityDbContext CreateDbContext(); } "
+                + "public sealed class SecurityDbContext : "
+                + "Microsoft.EntityFrameworkCore.DbContext { } "
+                + "public sealed class SecurityDbContextFactory : "
+                + "ISecurityDbContextFactory "
+                + "{ public SecurityDbContext CreateDbContext() => new(); } }",
+            externalSource:
+                "namespace Microsoft.EntityFrameworkCore; "
+                + "public abstract class DbContext { }",
+            typeName:
+                "Security.Web.Brokers.Storages.SecurityDbContextFactory");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXB008");
+    }
+
+    [Theory]
+    [InlineData(
+        "public sealed class SecurityBroker(SecurityDbContext context) : ISecurityBroker { }")]
+    [InlineData(
+        "public sealed class SecurityBroker : ISecurityBroker "
+        + "{ private readonly SecurityDbContext context = new(); }")]
+    [InlineData(
+        "public sealed class SecurityBroker : ISecurityBroker "
+        + "{ private SecurityDbContext Context { get; } = new(); }")]
+    [InlineData(
+        "public sealed class SecurityBroker : ISecurityBroker "
+        + "{ private readonly SecurityDbContext? context; }")]
+    public void SecurityBroker_WhenRetainingConcreteDbContext_IsReported(
+        string brokerDeclaration)
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Brokers.Storages "
+                + "{ public interface ISecurityBroker { } "
+                + "public sealed class SecurityDbContext : "
+                + "Microsoft.EntityFrameworkCore.DbContext { } "
+                + brokerDeclaration
+                + " }",
+            externalSource:
+                "namespace Microsoft.EntityFrameworkCore; "
+                + "public abstract class DbContext { }",
+            typeName: "Security.Web.Brokers.Storages.SecurityBroker");
+
+        // When
+        AnalysisItem[] results = new STXBRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXB008");
+    }
+
+    [Fact]
+    public void SecurityControllerPrimaryConstructor_WhenConsumingPublicServiceContract_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Services.Foundations "
+                + "{ public interface IHomeService { } } "
+                + "namespace Security.Web.Controllers "
+                + "{ public class HomeController("
+                + "Security.Web.Services.Foundations.IHomeService homeService) : "
+                + "Microsoft.AspNetCore.Mvc.Controller { } }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.Mvc; "
+                + "public abstract class Controller { }",
+            typeName: "Security.Web.Services.Foundations.IHomeService");
+
+        // When
+        AnalysisItem[] results = new STXSTRUCTRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STXSTRUCT003");
+    }
+
+    [Fact]
+    public void SecurityFrameworkController_WhenItHasNoOwnInterface_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Controllers; "
+                + "public class HomeController : "
+                + "Microsoft.AspNetCore.Mvc.Controller { }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.Mvc; "
+                + "public abstract class Controller { }",
+            typeName: "Security.Web.Controllers.HomeController");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        context.ArchitectureElement.StandardElementType.Should()
+            .Be(StandardElementType.HttpExposure);
+        context.ArchitectureElement.AnalysisImplementedInterfaces.Should().BeEmpty();
+        results.Should().NotContain(result => result.Code == "STX0013");
+    }
+
+    [Fact]
+    public void SecurityFrameworkController_WhenConsumingLocalManager_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Exposures "
+                + "{ public interface IHomeManager { } } "
+                + "namespace Security.Web.Controllers "
+                + "{ public class HomeController("
+                + "Security.Web.Exposures.IHomeManager homeManager) : "
+                + "Microsoft.AspNetCore.Mvc.Controller { } }",
+            externalSource:
+                "namespace Microsoft.AspNetCore.Mvc; "
+                + "public abstract class Controller { }",
+            typeName: "Security.Web.Controllers.HomeController");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void SecurityPublicServiceContract_WhenNotConsumedByController_IsReported()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace Security.Web.Services.Foundations; "
+                + "public interface IUnusedService { }",
+            typeName: "Security.Web.Services.Foundations.IUnusedService");
+
+        // When
+        AnalysisItem[] results = new STXSTRUCTRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXSTRUCT003");
+    }
+
+    [Fact]
     public void LoggingDependency_WhenInjectedIntoExposure_IsNotReportedAsBusinessDependency()
     {
         // Given

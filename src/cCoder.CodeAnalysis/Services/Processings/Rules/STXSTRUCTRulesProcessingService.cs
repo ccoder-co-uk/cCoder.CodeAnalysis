@@ -106,15 +106,12 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
         return context.ArchitectureModel.Classes.Any(predicate: exposure =>
             exposure.IsPublic
             && exposure.StandardElementType == StandardElementType.HttpExposure
-            && exposure.AnalysisIsApiController
-            && exposure.AnalysisHasExternalBaseType
-            && (exposure.AnalysisDependencies ?? []).Any(dependency =>
-                dependency.TypeName == contractTypeName
-                && dependency.IsInCurrentProject
-                && dependency.IsPublicInterface)
-            && (exposure.AnalysisConstructors ?? []).Any(constructor =>
-                (constructor.Inputs ?? []).Any(input =>
-                    input.Type == contractTypeName)));
+            && exposure.BaseType is { IsInCurrentProject: false }
+            && ((exposure.AnalysisConstructorDependencyTypeNames ?? [])
+                    .Contains(contractTypeName, StringComparer.Ordinal)
+                || (exposure.AnalysisConstructors ?? []).Any(constructor =>
+                    (constructor.Inputs ?? []).Any(input =>
+                        input.Type == contractTypeName))));
     }
 
     private static bool IsService(StandardElementType elementType) =>

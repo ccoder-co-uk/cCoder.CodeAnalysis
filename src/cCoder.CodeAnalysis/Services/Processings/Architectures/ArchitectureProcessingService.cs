@@ -232,6 +232,27 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                 .ToList(),
             AnalysisMethods = analysisMethods,
             AnalysisConstructors = analysisConstructors,
+            AnalysisConstructorDependencyTypeNames = type.InstanceConstructors
+                .SelectMany(constructor => constructor.Parameters)
+                .SelectMany(parameter =>
+                    GetContainedDependencyTypes(type: parameter.Type))
+                .Select(GetTypeName)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
+            AnalysisStateDependencyTypeNames = type.GetMembers()
+                .Where(member => member is IFieldSymbol { IsImplicitlyDeclared: false }
+                    or IPropertySymbol { IsImplicitlyDeclared: false })
+                .Select(member => member switch
+                {
+                    IFieldSymbol field => field.Type,
+                    IPropertySymbol property => property.Type,
+                    _ => null,
+                })
+                .OfType<ITypeSymbol>()
+                .SelectMany(GetContainedDependencyTypes)
+                .Select(GetTypeName)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray(),
             AnalysisImplementedInterfaces = type.AllInterfaces
                 .Select(selector: GetTypeName)
                 .OrderBy(keySelector: interfaceName => interfaceName, comparer: StringComparer.Ordinal)
