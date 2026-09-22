@@ -346,7 +346,6 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
         facts.LocalTypeUsages = GetLocalTypeUsages(
             type: type,
-            compilation: compilation,
             declaredTypes: declaredTypes);
 
         return facts;
@@ -354,18 +353,31 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
     private static IReadOnlyList<LocalTypeUsageAnalysisFacts> GetLocalTypeUsages(
         INamedTypeSymbol type,
-        CSharpCompilation compilation,
-        IReadOnlyCollection<INamedTypeSymbol> declaredTypes) =>
-        type.DeclaringSyntaxReferences
+        IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
+    {
+        Dictionary<string, INamedTypeSymbol[]> declaredTypesByName = declaredTypes
+            .SelectMany(type => new[]
+            {
+                new { Name = type.Name, Type = type },
+                new { Name = GetTypeName(type), Type = type },
+            })
+            .GroupBy(item => item.Name, StringComparer.Ordinal)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(item => item.Type).ToArray(),
+                StringComparer.Ordinal);
+
+        return type.DeclaringSyntaxReferences
             .Select(reference => reference.GetSyntax())
             .OfType<TypeDeclarationSyntax>()
             .SelectMany(declaration => declaration.DescendantNodes(
                 descendIntoChildren: node =>
                     node == declaration
                     || node is not TypeDeclarationSyntax))
+            .Where(node => node is TypeSyntax or InvocationExpressionSyntax)
             .SelectMany(node => GetReferencedTypes(
                 node: node,
-                compilation: compilation)
+                declaredTypesByName: declaredTypesByName)
                 .Where(referencedType => !SymbolEqualityComparer.Default.Equals(
                     x: referencedType,
                     y: type))
@@ -382,23 +394,40 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .OrderBy(usage => usage.LineNumber)
             .ThenBy(usage => usage.TypeName, StringComparer.Ordinal)
             .ToArray();
+    }
 
     private static IEnumerable<INamedTypeSymbol> GetReferencedTypes(
         SyntaxNode node,
-        CSharpCompilation compilation)
+        IReadOnlyDictionary<string, INamedTypeSymbol[]> declaredTypesByName)
     {
-        SemanticModel semanticModel = compilation.GetSemanticModel(
-            syntaxTree: node.SyntaxTree);
+        if (node is InvocationExpressionSyntax
+            {
+                Expression: MemberAccessExpressionSyntax memberAccess
+            })
+        {
+            string receiverName = memberAccess.Expression.ToString();
 
-        ITypeSymbol? referencedType = node is TypeSyntax typeSyntax
-            ? semanticModel.GetTypeInfo(node: typeSyntax).Type
-            : node is InvocationExpressionSyntax invocation
-                ? (semanticModel.GetSymbolInfo(node: invocation).Symbol
-                    as IMethodSymbol)?.ContainingType
-                : null;
+            return declaredTypesByName.TryGetValue(receiverName, out INamedTypeSymbol[]? types)
+                ? types
+                : [];
+        }
 
-        return GetContainedTypes(type: referencedType)
-            .OfType<INamedTypeSymbol>();
+        if (node is not TypeSyntax typeSyntax)
+        {
+            return [];
+        }
+
+        string[] referencedTypeNames = typeSyntax
+            .DescendantNodesAndSelf()
+            .OfType<SimpleNameSyntax>()
+            .Select(name => name.Identifier.ValueText)
+            .Append(typeSyntax.ToString())
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+
+        return referencedTypeNames
+            .Where(declaredTypesByName.ContainsKey)
+            .SelectMany(name => declaredTypesByName[name]);
     }
 
     private static IReadOnlyList<ExternalApiTypeUsageAnalysisFacts> GetExternalApiTypeUsages(
@@ -827,22 +856,43 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         CSharpCompilation compilation,
         IReadOnlyCollection<INamedTypeSymbol> declaredTypes)
     {
+        if (compilation.AssemblyName?.EndsWith(
+            value: "Tests",
+            comparisonType: StringComparison.Ordinal) == true)
+        {
+            return [];
+        }
+
         return method
             .DeclaringSyntaxReferences.Select(reference => reference.GetSyntax())
+            .Select(node => new
+            {
+                Node = node,
+                SemanticModel = compilation.GetSemanticModel(node.SyntaxTree),
+            })
             .SelectMany(
-                node => node.DescendantNodes().Where(
+                declaration => declaration.Node.DescendantNodes(
+                    descendIntoChildren: node =>
+                        node == declaration.Node
+                        || node is not TypeDeclarationSyntax
+                            and not LocalFunctionStatementSyntax)
+                    .Where(
                     descendant => descendant
                         is InvocationExpressionSyntax
                         or ObjectCreationExpressionSyntax
-                        or ImplicitObjectCreationExpressionSyntax))
-            .Where(call => IsDeclaredWithinMethod(
-                call: call,
-                method: method,
-                compilation: compilation))
+                        or ImplicitObjectCreationExpressionSyntax)
+                    .Select(call => new
+                    {
+                        Node = call,
+                        declaration.SemanticModel,
+                    }))
             .Select(call => new
             {
-                Node = call,
-                Method = GetCalledMethod(compilation: compilation, call: call),
+                call.Node,
+                call.SemanticModel,
+                Method = GetCalledMethod(
+                    semanticModel: call.SemanticModel,
+                    call: call.Node),
             })
             .Where(call => call.Method is not null)
             .GroupBy(call => GetMethodId(method: call.Method!.OriginalDefinition), StringComparer.Ordinal)
@@ -862,7 +912,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
                     INamedTypeSymbol? receiverType = GetInvocationReceiverType(
                         call: call.Node,
-                        compilation: compilation);
+                        semanticModel: call.SemanticModel);
 
                     INamedTypeSymbol? localReceiverType = declaredTypes.FirstOrDefault(
                         type => SymbolEqualityComparer.Default.Equals(
@@ -904,7 +954,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
                             .Any(),
                         IsTargetCallbackParameter = IsInvocationOnCallbackParameter(
                             call: call.Node,
-                            compilation: compilation),
+                            semanticModel: call.SemanticModel),
                         ArchitecturalDependencyTypeName = inheritedContractReceiver is null
                             ? null
                             : GetTypeName(type: inheritedContractReceiver),
@@ -923,39 +973,14 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             .ToList();
     }
 
-    private static bool IsDeclaredWithinMethod(
-        SyntaxNode call,
-        IMethodSymbol method,
-        CSharpCompilation compilation)
-    {
-        ISymbol? enclosingSymbol = compilation
-            .GetSemanticModel(syntaxTree: call.SyntaxTree)
-            .GetEnclosingSymbol(position: call.SpanStart);
-
-        while (enclosingSymbol is IMethodSymbol
-            {
-                MethodKind: MethodKind.AnonymousFunction,
-            })
-        {
-            enclosingSymbol = enclosingSymbol.ContainingSymbol;
-        }
-
-        return SymbolEqualityComparer.Default.Equals(
-            x: enclosingSymbol,
-            y: method);
-    }
-
     private static INamedTypeSymbol? GetInvocationReceiverType(
         SyntaxNode call,
-        CSharpCompilation compilation)
+        SemanticModel semanticModel)
     {
         if (call is not InvocationExpressionSyntax invocation)
         {
             return null;
         }
-
-        SemanticModel semanticModel = compilation.GetSemanticModel(
-            syntaxTree: call.SyntaxTree);
 
         return invocation.Expression switch
         {
@@ -997,15 +1022,12 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
 
     private static bool IsInvocationOnCallbackParameter(
         SyntaxNode call,
-        CSharpCompilation compilation)
+        SemanticModel semanticModel)
     {
         if (call is not InvocationExpressionSyntax invocation)
         {
             return false;
         }
-
-        SemanticModel semanticModel = compilation.GetSemanticModel(
-            syntaxTree: call.SyntaxTree);
 
         SyntaxNode receiver = invocation.Expression switch
         {
@@ -1084,10 +1106,9 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     }
 
     private static IMethodSymbol? GetCalledMethod(
-        CSharpCompilation compilation,
+        SemanticModel semanticModel,
         SyntaxNode call)
     {
-        SemanticModel semanticModel = compilation.GetSemanticModel(syntaxTree: call.SyntaxTree);
         SymbolInfo symbolInfo = semanticModel.GetSymbolInfo(node: call);
 
         IMethodSymbol? method = symbolInfo.Symbol as IMethodSymbol
