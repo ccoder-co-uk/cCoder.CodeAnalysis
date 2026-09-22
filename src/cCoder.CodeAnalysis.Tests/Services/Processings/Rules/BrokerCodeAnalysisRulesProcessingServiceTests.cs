@@ -27,10 +27,15 @@ public sealed class STXBRulesProcessingServiceTests
         [
             new TypeDependency
             {
+                TypeName = "Example.IExternalExposure",
                 StandardElementType = StandardElementType.Exposure,
                 IsInCurrentProject = false
             },
-            new TypeDependency { StandardElementType = StandardElementType.Dependency },
+            new TypeDependency
+            {
+                TypeName = "Example.ExternalDependency",
+                StandardElementType = StandardElementType.Dependency,
+            },
         ];
         EvaluationContext context = CreateContext(
             typeName: "Example.Broker",

@@ -31,6 +31,33 @@ public sealed class ArchitectureModelQueriesProcessingServiceTests
     }
 
     [Fact]
+    public void GetDependencies_WhenSameTypeIsRepeated_ReturnsOneType()
+    {
+        TypeDependency firstCall = new()
+        {
+            TypeName = "Sample.Dependency",
+            StandardElementType = StandardElementType.Dependency,
+        };
+
+        TypeDependency secondCall = new()
+        {
+            TypeName = "Sample.Dependency",
+            StandardElementType = StandardElementType.Dependency,
+        };
+
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = new Class
+            {
+                AnalysisDependencies = [firstCall, secondCall],
+            },
+        };
+
+        service.GetDependencies(context: context).Should().ContainSingle()
+            .Which.TypeName.Should().Be("Sample.Dependency");
+    }
+
+    [Fact]
     public void SourceQueriesShouldReturnModelFacts()
     {
         TypeDeclarationSyntax modelDeclaration = CreateDeclaration(source: "class Model { }");
