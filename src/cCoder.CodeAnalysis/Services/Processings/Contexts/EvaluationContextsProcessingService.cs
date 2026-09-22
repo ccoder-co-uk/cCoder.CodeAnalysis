@@ -766,6 +766,11 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             return StandardElementType.Exposure;
         }
 
+        if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))
+        {
+            return StandardElementType.Model;
+        }
+
         if (containingNamespace.Contains(
             value: ".Activities.Activities",
             comparisonType: StringComparison.Ordinal))
@@ -813,11 +818,6 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
         if (InheritsFromExternalType(type: type))
         {
             return StandardElementType.Dependency;
-        }
-
-        if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))
-        {
-            return StandardElementType.Model;
         }
 
         if (containingNamespace.Contains(value: ".Brokers", comparisonType: StringComparison.Ordinal))

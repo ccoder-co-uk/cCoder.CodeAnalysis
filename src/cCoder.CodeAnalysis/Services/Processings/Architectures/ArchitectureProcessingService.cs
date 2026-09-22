@@ -1687,6 +1687,11 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
             return StandardElementType.Exposure;
         }
 
+        if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))
+        {
+            return StandardElementType.Model;
+        }
+
         if (containingNamespace.Contains(
             value: ".Migrations",
             comparisonType: StringComparison.Ordinal))
@@ -1727,11 +1732,6 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
         if (InheritsFromExternalType(type: type))
         {
             return StandardElementType.Dependency;
-        }
-
-        if (containingNamespace.Contains(value: ".Models", comparisonType: StringComparison.Ordinal))
-        {
-            return StandardElementType.Model;
         }
 
         if (containingNamespace.Contains(value: ".Brokers", comparisonType: StringComparison.Ordinal))
