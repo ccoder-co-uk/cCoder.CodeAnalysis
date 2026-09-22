@@ -12,6 +12,55 @@ namespace cCoder.CodeAnalysis.Tests.Analyzers;
 
 public sealed partial class ArchitectureDiagnosticRegressionTests
 {
+    [Fact]
+    public void ModelRecordStruct_WhenUsedByOrchestration_IsNotClassifiedAsDependency()
+    {
+        // Given
+        CSharpCompilation compilation = CreateCompilation(
+            CSharpSyntaxTree.ParseText(
+                text:
+                    """
+                    namespace Example.Models
+                    {
+                        internal readonly record struct ParsedBody(string Content, bool IsBodyHtml);
+                    }
+
+                    namespace Example.Services.Foundations
+                    {
+                        internal interface IBodyService { }
+                        internal interface IContentService { }
+                    }
+
+                    namespace Example.Services.Orchestrations
+                    {
+                        using Example.Models;
+                        using Example.Services.Foundations;
+
+                        internal sealed class BodyOrchestrationService(
+                            IBodyService bodyService,
+                            IContentService contentService)
+                        {
+                            public ParsedBody Parse() => new(Content: string.Empty, IsBodyHtml: false);
+                        }
+                    }
+                    """,
+                path: "Models/ParsedBody.cs"));
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+
+        // Then
+        AnalysisItem[] invalidItems = architecture.AnalysisItems
+            .Where(item =>
+                item.Type.EndsWith(value: "BodyOrchestrationService")
+                && item.Code is "STXD001" or "STXO001")
+            .ToArray();
+
+        Assert.True(
+            condition: invalidItems.Length == 0,
+            userMessage: string.Join(separator: Environment.NewLine, values: invalidItems.Select(item => item.Description)));
+    }
+
     [Theory]
     [InlineData("Example.Models")]
     [InlineData("Example.Models.Graph")]
