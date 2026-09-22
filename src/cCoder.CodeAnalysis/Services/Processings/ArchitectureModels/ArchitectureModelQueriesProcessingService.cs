@@ -57,6 +57,18 @@ internal sealed class ArchitectureModelQueriesProcessingService
     public IReadOnlyList<TypeDependency> GetDependencies(EvaluationContext context) =>
         (context.ArchitectureElement.AnalysisDependencies ?? [])
             .Where(dependency => !dependency.IsUtilityBroker && !dependency.IsConfigurationModel)
+            .Select((dependency, index) => new
+            {
+                Dependency = dependency,
+                Key = string.IsNullOrWhiteSpace(
+                    value: dependency.TypeName)
+                        ? $"__unnamed_{index}"
+                        : dependency.TypeName,
+            })
+            .GroupBy(
+                keySelector: item => item.Key,
+                comparer: StringComparer.Ordinal)
+            .Select(selector: dependencies => dependencies.First().Dependency)
             .ToArray();
 
     public IReadOnlyCollection<string> GetLocalDependencyTypeNames(EvaluationContext context) =>

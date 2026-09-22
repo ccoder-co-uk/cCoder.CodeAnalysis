@@ -19,8 +19,8 @@ public sealed class ServiceArchitectureModelRuleParityTests
             typeName: "StudentAggregationService",
             modelDependencies:
             [
-                CreateDependency(StandardElementType.FoundationService),
-                CreateDependency(StandardElementType.FoundationService),
+                CreateDependency(StandardElementType.FoundationService, "IStudentService"),
+                CreateDependency(StandardElementType.FoundationService, "ITeacherService"),
             ]);
 
         new STXARulesProcessingService().Evaluate(context: context)
@@ -34,8 +34,8 @@ public sealed class ServiceArchitectureModelRuleParityTests
             typeName: "StudentCoordinationService",
             modelDependencies:
             [
-                CreateDependency(StandardElementType.OrchestrationService),
-                CreateDependency(StandardElementType.OrchestrationService),
+                CreateDependency(StandardElementType.OrchestrationService, "IStudentOrchestrationService"),
+                CreateDependency(StandardElementType.OrchestrationService, "ITeacherOrchestrationService"),
             ]);
 
         new STXCRulesProcessingService().Evaluate(context: context)
@@ -126,8 +126,8 @@ public sealed class ServiceArchitectureModelRuleParityTests
             typeName: "StudentOrchestrationService",
             modelDependencies:
             [
-                CreateDependency(StandardElementType.FoundationService),
-                CreateDependency(StandardElementType.FoundationService),
+                CreateDependency(StandardElementType.FoundationService, "IStudentService"),
+                CreateDependency(StandardElementType.FoundationService, "ITeacherService"),
             ]);
 
         new STXORulesProcessingService().Evaluate(context: context)
@@ -141,8 +141,8 @@ public sealed class ServiceArchitectureModelRuleParityTests
             typeName: "StudentOrchestrationService",
             modelDependencies:
             [
-                CreateDependency(StandardElementType.FoundationService),
-                CreateDependency(StandardElementType.FoundationService),
+                CreateDependency(StandardElementType.FoundationService, "IStudentService"),
+                CreateDependency(StandardElementType.FoundationService, "ITeacherService"),
                 new TypeDependency
                 {
                     TypeName = "ILoggingBroker",
@@ -184,8 +184,8 @@ public sealed class ServiceArchitectureModelRuleParityTests
             typeName: "StudentManagementService",
             modelDependencies:
             [
-                CreateDependency(StandardElementType.CoordinationService),
-                CreateDependency(StandardElementType.CoordinationService),
+                CreateDependency(StandardElementType.CoordinationService, "IStudentCoordinationService"),
+                CreateDependency(StandardElementType.CoordinationService, "ITeacherCoordinationService"),
             ]);
 
         new STXMGRulesProcessingService().Evaluate(context: context)
