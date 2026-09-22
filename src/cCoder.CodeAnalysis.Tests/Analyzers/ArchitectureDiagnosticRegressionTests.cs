@@ -61,6 +61,34 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
             userMessage: string.Join(separator: Environment.NewLine, values: invalidItems.Select(item => item.Description)));
     }
 
+    [Fact]
+    public void ModelCollection_WhenItInheritsExternalCollection_IsClassifiedAsDependency()
+    {
+        // Given
+        CSharpCompilation compilation = CreateCompilation(
+            CSharpSyntaxTree.ParseText(
+                text:
+                    """
+                    using System.Collections.Generic;
+
+                    namespace Example.Models;
+
+                    public sealed class ProviderConfigurations
+                        : Dictionary<string, string>
+                    {
+                    }
+                    """,
+                path: "Models/ProviderConfigurations.cs"));
+
+        // When
+        Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
+
+        // Then
+        Assert.Equal(
+            expected: StandardElementType.Dependency,
+            actual: Assert.Single(collection: architecture.Classes).StandardElementType);
+    }
+
     [Theory]
     [InlineData("Example.Models")]
     [InlineData("Example.Models.Graph")]
