@@ -2002,6 +2002,68 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void FoundationService_WhenOneOrdinaryBrokerAndDirectlyMarkedUtilityBrokerAreInjected_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface IUtilityBroker { } } "
+                + "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } "
+                + "public interface ILoggingBroker { } "
+                + "internal sealed class StudentBroker : IStudentBroker { } "
+                + "internal sealed class LoggingBroker : ILoggingBroker, "
+                + "cCoder.CodeAnalysis.Exposures.IUtilityBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Brokers.IStudentBroker studentBroker, "
+                + "Example.Brokers.ILoggingBroker loggingBroker) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result =>
+            result.Code == "STXF002" || result.Code == "STXF005");
+    }
+
+    [Fact]
+    public void FoundationService_WhenTwoOrdinaryBrokersAndDirectlyMarkedUtilityBrokerAreInjected_IsRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface IUtilityBroker { } } "
+                + "namespace Example.Brokers "
+                + "{ public interface IStudentBroker { } "
+                + "public interface ICourseBroker { } "
+                + "public interface ILoggingBroker { } "
+                + "internal sealed class StudentBroker : IStudentBroker { } "
+                + "internal sealed class CourseBroker : ICourseBroker { } "
+                + "internal sealed class LoggingBroker : ILoggingBroker, "
+                + "cCoder.CodeAnalysis.Exposures.IUtilityBroker { } } "
+                + "namespace Example.Services.Foundations "
+                + "{ public sealed class StudentService("
+                + "Example.Brokers.IStudentBroker studentBroker, "
+                + "Example.Brokers.ICourseBroker courseBroker, "
+                + "Example.Brokers.ILoggingBroker loggingBroker) { } }",
+            typeName: "Example.Services.Foundations.StudentService");
+
+        // When
+        AnalysisItem[] results = new STXFRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STXF005");
+    }
+
+    [Fact]
     public void ProcessingService_WhenConstructingBrokerInsideOrdinaryMethod_IsRejected()
     {
         // Given
