@@ -12,7 +12,7 @@ using Moq;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Processings.Architectures;
 
-public sealed class ArchitectureProcessingServiceTests
+public sealed partial class ArchitectureProcessingServiceTests
 {
     [Fact]
     public void ProcessShouldPopulateBrowserSafeProjectAndTypeSchema()
