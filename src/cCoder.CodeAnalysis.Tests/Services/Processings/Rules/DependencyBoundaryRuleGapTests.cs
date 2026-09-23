@@ -2165,6 +2165,55 @@ public sealed class DependencyBoundaryRuleGapTests
     }
 
     [Fact]
+    public void CompositionExposure_WhenDirectlyMarkedAndDependingOnExposureContract_IsAllowed()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface ICompositionExposure { } } "
+                + "namespace Example.Exposures "
+                + "{ public interface IMailClient { } "
+                + "public sealed class MailClientRegistry("
+                + "IMailClient mailClient) : "
+                + "cCoder.CodeAnalysis.Exposures.ICompositionExposure { } }",
+            typeName: "Example.Exposures.MailClientRegistry");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().NotContain(result => result.Code == "STX0004");
+    }
+
+    [Fact]
+    public void Exposure_WhenCompositionMarkerIsInheritedThroughContract_IsRejected()
+    {
+        // Given
+        EvaluationContext context = CreateContext(
+            source:
+                "namespace cCoder.CodeAnalysis.Exposures "
+                + "{ public interface ICompositionExposure { } } "
+                + "namespace Example.Exposures "
+                + "{ public interface IMailClient { } "
+                + "public interface IMailClientRegistry : "
+                + "cCoder.CodeAnalysis.Exposures.ICompositionExposure { } "
+                + "public sealed class MailClientRegistry("
+                + "IMailClient mailClient) : IMailClientRegistry { } }",
+            typeName: "Example.Exposures.MailClientRegistry");
+
+        // When
+        AnalysisItem[] results = new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .ToArray();
+
+        // Then
+        results.Should().ContainSingle(result => result.Code == "STX0004");
+    }
+
+    [Fact]
     public void FoundationService_WhenLoggingBrokerLacksUtilityMarker_IsNotImplicitlyExempt()
     {
         // Given

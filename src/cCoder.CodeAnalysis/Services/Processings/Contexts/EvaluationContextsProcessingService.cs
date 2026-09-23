@@ -192,6 +192,10 @@ internal sealed class EvaluationContextsProcessingService : IEvaluationContextsP
             .Select(GetTypeName)
             .ToArray();
 
+        architectureElement.AnalysisDirectlyImplementedInterfaces = type.Interfaces
+            .Select(GetTypeName)
+            .ToArray();
+
         architectureElement.AnalysisContractMethodNames = type.AllInterfaces
             .SelectMany(contract => contract.GetMembers())
             .OfType<IMethodSymbol>()

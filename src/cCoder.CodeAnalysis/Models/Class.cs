@@ -27,6 +27,9 @@ public sealed class Class
     internal IReadOnlyList<string> AnalysisImplementedInterfaces { get; set; }
 
     [JsonIgnore]
+    internal IReadOnlyList<string> AnalysisDirectlyImplementedInterfaces { get; set; }
+
+    [JsonIgnore]
     internal int AnalysisSourceFileTopLevelClassCount { get; set; }
 
     [JsonIgnore]

@@ -177,6 +177,71 @@ public sealed class SameLayerDependencyRuleTests
     }
 
     [Fact]
+    public void CompositionExposure_WhenDependingOnLocalExposureContract_IsNotReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Mail.IMailClient");
+
+        context.ArchitectureElement.AnalysisImplementedInterfaces =
+            ["cCoder.CodeAnalysis.Exposures.ICompositionExposure"];
+        context.ArchitectureElement.AnalysisDirectlyImplementedInterfaces =
+            ["cCoder.CodeAnalysis.Exposures.ICompositionExposure"];
+        context.ArchitectureElement.AnalysisDependencies.Single().IsPublicInterface = true;
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .NotContain(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void CompositionExposure_WhenDependingOnConcreteExposure_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Mail.MailClient");
+
+        context.ArchitectureElement.AnalysisImplementedInterfaces =
+            ["cCoder.CodeAnalysis.Exposures.ICompositionExposure"];
+        context.ArchitectureElement.AnalysisDirectlyImplementedInterfaces =
+            ["cCoder.CodeAnalysis.Exposures.ICompositionExposure"];
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "STX0004");
+    }
+
+    [Fact]
+    public void Exposure_WhenCompositionMarkerIsInherited_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            elementType: StandardElementType.Exposure,
+            dependencyType: StandardElementType.Exposure,
+            dependencyName: "Example.Exposures.Mail.IMailClient");
+
+        context.ArchitectureElement.AnalysisImplementedInterfaces =
+            ["Example.Exposures.Mail.IMailClientRegistry"];
+        context.ArchitectureElement.AnalysisDependencies.Single().IsPublicInterface = true;
+        context.ArchitectureModel.Interfaces.Add(new Class
+        {
+            Name = "Example.Exposures.Mail.IMailClientRegistry",
+            Kind = ArchitectureTypeKind.Interface,
+            StandardElementType = StandardElementType.Exposure,
+            AnalysisImplementedInterfaces =
+                ["cCoder.CodeAnalysis.Exposures.ICompositionExposure"],
+        });
+
+        new STXRulesProcessingService()
+            .Evaluate(context: context)
+            .Should()
+            .ContainSingle(item => item.Code == "STX0004");
+    }
+
+    [Fact]
     public void SignalRHubExposure_WhenDependingOnConcreteExposure_IsReported()
     {
         EvaluationContext context = CreateContext(
