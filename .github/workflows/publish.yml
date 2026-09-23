@@ -53,6 +53,7 @@ jobs:
       - name: Pack
         run: |
           New-Item -ItemType Directory -Path "${{ env.NUGET_DIRECTORY }}" -Force | Out-Null
+          dotnet pack src/cCoder.CodeAnalysis.Contracts/cCoder.CodeAnalysis.Contracts.csproj -c Release --no-restore --output "${{ env.NUGET_DIRECTORY }}" /p:Version="${{ steps.version.outputs.value }}"
           dotnet pack src/cCoder.CodeAnalysis/cCoder.CodeAnalysis.csproj -c Release --no-restore --output "${{ env.NUGET_DIRECTORY }}" /p:Version="${{ steps.version.outputs.value }}"
 
       - name: Upload package artifacts

@@ -16,6 +16,15 @@ No separate analyzer or build-task package is required. Building the project act
 
 The package currently requires the .NET 10 SDK for its build integration.
 
+Runtime libraries that implement `IUtilityBroker` or `ICompositionExposure` must also reference the lightweight contracts package directly:
+
+```xml
+<PackageReference Include="cCoder.CodeAnalysis" Version="2026.7.22.0000" PrivateAssets="all" />
+<PackageReference Include="cCoder.CodeAnalysis.Contracts" Version="2026.7.22.0000" />
+```
+
+The contracts package contains only the runtime marker interfaces. Keeping it separate prevents applications from loading the Roslyn-based analyzer assembly to resolve a marker implemented by a runtime library.
+
 ## Build behaviour
 
 During a normal build the package:
@@ -89,6 +98,7 @@ dotnet restore src/cCoder.CodeAnalysis.slnx
 dotnet build src/cCoder.CodeAnalysis.slnx -c Release --no-restore
 dotnet test src/cCoder.CodeAnalysis.Tests/cCoder.CodeAnalysis.Tests.csproj -c Release --no-build
 dotnet test src/cCoder.CodeAnalysis.Sample.Tests/cCoder.CodeAnalysis.Sample.Tests.csproj -c Release --no-build
+dotnet pack src/cCoder.CodeAnalysis.Contracts/cCoder.CodeAnalysis.Contracts.csproj -c Release --no-restore
 dotnet pack src/cCoder.CodeAnalysis/cCoder.CodeAnalysis.csproj -c Release --no-restore
 ```
 

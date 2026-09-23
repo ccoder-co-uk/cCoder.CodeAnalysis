@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>true</IsPackable>
+    <PackageId>cCoder.CodeAnalysis.Contracts</PackageId>
+    <PackageTags>cCoder;Code Analysis;Architecture;STX;Contracts</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE.txt</PackageLicenseFile>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <ProjectUrl>https://github.com/ccoder-co-uk/cCoder.CodeAnalysis</ProjectUrl>
+    <RepositoryUrl>https://github.com/ccoder-co-uk/cCoder.CodeAnalysis.git</RepositoryUrl>
+    <PrivateRepositoryUrl>https://github.com/ccoder-co-uk/cCoder.CodeAnalysis.git</PrivateRepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Description>Runtime-safe architecture marker contracts for cCoder libraries.</Description>
+    <Authors>cCoder</Authors>
+    <Copyright>2026 Paul Ward</Copyright>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="\" />
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+</Project>

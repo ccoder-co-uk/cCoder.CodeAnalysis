@@ -4,4 +4,4 @@
 
 namespace cCoder.CodeAnalysis.Exposures;
 
-public interface IUtilityBroker { }
+public interface ICompositionExposure { }
