@@ -339,6 +339,10 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                         && !IsPermittedFrameworkHttpResultAdapterDependency(
                             context: context,
                             elementType: elementType,
+                            dependency: dependency)
+                        && !IsPermittedCompositionExposureContractDependency(
+                            context: context,
+                            elementType: elementType,
                             dependency: dependency))
                 && !HasLocalExposureContractInheritance(context: context))
             ? Array.Empty<AnalysisItem>()
@@ -415,6 +419,18 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             || baseType.FullName.StartsWith(
                 value: "Microsoft.AspNetCore.SignalR.Hub<",
                 comparisonType: StringComparison.Ordinal));
+
+    private static bool IsPermittedCompositionExposureContractDependency(
+        EvaluationContext context,
+        StandardElementType elementType,
+        TypeDependency dependency) =>
+        IsExposureLayer(elementType: elementType)
+        && dependency.StandardElementType == StandardElementType.Exposure
+        && dependency.IsPublicInterface
+        && context.ArchitectureElement.AnalysisDirectlyImplementedInterfaces?.Any(
+            interfaceName => interfaceName.EndsWith(
+                value: ".Exposures.ICompositionExposure",
+                comparisonType: StringComparison.Ordinal)) == true;
 
     private static bool IsPermittedFrameworkHttpResultAdapterDependency(
         EvaluationContext context,
