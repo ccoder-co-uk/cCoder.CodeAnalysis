@@ -119,16 +119,39 @@ public sealed class RuntimeMarkerContractsTests
         }
         finally
         {
-            if (Directory.Exists(publishDirectory))
+            await DeleteDirectoryAsync(directory: publishDirectory);
+            await DeleteDirectoryAsync(directory: packageDirectory);
+        }
+    }
+
+    private static async Task DeleteDirectoryAsync(string directory)
+    {
+        const int attempts = 10;
+
+        for (int attempt = 1; attempt <= attempts; attempt++)
+        {
+            if (!Directory.Exists(directory))
             {
-                Directory.Delete(path: publishDirectory, recursive: true);
+                return;
             }
 
-            if (Directory.Exists(packageDirectory))
+            try
             {
-                Directory.Delete(path: packageDirectory, recursive: true);
+                Directory.Delete(path: directory, recursive: true);
+                return;
+            }
+            catch (UnauthorizedAccessException) when (attempt < attempts)
+            {
+                await Task.Delay(millisecondsDelay: attempt * 100);
+            }
+
+            catch (IOException) when (attempt < attempts)
+            {
+                await Task.Delay(millisecondsDelay: attempt * 100);
             }
         }
+
+        Directory.Delete(path: directory, recursive: true);
     }
 
     private static string FindFixtureDirectory()
