@@ -14,6 +14,86 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class STXERulesProcessingServiceTests
 {
     [Fact]
+    public void Exposure_WhenCompositeServiceIsNotExplicitlyMarked_IsReported()
+    {
+        // given
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            public sealed class StudentManager
+            {
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "Example.Exposures.StudentManager");
+
+        context.ArchitectureElement.AnalysisDependencies =
+        [
+            new TypeDependency
+            {
+                TypeName = "Example.Services.Aggregations.StudentAggregationService",
+                StandardElementType = StandardElementType.AggregationService
+            }
+        ];
+
+        STXERulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .ContainSingle(
+                predicate: result => result.Code == "STXE009");
+    }
+
+    [Fact]
+    public void Exposure_WhenCompositeServiceIsExplicitlyMarked_IsNotReported()
+    {
+        // given
+        TypeDeclarationSyntax declaration = ParseDeclaration(
+            """
+            public sealed class StudentManager : ICompositionExposure
+            {
+            }
+            """);
+
+        EvaluationContext context = CreateContext(
+            declaration: declaration,
+            typeName: "Example.Exposures.StudentManager");
+
+        context.ArchitectureElement.AnalysisDirectlyImplementedInterfaces =
+        [
+            "cCoder.CodeAnalysis.Exposures.ICompositionExposure"
+        ];
+        context.ArchitectureElement.AnalysisDependencies =
+        [
+            new TypeDependency
+            {
+                TypeName = "Example.Services.Aggregations.StudentAggregationService",
+                StandardElementType = StandardElementType.AggregationService
+            }
+        ];
+
+        STXERulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .NotContain(
+                predicate: result => result.Code == "STXE009");
+    }
+
+    [Fact]
     public void ExtensionMethod_WhenContainerIsNotNamedForReceiver_IsReported()
     {
         TypeDeclarationSyntax declaration = ParseDeclaration(

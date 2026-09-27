@@ -34,6 +34,16 @@ public sealed class AggregationServiceTests(SampleArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXA003EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXA003",
+            "cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations.InvalidSchoolService",
+            10
+        );
+    }
+
+    [Fact]
     public void ShouldGenerateExpectedNumberOfAggregationServices()
     {
         Count(StandardElementType.AggregationService).Should().Be(3, "");

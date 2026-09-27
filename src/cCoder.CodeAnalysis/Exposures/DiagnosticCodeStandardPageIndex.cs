@@ -204,6 +204,7 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{AggregationsPage}#2426-pure-dependency-contracts"
         ),
         new(diagnosticCode: "STXA002", standardPageUri: AggregationsPage),
+        new(diagnosticCode: "STXA003", standardPageUri: AggregationsPage),
         new(diagnosticCode: "STXAPI001", standardPageUri: $"{RestfulApisPage}#31122-single-dependency"),
         new(diagnosticCode: "STXAPI002", standardPageUri: $"{RestfulApisPage}#31123-single-contract"),
         new(diagnosticCode: "STXAPI003", standardPageUri: $"{RestfulApisPage}#3113-organization"),
@@ -248,6 +249,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STXE006", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE007", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
         new(diagnosticCode: "STXE008", standardPageUri: $"{ExposersPage}#3000-pure-mapping"),
+        new(diagnosticCode: "STXE009", standardPageUri: $"{ExposersPage}#302-single-point-of-contact"),
         new(diagnosticCode: "STXEX001", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(diagnosticCode: "STXEX002", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),
         new(diagnosticCode: "STXEX003", standardPageUri: $"{FoundationsPage}#21321-exceptions-mappings"),

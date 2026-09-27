@@ -11,6 +11,91 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class STXARulesProcessingServiceTests
 {
     [Fact]
+    public void AggregationService_WhenOnlyOneBusinessServiceIsRequired_IsReported()
+    {
+        // given
+        Class architectureElement = new()
+        {
+            Name = "Example.Services.Aggregations.StudentAggregationService",
+            StandardElementType = StandardElementType.AggregationService,
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    StandardElementType =
+                        StandardElementType.OrchestrationService
+                }
+            ]
+        };
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+            },
+        };
+
+        STXARulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .ContainSingle(
+                predicate: result => result.Code == "STXA003");
+    }
+
+    [Fact]
+    public void AggregationService_WhenTwoBusinessServicesAreRequired_IsNotReported()
+    {
+        // given
+        Class architectureElement = new()
+        {
+            Name = "Example.Services.Aggregations.StudentAggregationService",
+            StandardElementType = StandardElementType.AggregationService,
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    StandardElementType =
+                        StandardElementType.OrchestrationService
+                },
+                new TypeDependency
+                {
+                    StandardElementType =
+                        StandardElementType.OrchestrationService
+                }
+            ]
+        };
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+            },
+        };
+
+        STXARulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .NotContain(
+                predicate: result => result.Code == "STXA003");
+    }
+
+    [Fact]
     public void EvaluateShouldIgnoreNonServiceDependencies()
     {
         // given

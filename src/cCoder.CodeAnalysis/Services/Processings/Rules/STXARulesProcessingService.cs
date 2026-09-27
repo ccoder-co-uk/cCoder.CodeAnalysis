@@ -14,7 +14,8 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTXA001(context: context)
-            .Concat(second: EvaluateSTXA002(context: context));
+            .Concat(second: EvaluateSTXA002(context: context))
+            .Concat(second: EvaluateSTXA003(context: context));
     }
 
     private static AnalysisItem CreateAnalysisItem(
@@ -54,7 +55,7 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
             {
                 CreateAnalysisItem(
                     code: "STXA001",
-                    description: "An aggregation service may have any number of dependencies, but they must share the same service variation.",
+                    description: "An aggregation service's business dependencies must share the same service variation.",
                     context: context
                 ),
             };
@@ -85,5 +86,24 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
                     context: context
                 ),
             };
+    }
+
+    private IEnumerable<AnalysisItem> EvaluateSTXA003(EvaluationContext context)
+    {
+        int businessServiceDependencyCount = architectureModelQueries
+            .GetDependencies(context: context)
+            .Count(predicate: dependency =>
+                IsServiceVariation(
+                    standardElementType: dependency.StandardElementType));
+
+        return businessServiceDependencyCount >= 2
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXA003",
+                    description: "An aggregation service must aggregate at least two business services; a single-service wrapper is redundant.",
+                    context: context)
+            ];
     }
 }
