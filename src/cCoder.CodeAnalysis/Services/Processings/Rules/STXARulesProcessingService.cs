@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Processings.ArchitectureModels;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Services.Processings.Rules;
 
@@ -94,16 +95,123 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
             .GetDependencies(context: context)
             .Count(predicate: dependency =>
                 IsServiceVariation(
-                    standardElementType: dependency.StandardElementType));
+                    standardElementType: dependency.StandardElementType)
+                || IsCompositionExposureDependency(
+                    context: context,
+                    dependency: dependency));
+
+        bool containsOnlyPassThroughMethods = ContainsOnlyPassThroughMethods(
+            context: context);
 
         return businessServiceDependencyCount >= 2
+            || !containsOnlyPassThroughMethods
             ? []
             :
             [
                 CreateAnalysisItem(
                     code: "STXA003",
-                    description: "An aggregation service must aggregate at least two business services; a single-service wrapper is redundant.",
+                    description: "An aggregation service with fewer than two business dependencies must add aggregation behavior; a pass-through wrapper is redundant.",
                     context: context)
             ];
+    }
+
+    private static bool ContainsOnlyPassThroughMethods(
+        EvaluationContext context)
+    {
+        MethodDeclarationSyntax[] methods = architectureModelQueries
+            .GetDeclarations(context: context)
+            .Where(declaration =>
+                !declaration.SyntaxTree.FilePath.EndsWith(
+                    value: ".Validations.cs",
+                    comparisonType: StringComparison.Ordinal)
+                && !declaration.SyntaxTree.FilePath.EndsWith(
+                    value: ".Exceptions.cs",
+                    comparisonType: StringComparison.Ordinal))
+            .SelectMany(declaration => declaration.Members)
+            .OfType<MethodDeclarationSyntax>()
+            .ToArray();
+
+        return methods.Length == 0
+            || methods.All(predicate: IsSinglePassThroughMethod);
+    }
+
+    private static bool IsSinglePassThroughMethod(
+        MethodDeclarationSyntax method)
+    {
+        LambdaExpressionSyntax? tryCatchLambda = method
+            .DescendantNodes()
+            .OfType<InvocationExpressionSyntax>()
+            .FirstOrDefault(invocation =>
+                invocation.Expression.ToString() == "TryCatch")?
+            .ArgumentList.Arguments.FirstOrDefault()?
+            .Expression as LambdaExpressionSyntax;
+
+        if (tryCatchLambda?.Body is ExpressionSyntax lambdaExpression)
+        {
+            return IsInvocation(expression: lambdaExpression);
+        }
+
+        if (tryCatchLambda?.Body is BlockSyntax lambdaBlock)
+        {
+            StatementSyntax[] businessStatements = lambdaBlock.Statements
+                .Where(statement => !statement.ToString().StartsWith(
+                    value: "Validate(",
+                    comparisonType: StringComparison.Ordinal))
+                .ToArray();
+
+            return businessStatements.Length == 1
+                && IsInvocationStatement(statement: businessStatements[0]);
+        }
+
+        if (method.ExpressionBody is not null)
+        {
+            return IsInvocation(expression: method.ExpressionBody.Expression);
+        }
+
+        return method.Body?.Statements.Count == 1
+            && IsInvocationStatement(statement: method.Body.Statements[index: 0]);
+    }
+
+    private static bool IsInvocationStatement(StatementSyntax statement) =>
+        statement switch
+        {
+            ReturnStatementSyntax { Expression: not null } returnStatement =>
+                IsInvocation(expression: returnStatement.Expression),
+            ExpressionStatementSyntax expressionStatement =>
+                IsInvocation(expression: expressionStatement.Expression),
+            _ => false,
+        };
+
+    private static bool IsInvocation(ExpressionSyntax expression)
+    {
+        if (expression is AwaitExpressionSyntax awaitExpression)
+        {
+            return IsInvocation(expression: awaitExpression.Expression);
+        }
+
+        return expression is InvocationExpressionSyntax;
+    }
+
+    private static bool IsCompositionExposureDependency(
+        EvaluationContext context,
+        TypeDependency dependency)
+    {
+        string dependencyTypeName = dependency.TypeName?.Split(separator: ['.']).Last() ?? string.Empty;
+
+        return context.ArchitectureModel.Classes.Any(candidate =>
+            candidate.StandardElementType == StandardElementType.Exposure
+            && candidate.AnalysisDirectlyImplementedInterfaces?.Any(
+                interfaceName => interfaceName.EndsWith(
+                    value: ".Exposures.ICompositionExposure",
+                    comparisonType: StringComparison.Ordinal)) == true
+            && candidate.Interfaces.Any(contract =>
+                string.Equals(
+                    a: contract.FullName,
+                    b: dependency.TypeName,
+                    comparisonType: StringComparison.Ordinal)
+                || string.Equals(
+                    a: contract.Name,
+                    b: dependencyTypeName,
+                    comparisonType: StringComparison.Ordinal)));
     }
 }
