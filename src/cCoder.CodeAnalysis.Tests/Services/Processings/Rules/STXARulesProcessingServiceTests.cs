@@ -5,6 +5,8 @@
 using cCoder.CodeAnalysis.Models;
 using cCoder.CodeAnalysis.Services.Processings.Rules;
 using FluentAssertions;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 
@@ -14,6 +16,20 @@ public sealed class STXARulesProcessingServiceTests
     public void AggregationService_WhenOnlyOneBusinessServiceIsRequired_IsReported()
     {
         // given
+        ClassDeclarationSyntax declaration = CSharpSyntaxTree
+            .ParseText(text:
+                """
+                internal sealed class StudentAggregationService
+                {
+                    public ValueTask AddAsync(Student student) =>
+                        studentOrchestrationService.AddAsync(student);
+                }
+                """)
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .Single();
+
         Class architectureElement = new()
         {
             Name = "Example.Services.Aggregations.StudentAggregationService",
@@ -25,7 +41,8 @@ public sealed class STXARulesProcessingServiceTests
                     StandardElementType =
                         StandardElementType.OrchestrationService
                 }
-            ]
+            ],
+            AnalysisDeclarations = [declaration]
         };
         EvaluationContext context = new()
         {
@@ -47,6 +64,69 @@ public sealed class STXARulesProcessingServiceTests
         results
             .Should()
             .ContainSingle(
+                predicate: result => result.Code == "STXA003");
+    }
+
+    [Fact]
+    public void AggregationService_WhenOneBusinessServiceAndBusinessLogicAreRequired_IsNotReported()
+    {
+        // given
+        ClassDeclarationSyntax declaration = CSharpSyntaxTree
+            .ParseText(text:
+                """
+                internal sealed class StudentAggregationService
+                {
+                    public int Add(int value)
+                    {
+                        if (value < 0)
+                        {
+                            throw new ArgumentException();
+                        }
+
+                        return value + 1;
+                    }
+                }
+                """)
+            .GetRoot()
+            .DescendantNodes()
+            .OfType<ClassDeclarationSyntax>()
+            .Single();
+
+        Class architectureElement = new()
+        {
+            Name = "Example.Services.Aggregations.StudentAggregationService",
+            StandardElementType = StandardElementType.AggregationService,
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    StandardElementType =
+                        StandardElementType.OrchestrationService
+                }
+            ],
+            AnalysisDeclarations = [declaration]
+        };
+
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes = [architectureElement],
+            },
+        };
+
+        STXARulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .NotContain(
                 predicate: result => result.Code == "STXA003");
     }
 
