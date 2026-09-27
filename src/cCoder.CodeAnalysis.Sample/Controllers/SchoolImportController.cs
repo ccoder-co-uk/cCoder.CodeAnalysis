@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
+using cCoder.CodeAnalysis.Exposures;
 using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
 using cCoder.CodeAnalysis.Sample.Services.Aggregations.SchoolImports;
@@ -14,7 +15,7 @@ namespace cCoder.CodeAnalysis.Sample.Controllers;
 [Route("api/schools/import")]
 public sealed class SchoolImportController(
     ISchoolImportAggregationService schoolImportAggregationService,
-    ILoggingBroker loggingBroker) : ControllerBase
+    ILoggingBroker loggingBroker) : ControllerBase, ICompositionExposure
 {
     [HttpPost]
     public async ValueTask<IActionResult> PostSchoolAsync(School newSchool)

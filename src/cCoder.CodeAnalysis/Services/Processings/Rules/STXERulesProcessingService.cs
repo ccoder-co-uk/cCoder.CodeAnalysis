@@ -49,6 +49,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
             .Concat(second: EvaluateSTXE004(context: context))
             .Concat(second: EvaluateSTXE005(context: context, facts: facts))
             .Concat(second: EvaluateSTXE008(context: context))
+            .Concat(second: EvaluateSTXE009(context: context))
             .Concat(second: extensionMethodNamingRules);
     }
 
@@ -326,5 +327,32 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
                 code: "STXE008",
                 description: "An exposure must log a caught exception before rethrowing or wrapping it.",
                 context: context));
+
+    private IEnumerable<AnalysisItem> EvaluateSTXE009(
+        EvaluationContext context)
+    {
+        bool isCompositionExposure =
+            context.ArchitectureElement.AnalysisDirectlyImplementedInterfaces?.Any(
+                interfaceName => interfaceName.EndsWith(
+                    value: ".Exposures.ICompositionExposure",
+                    comparisonType: StringComparison.Ordinal)) == true;
+
+        bool consumesCompositeService = architectureModelQueries
+            .GetDependencies(context: context)
+            .Any(dependency => dependency.StandardElementType is
+                StandardElementType.CoordinationService
+                or StandardElementType.ManagementService
+                or StandardElementType.AggregationService);
+
+        return !consumesCompositeService || isCompositionExposure
+            ? []
+            :
+            [
+                CreateAnalysisItem(
+                    code: "STXE009",
+                    description: "An exposure may consume a service above orchestration only when it is explicitly marked as an ICompositionExposure.",
+                    context: context)
+            ];
+    }
 
 }

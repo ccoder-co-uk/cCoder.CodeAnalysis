@@ -23,7 +23,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0002",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            17
+            19
         );
     }
 
@@ -33,7 +33,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE001",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            26
+            28
         );
     }
 
@@ -43,7 +43,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE002",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            34
+            36
         );
     }
 
@@ -53,7 +53,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE003",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            11
+            12
         );
     }
 
@@ -63,7 +63,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE004",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            11
+            12
         );
     }
 
@@ -73,7 +73,17 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STXE005",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            40
+            42
+        );
+    }
+
+    [Fact]
+    public void RuleSTXE009EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXE009",
+            "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
+            12
         );
     }
 
@@ -83,7 +93,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0022",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            19
+            21
         );
     }
 
@@ -93,7 +103,7 @@ public sealed class ExposureTests(SampleArchitectureFixture fixture)
         AssertRuleEvaluatesAsExpected(
             "STX0024",
             "cCoder.CodeAnalysis.Sample.Exposures.RuleViolations.InvalidExposure",
-            11
+            12
         );
     }
 

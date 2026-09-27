@@ -3,6 +3,7 @@
 // ---------------------------------------------------------------
 
 using cCoder.CodeAnalysis.Sample.Brokers.Storage;
+using cCoder.CodeAnalysis.Sample.Services.Aggregations.SchoolImports;
 using cCoder.CodeAnalysis.Sample.Services.Foundations.Students;
 using cCoder.CodeAnalysis.Sample.Services.Foundations.Teachers;
 
@@ -11,6 +12,7 @@ namespace cCoder.CodeAnalysis.Sample.Exposures.RuleViolations;
 internal sealed class InvalidExposure(
     IStudentService studentService,
     ITeacherService teacherService,
+    ISchoolImportAggregationService schoolImportAggregationService,
     IStudentBroker studentBroker,
     ILogger<InvalidExposure> logger)
 {

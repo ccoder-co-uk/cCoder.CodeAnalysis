@@ -7,14 +7,12 @@ using cCoder.CodeAnalysis.Sample.Services.Managements.SchoolImports;
 
 namespace cCoder.CodeAnalysis.Sample.Services.Aggregations.RuleViolations;
 
-internal sealed partial class InvalidSchoolService(ISchoolImportManagementService importService, ISchoolImportReadinessManagementService readinessService) : IInvalidSchoolService
+internal sealed partial class InvalidSchoolService(ISchoolImportReadinessManagementService readinessService) : IInvalidSchoolService
 {
     public bool CanAggregate()
 =>
         TryCatch(operation: () =>
         {
-            bool flag = readinessService.CanImportSchool(school: new School());
-            bool flag2 = importService != null;
-            return flag && flag2;
+            return readinessService.CanImportSchool(school: new School());
         });
 }
