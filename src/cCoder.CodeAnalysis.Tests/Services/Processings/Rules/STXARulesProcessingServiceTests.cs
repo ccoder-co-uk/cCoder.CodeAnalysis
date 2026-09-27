@@ -96,6 +96,112 @@ public sealed class STXARulesProcessingServiceTests
     }
 
     [Fact]
+    public void AggregationService_WhenTwoCompositionExposuresAreRequired_IsNotReported()
+    {
+        // given
+        Class firstCompositionExposureContract = new()
+        {
+            Name = "Example.Exposures.IFirstCompositionExposure",
+            StandardElementType = StandardElementType.Exposure,
+            Kind = ArchitectureTypeKind.Interface
+        };
+
+        Class secondCompositionExposureContract = new()
+        {
+            Name = "Example.Exposures.ISecondCompositionExposure",
+            StandardElementType = StandardElementType.Exposure,
+            Kind = ArchitectureTypeKind.Interface
+        };
+
+        Class firstCompositionExposure = new()
+        {
+            Name = "Example.Exposures.FirstCompositionExposure",
+            StandardElementType = StandardElementType.Exposure,
+            Interfaces =
+            [
+                new TypeReference
+                {
+                    FullName = firstCompositionExposureContract.Name,
+                    Name = "IFirstCompositionExposure"
+                }
+            ],
+            AnalysisDirectlyImplementedInterfaces =
+            [
+                "cCoder.CodeAnalysis.Exposures.ICompositionExposure"
+            ]
+        };
+
+        Class secondCompositionExposure = new()
+        {
+            Name = "Example.Exposures.SecondCompositionExposure",
+            StandardElementType = StandardElementType.Exposure,
+            Interfaces =
+            [
+                new TypeReference
+                {
+                    FullName = secondCompositionExposureContract.Name,
+                    Name = "ISecondCompositionExposure"
+                }
+            ],
+            AnalysisDirectlyImplementedInterfaces =
+            [
+                "cCoder.CodeAnalysis.Exposures.ICompositionExposure"
+            ]
+        };
+
+        Class architectureElement = new()
+        {
+            Name = "Example.Services.Aggregations.StudentAggregationService",
+            StandardElementType = StandardElementType.AggregationService,
+            AnalysisDependencies =
+            [
+                new TypeDependency
+                {
+                    TypeName = firstCompositionExposureContract.Name,
+                    StandardElementType = StandardElementType.Exposure
+                },
+                new TypeDependency
+                {
+                    TypeName = secondCompositionExposureContract.Name,
+                    StandardElementType = StandardElementType.Exposure
+                }
+            ]
+        };
+
+        EvaluationContext context = new()
+        {
+            ArchitectureElement = architectureElement,
+            ArchitectureModel = new Architecture
+            {
+                Classes =
+                [
+                    architectureElement,
+                    firstCompositionExposure,
+                    secondCompositionExposure
+                ],
+                Interfaces =
+                [
+                    firstCompositionExposureContract,
+                    secondCompositionExposureContract
+                ]
+            },
+        };
+
+        STXARulesProcessingService service = new();
+
+        // when
+        AnalysisItem[] results = service
+            .Evaluate(context: context)
+            .ToArray();
+
+        // then
+        results
+            .Should()
+            .NotContain(
+                predicate: result => result.Code == "STXA003");
+    }
+
+    [Fact]
     public void EvaluateShouldIgnoreNonServiceDependencies()
     {
         // given

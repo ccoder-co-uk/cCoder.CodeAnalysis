@@ -94,7 +94,10 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
             .GetDependencies(context: context)
             .Count(predicate: dependency =>
                 IsServiceVariation(
-                    standardElementType: dependency.StandardElementType));
+                    standardElementType: dependency.StandardElementType)
+                || IsCompositionExposureDependency(
+                    context: context,
+                    dependency: dependency));
 
         return businessServiceDependencyCount >= 2
             ? []
@@ -105,5 +108,28 @@ internal sealed class STXARulesProcessingService : ISTXARulesProcessingService
                     description: "An aggregation service must aggregate at least two business services; a single-service wrapper is redundant.",
                     context: context)
             ];
+    }
+
+    private static bool IsCompositionExposureDependency(
+        EvaluationContext context,
+        TypeDependency dependency)
+    {
+        string dependencyTypeName = dependency.TypeName?.Split(separator: ['.']).Last() ?? string.Empty;
+
+        return context.ArchitectureModel.Classes.Any(candidate =>
+            candidate.StandardElementType == StandardElementType.Exposure
+            && candidate.AnalysisDirectlyImplementedInterfaces?.Any(
+                interfaceName => interfaceName.EndsWith(
+                    value: ".Exposures.ICompositionExposure",
+                    comparisonType: StringComparison.Ordinal)) == true
+            && candidate.Interfaces.Any(contract =>
+                string.Equals(
+                    a: contract.FullName,
+                    b: dependency.TypeName,
+                    comparisonType: StringComparison.Ordinal)
+                || string.Equals(
+                    a: contract.Name,
+                    b: dependencyTypeName,
+                    comparisonType: StringComparison.Ordinal)));
     }
 }
