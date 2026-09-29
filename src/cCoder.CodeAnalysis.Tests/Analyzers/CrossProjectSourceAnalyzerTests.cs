@@ -13,6 +13,29 @@ namespace cCoder.CodeAnalysis.Tests.Analyzers;
 public sealed class CrossProjectSourceAnalyzerTests
 {
     [Fact]
+    public async Task UsingDirective_WhenNamespaceIsNotConsumed_IsReportedAsync()
+    {
+        string projectDirectory = Path.Combine(
+            path1: Path.GetTempPath(),
+            path2: "CurrentProject");
+
+        SyntaxTree source = CSharpSyntaxTree.ParseText(
+            text: "using System.Text; namespace Example.Models; public sealed class Model { }",
+            path: Path.Combine(
+                path1: projectDirectory,
+                path2: "Models",
+                path3: "Model.cs"));
+
+        ImmutableArray<Diagnostic> diagnostics = await GetDiagnosticsAsync(
+            source: source,
+            projectDirectory: projectDirectory);
+
+        Assert.Contains(
+            collection: diagnostics,
+            filter: diagnostic => diagnostic.Id == "STXFORMAT014");
+    }
+
+    [Fact]
     public async Task FileScopedUsing_WhenDeclaredOnItsConsumer_IsNotReportedAsync()
     {
         string projectDirectory = Path.Combine(

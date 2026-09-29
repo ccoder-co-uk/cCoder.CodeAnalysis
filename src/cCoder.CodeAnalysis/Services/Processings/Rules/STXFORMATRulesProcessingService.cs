@@ -48,7 +48,8 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
             .Concat(second: EvaluateSTXFORMAT009(context: context))
             .Concat(second: EvaluateSTXFORMAT010(context: context))
             .Concat(second: EvaluateSTXFORMAT012(context: context))
-            .Concat(second: EvaluateSTXFORMAT013(context: context));
+            .Concat(second: EvaluateSTXFORMAT013(context: context))
+            .Concat(second: EvaluateSTXFORMAT014(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT001(EvaluationContext context) =>
@@ -427,6 +428,9 @@ internal sealed class STXFORMATRulesProcessingService : ISTXFORMATRulesProcessin
                     )
                 )
             );
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXFORMAT014(
+        EvaluationContext context) => [];
 
     private static int FindInconsistentLineEnding(string source, string projectLineEnding)
     {
