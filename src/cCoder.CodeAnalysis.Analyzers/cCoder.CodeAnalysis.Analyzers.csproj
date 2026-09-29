@@ -12,7 +12,4 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.9.0" PrivateAssets="all" />
     <ProjectReference Include="..\cCoder.CodeAnalysis\cCoder.CodeAnalysis.csproj" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="..\cCoder.CodeAnalysis\Analyzers\ArchitectureDiagnosticAnalyzer.cs" Link="ArchitectureDiagnosticAnalyzer.cs" />
-  </ItemGroup>
 </Project>

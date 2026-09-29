@@ -368,6 +368,16 @@ internal static class DiagnosticCodeStandardPageIndex
             thirdStandardPageUri: $"{OrchestrationsPage}#23202-class-level-language"
         ),
         new(
+            diagnosticCode: "STXSTRUCT004",
+            firstStandardPageUri: $"{PrinciplesPage}#020011-vertical-entanglement",
+            secondStandardPageUri: $"{WebApplicationsPage}#321204-organization"
+        ),
+        new(
+            diagnosticCode: "STXSTRUCT005",
+            firstStandardPageUri: $"{PrinciplesPage}#0200-simplicity",
+            secondStandardPageUri: $"{PrinciplesPage}#029-readability-over-optimization"
+        ),
+        new(
             diagnosticCode: "STXTEST001",
             firstStandardPageUri: $"{PrinciplesPage}#0200-simplicity",
             secondStandardPageUri: $"{RestfulApisPage}#31150-unit-tests"

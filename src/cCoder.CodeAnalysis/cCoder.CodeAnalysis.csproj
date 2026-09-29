@@ -27,9 +27,6 @@
     <ProjectReference Include="..\cCoder.CodeAnalysis.Contracts\cCoder.CodeAnalysis.Contracts.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Remove="Analyzers\ArchitectureDiagnosticAnalyzer.cs" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="..\..\LICENSE.txt" Pack="true" PackagePath="\" />
     <None Include="..\..\README.md" Pack="true" PackagePath="\" />
     <None Include="..\cCoder.CodeAnalysis.Analyzers\bin\$(Configuration)\netstandard2.0\cCoder.CodeAnalysis.Analyzers.dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />

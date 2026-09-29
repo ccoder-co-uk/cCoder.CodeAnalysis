@@ -6,6 +6,7 @@ using cCoder.CodeAnalysis.Exposures;
 using cCoder.CodeAnalysis.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using Microsoft.CodeAnalysis.Text;
 
@@ -55,6 +56,14 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
             return;
         }
 
+        AnalyzeProjectSourceBoundaries(
+            context: context,
+            compilation: compilation);
+
+        AnalyzeGlobalUsingBoundaries(
+            context: context,
+            compilation: compilation);
+
         Architecture architecture = ArchitectureAnalysis.Generate(compilation: compilation);
 
         foreach (AnalysisItem analysisItem in architecture.AnalysisItems)
@@ -69,6 +78,121 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
             }
         }
     }
+
+    private static void AnalyzeProjectSourceBoundaries(
+        CompilationAnalysisContext context,
+        CSharpCompilation compilation)
+    {
+        if (!context.Options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue(
+            key: "build_property.MSBuildProjectDirectory",
+            value: out string? projectDirectory)
+            || string.IsNullOrWhiteSpace(value: projectDirectory))
+        {
+            return;
+        }
+
+        string projectRoot = EnsureTrailingDirectorySeparator(
+            path: Path.GetFullPath(path: projectDirectory));
+
+        StringComparison pathComparison = Path.DirectorySeparatorChar == '\\'
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+
+        foreach (SyntaxTree syntaxTree in compilation.SyntaxTrees)
+        {
+            if (string.IsNullOrWhiteSpace(value: syntaxTree.FilePath))
+            {
+                continue;
+            }
+
+            string sourcePath = Path.GetFullPath(path: syntaxTree.FilePath);
+
+            if (sourcePath.StartsWith(
+                value: projectRoot,
+                comparisonType: pathComparison))
+            {
+                continue;
+            }
+
+            DiagnosticDescriptor descriptor = Descriptors[key: "STXSTRUCT004"];
+
+            context.ReportDiagnostic(
+                diagnostic: Diagnostic.Create(
+                    descriptor: descriptor,
+                    location: syntaxTree.GetRoot(context.CancellationToken).GetLocation(),
+                    $"Source file '{sourcePath}' is compiled from outside project directory "
+                        + $"'{projectDirectory}'. Every project must own its source files."));
+        }
+    }
+
+    private static string EnsureTrailingDirectorySeparator(string path) =>
+        path.EndsWith(
+            value: Path.DirectorySeparatorChar.ToString(),
+            comparisonType: StringComparison.Ordinal)
+            ? path
+            : path + Path.DirectorySeparatorChar;
+
+    private static void AnalyzeGlobalUsingBoundaries(
+        CompilationAnalysisContext context,
+        CSharpCompilation compilation)
+    {
+        if (context.Options.AnalyzerConfigOptionsProvider.GlobalOptions.TryGetValue(
+            key: "build_property.ImplicitUsings",
+            value: out string? implicitUsings)
+            && IsEnabled(value: implicitUsings))
+        {
+            DiagnosticDescriptor descriptor = Descriptors[key: "STXSTRUCT005"];
+
+            context.ReportDiagnostic(
+                diagnostic: Diagnostic.Create(
+                    descriptor: descriptor,
+                    location: Location.None,
+                    "Implicit usings are not permitted. Each source file must declare "
+                        + "the namespaces it consumes."));
+        }
+
+        foreach (SyntaxTree syntaxTree in compilation.SyntaxTrees)
+        {
+            CompilationUnitSyntax compilationUnit =
+                (CompilationUnitSyntax)syntaxTree.GetRoot(
+                    cancellationToken: context.CancellationToken);
+
+            UsingDirectiveSyntax? globalUsing = compilationUnit.Usings
+                .FirstOrDefault(usingDirective => usingDirective.GlobalKeyword.IsKind(
+                    kind: SyntaxKind.GlobalKeyword));
+
+            bool isGlobalUsingsFile = string.Equals(
+                a: Path.GetFileName(path: syntaxTree.FilePath),
+                b: "GlobalUsings.cs",
+                comparisonType: StringComparison.OrdinalIgnoreCase);
+
+            if (globalUsing is null && !isGlobalUsingsFile)
+            {
+                continue;
+            }
+
+            DiagnosticDescriptor descriptor = Descriptors[key: "STXSTRUCT005"];
+            Location location = globalUsing?.GetLocation()
+                ?? compilationUnit.GetLocation();
+
+            context.ReportDiagnostic(
+                diagnostic: Diagnostic.Create(
+                    descriptor: descriptor,
+                    location: location,
+                    "Global usings are not permitted. Each source file must declare "
+                        + "the namespaces it consumes."));
+        }
+    }
+
+    private static bool IsEnabled(string value) =>
+        string.Equals(
+            a: value,
+            b: "enable",
+            comparisonType: StringComparison.OrdinalIgnoreCase)
+        || string.Equals(
+            a: value,
+            b: "true",
+            comparisonType: StringComparison.OrdinalIgnoreCase);
 
     private static Location FindLocation(CSharpCompilation compilation, AnalysisItem analysisItem)
     {

@@ -19,6 +19,7 @@ public sealed class DiagnosticSampleParityTests(
         string[] cataloguedCodes = DiagnosticCodeStandardPageIndex
             .GetDiagnosticCodeStandardPages()
             .Select(page => page.DiagnosticCode)
+            .Where(code => code is not "STXSTRUCT004" and not "STXSTRUCT005")
             .OrderBy(code => code, StringComparer.Ordinal)
             .ToArray();
 

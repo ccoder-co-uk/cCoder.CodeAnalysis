@@ -17,7 +17,9 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
     {
         return EvaluateSTXSTRUCT001(context: context)
             .Concat(second: EvaluateSTXSTRUCT002(context: context))
-            .Concat(second: EvaluateSTXSTRUCT003(context: context));
+            .Concat(second: EvaluateSTXSTRUCT003(context: context))
+            .Concat(second: EvaluateSTXSTRUCT004(context: context))
+            .Concat(second: EvaluateSTXSTRUCT005(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT001(EvaluationContext context)
@@ -121,6 +123,14 @@ internal sealed class STXSTRUCTRulesProcessingService : ISTXSTRUCTRulesProcessin
             or StandardElementType.CoordinationService
             or StandardElementType.ManagementService
             or StandardElementType.AggregationService;
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT004(
+        EvaluationContext context) =>
+        [];
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXSTRUCT005(
+        EvaluationContext context) =>
+        [];
 
     private static bool IsInStandardFolder(string filePath, StandardElementType elementType)
     {

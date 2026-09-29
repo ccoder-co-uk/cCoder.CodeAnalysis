@@ -670,7 +670,7 @@ internal sealed class ArchitectureProcessingService(IArchitectureService archite
     private static bool IsMvcActionResponseMethod(MethodDeclarationSyntax method) =>
         method.Modifiers.Any(SyntaxKind.PublicKeyword)
         && method.ReturnType.ToString().Contains(
-            value: "IActionResult",
+            value: "ActionResult",
             comparisonType: StringComparison.Ordinal);
 
     private static string GetConfigurationCallbackType(
