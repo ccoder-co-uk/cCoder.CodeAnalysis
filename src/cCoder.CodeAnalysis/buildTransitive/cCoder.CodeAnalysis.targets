@@ -7,6 +7,10 @@
     <cCoderCodeAnalysisBuildTaskAssembly Condition="'$(cCoderCodeAnalysisBuildTaskAssembly)' == ''"
       >$(MSBuildThisFileDirectory)..\tools\netstandard2.0\cCoder.CodeAnalysis.BuildTasks.dll</cCoderCodeAnalysisBuildTaskAssembly>
   </PropertyGroup>
+  <ItemGroup>
+    <CompilerVisibleProperty Include="MSBuildProjectDirectory" />
+    <CompilerVisibleProperty Include="ImplicitUsings" />
+  </ItemGroup>
   <UsingTask
     TaskName="cCoder.CodeAnalysis.BuildTasks.GenerateArchitectureTask"
     AssemblyFile="$(cCoderCodeAnalysisBuildTaskAssembly)"

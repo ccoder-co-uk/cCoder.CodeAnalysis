@@ -91,8 +91,7 @@ internal sealed class STXERulesProcessingService : ISTXERulesProcessingService
         EvaluationContext context,
         TypeAnalysisFacts? facts)
     {
-        return architectureModelQueries.IsApiController(context: context)
-            || architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
+        return architectureModelQueries.GetTypeName(context).Split(separator: ['.']).Last() == "Program"
             || IsEventProviderContract(context: context)
             ? []
             : (facts?.BranchingLineNumbers ?? [])

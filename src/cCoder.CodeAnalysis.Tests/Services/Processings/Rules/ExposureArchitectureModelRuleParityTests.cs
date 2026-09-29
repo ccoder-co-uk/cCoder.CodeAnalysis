@@ -11,6 +11,35 @@ namespace cCoder.CodeAnalysis.Tests.Services.Processings.Rules;
 public sealed class ExposureArchitectureModelRuleParityTests
 {
     [Fact]
+    public void ApiController_WhenItContainsBusinessBranching_IsReported()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentsController",
+            isApiController: true,
+            dependencies: []);
+
+        context.ArchitectureElement.AnalysisTypeFacts.BranchingLineNumbers = [42];
+
+        new STXERulesProcessingService().Evaluate(context: context)
+            .Should().ContainSingle(item => item.Code == "STXE001");
+    }
+
+    [Fact]
+    public void ApiController_WhenItOnlyMapsAnMvcResponse_IsNotReportedAsBranching()
+    {
+        EvaluationContext context = CreateContext(
+            typeName: "StudentsController",
+            isApiController: true,
+            dependencies: []);
+
+        context.ArchitectureElement.AnalysisTypeFacts.BranchingLineNumbers = [42];
+        context.ArchitectureElement.AnalysisTypeFacts.MvcActionResponseBranchingLineNumbers = [42];
+
+        new STXERulesProcessingService().Evaluate(context: context)
+            .Should().NotContain(item => item.Code == "STXE001");
+    }
+
+    [Fact]
     public void ExposureDependencyRulesShouldUseAttachedModelFacts()
     {
         EvaluationContext context = CreateContext(

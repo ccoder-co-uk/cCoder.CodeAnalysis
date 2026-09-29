@@ -350,7 +350,7 @@ public sealed class STXERulesProcessingServiceTests
             """
             public class HomeController
             {
-                public async Task<IActionResult> Get()
+                public async Task<ActionResult<string>> Get()
                 {
                     if (await IsReadyAsync())
                     {
