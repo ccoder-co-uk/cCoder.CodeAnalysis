@@ -328,6 +328,10 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{BrokersPage}#151-asynchronization-abstraction"
         ),
         new(
+            diagnosticCode: "STXFORMAT014",
+            standardPageUri: $"{PrinciplesPage}#029-readability-over-optimization"
+        ),
+        new(
             diagnosticCode: "STXMG001",
             firstStandardPageUri: $"{ServicesPage}#2021-two-three-florance-pattern",
             secondStandardPageUri: $"{OrchestrationsPage}#2340-variants-levels"
@@ -403,6 +407,9 @@ internal static class DiagnosticCodeStandardPageIndex
             secondStandardPageUri: $"{RestfulApisPage}#31150-unit-tests"
         ),
         new(diagnosticCode: "STXTEST006", standardPageUri: $"{RestfulApisPage}#31151-acceptance-tests"),
+        new(diagnosticCode: "STXTEST007", standardPageUri: $"{RestfulApisPage}#31150-unit-tests"),
+        new(diagnosticCode: "STXTEST008", standardPageUri: $"{RestfulApisPage}#31150-unit-tests"),
+        new(diagnosticCode: "STXTEST009", standardPageUri: $"{RestfulApisPage}#31151-acceptance-tests"),
     ];
 
     public static IEnumerable<DiagnosticCodeStandardPage> GetDiagnosticCodeStandardPages() =>

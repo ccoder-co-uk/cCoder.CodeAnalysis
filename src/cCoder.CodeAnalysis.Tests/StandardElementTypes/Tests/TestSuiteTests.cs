@@ -54,6 +54,30 @@ public sealed class TestSuiteTests(SampleTestsArchitectureFixture fixture)
     }
 
     [Fact]
+    public void RuleSTXTEST007EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXTEST007",
+            "cCoder.CodeAnalysis.Sample.Tests.Architecture.RuleViolations.InvalidArchitectureTests");
+    }
+
+    [Fact]
+    public void RuleSTXTEST008EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXTEST008",
+            "cCoder.CodeAnalysis.Sample.Tests.Brokers.RuleViolations.InvalidBrokerTests");
+    }
+
+    [Fact]
+    public void RuleSTXTEST009EvaluatesAsExpected()
+    {
+        AssertRuleEvaluatesAsExpected(
+            "STXTEST009",
+            "cCoder.CodeAnalysis.Sample.Tests.Exposures.RuleViolations.InvalidExposureTests");
+    }
+
+    [Fact]
     public void TestProjectShouldNotGenerateArchitectureFile()
     {
         string architectureFilePath = fixture.ArchitectureFilePath;

@@ -23,7 +23,10 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
             .Concat(second: EvaluateSTXTEST003(context: context))
             .Concat(second: EvaluateSTXTEST004(context: context))
             .Concat(second: EvaluateSTXTEST005(context: context))
-            .Concat(second: EvaluateSTXTEST006(context: context));
+            .Concat(second: EvaluateSTXTEST006(context: context))
+            .Concat(second: EvaluateSTXTEST007(context: context))
+            .Concat(second: EvaluateSTXTEST008(context: context))
+            .Concat(second: EvaluateSTXTEST009(context: context));
     }
 
     private static IEnumerable<AnalysisItem> EvaluateSTXTEST001(
@@ -112,6 +115,66 @@ internal sealed class STXTESTRulesProcessingService : ISTXTESTRulesProcessingSer
                 "STXTEST006",
                 "An API acceptance suite must cover Get, Post, Put, and Delete operations.",
                 context)];
+    }
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST007(
+        EvaluationContext context) =>
+        IsDomainUnitTestSuite(context)
+        && IsInFolder(context: context, folderName: "Architecture")
+            ? [Create(
+                "STXTEST007",
+                "Domain repositories must rely on cCoder.CodeAnalysis instead of local architecture test suites.",
+                context)]
+            : [];
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST008(
+        EvaluationContext context) =>
+        IsDomainUnitTestSuite(context)
+        && IsInFolder(context: context, folderName: "Brokers")
+            ? [Create(
+                "STXTEST008",
+                "Brokers are pass-through boundaries and must not have domain unit test suites.",
+                context)]
+            : [];
+
+    private static IEnumerable<AnalysisItem> EvaluateSTXTEST009(
+        EvaluationContext context) =>
+        IsDomainUnitTestSuite(context)
+        && IsInFolder(context: context, folderName: "Exposures")
+            ? [Create(
+                "STXTEST009",
+                "Exposures must be verified through acceptance tests instead of domain unit test suites.",
+                context)]
+            : [];
+
+    private static bool IsDomainUnitTestSuite(EvaluationContext context)
+    {
+        TypeAnalysisFacts facts = GetFacts(context);
+
+        return IsTestSuite(context: context, facts: facts)
+            && facts.ProjectName.EndsWith(
+                value: ".Tests",
+                comparisonType: StringComparison.Ordinal)
+            && !string.Equals(
+                a: facts.ProjectName,
+                b: "cCoder.CodeAnalysis.Tests",
+                comparisonType: StringComparison.Ordinal);
+    }
+
+    private static bool IsInFolder(
+        EvaluationContext context,
+        string folderName)
+    {
+        string normalizedPath = GetFacts(context)
+            .FilePath
+            .Replace(oldChar: '\\', newChar: '/');
+
+        return normalizedPath.Contains(
+            value: $"/{folderName}/",
+            comparisonType: StringComparison.OrdinalIgnoreCase)
+            || normalizedPath.StartsWith(
+                value: $"{folderName}/",
+                comparisonType: StringComparison.OrdinalIgnoreCase);
     }
 
     private static TypeAnalysisFacts GetFacts(EvaluationContext context) =>

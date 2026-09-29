@@ -47,6 +47,7 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
         context.ConfigureGeneratedCodeAnalysis(analysisMode: GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
         context.RegisterCompilationAction(action: AnalyzeCompilation);
+        context.RegisterSemanticModelAction(action: AnalyzeUsingDirectiveBoundaries);
     }
 
     private static void AnalyzeCompilation(CompilationAnalysisContext context)
@@ -193,6 +194,24 @@ public sealed class ArchitectureDiagnosticAnalyzer : DiagnosticAnalyzer
             a: value,
             b: "true",
             comparisonType: StringComparison.OrdinalIgnoreCase);
+
+    private static void AnalyzeUsingDirectiveBoundaries(
+        SemanticModelAnalysisContext context)
+    {
+        DiagnosticDescriptor descriptor = Descriptors[key: "STXFORMAT014"];
+
+        foreach (Diagnostic diagnostic in context.SemanticModel.GetDiagnostics(
+            cancellationToken: context.CancellationToken)
+            .Where(diagnostic => diagnostic.Id == "CS8019"))
+        {
+            context.ReportDiagnostic(
+                diagnostic: Diagnostic.Create(
+                    descriptor: descriptor,
+                    location: diagnostic.Location,
+                    "Using directive is unnecessary. Source files must import only "
+                        + "the namespaces they consume."));
+        }
+    }
 
     private static Location FindLocation(CSharpCompilation compilation, AnalysisItem analysisItem)
     {
