@@ -475,7 +475,12 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
                 + compoundIrregularSuffix.Value;
         }
 
-        if (uncountableSubjects.Contains(item: subject))
+        if (uncountableSubjects.Contains(item: subject)
+            || uncountableSubjects.Any(candidate =>
+                subject.Length > candidate.Length
+                && subject.EndsWith(
+                    value: candidate,
+                    comparisonType: StringComparison.OrdinalIgnoreCase)))
         {
             return subject;
         }

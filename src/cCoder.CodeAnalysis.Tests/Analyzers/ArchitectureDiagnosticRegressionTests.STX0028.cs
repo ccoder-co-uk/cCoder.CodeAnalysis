@@ -161,6 +161,41 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
         Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
     }
 
+    [Theory]
+    [InlineData(
+        "System.Linq.IQueryable<Example.Models.FlowInstanceData>",
+        "SelectAllFlowInstanceData")]
+    [InlineData(
+        "System.Linq.IQueryable<Example.Models.FlowInstanceData>",
+        "SelectAllFlowInstanceDataIgnoringQueryFilters")]
+    [InlineData(
+        "Example.Models.FlowInstanceData[]",
+        "GetQueuedFlowInstanceData")]
+    public void CompoundUncountableSubject_WhenCollectionNameRemainsInvariant_IsAccepted(
+        string returnType,
+        string methodName)
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: returnType,
+            methodName: methodName);
+
+        Assert.DoesNotContain(
+            collection: architecture.AnalysisItems,
+            filter: item => item.Code == "STX0028");
+    }
+
+    [Fact]
+    public void CountableSubject_WhenCollectionNameIsSingular_RemainsReported()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "System.Linq.IQueryable<Example.Models.FlowInstance>",
+            methodName: "SelectAllFlowInstance");
+
+        Assert.Contains(
+            collection: architecture.AnalysisItems,
+            filter: item => item.Code == "STX0028");
+    }
+
     [Fact]
     public async Task CardinalityMismatch_WhenAnalyzedByCompiler_IsReportedAtMethod()
     {
@@ -287,6 +322,8 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
                 public sealed class MailProviderSummary { }
                 public sealed class TenantAnalysis { }
                 public sealed class Folder { }
+                public sealed class FlowInstance { }
+                public sealed class FlowInstanceData { }
             }
 
             namespace Microsoft.AspNetCore.Mvc
