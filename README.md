@@ -75,7 +75,7 @@ Rules cover architectural dependencies, public contracts, exception handling, va
 
 ### Cardinality-aware method names
 
-`STX0028` requires a method that names its returned cCoder model or contract to use the singular subject for one result and the plural subject for a sequence. The rule resolves return types semantically, unwraps `Task<T>`, `ValueTask<T>`, and `ActionResult<T>`, and recognises arrays and standard collection/query contracts. Framework and third-party subjects, `string`, `byte[]`, and methods that do not name their returned subject are outside its scope.
+`STX0028` requires a method that names its returned cCoder model or contract to use the singular subject for one result and the plural subject for a sequence. A collection factory/helper may instead append an explicit `Array`, `List`, `Collection`, `Set`, `Enumerable`, or `Query` container suffix to the singular subject. The rule resolves return types semantically, unwraps `Task<T>`, `ValueTask<T>`, and `ActionResult<T>`, recognises arrays and standard collection/query contracts, and pluralises compound subjects such as `TenantAnalysis` as `TenantAnalyses`. Framework and third-party subjects, `string`, `byte[]`, and methods that do not name their returned subject are outside its scope.
 
 Plural names use a deterministic English inflection policy, including common irregular forms such as `Person`/`People` and unchanged terms such as `Metadata`.
 
