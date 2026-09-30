@@ -24,7 +24,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
             .OrderBy(group => group.Key, StringComparer.Ordinal)
             .ToArray();
 
-        diagnosticGroups.Should().HaveCount(97, "");
+        diagnosticGroups.Should().HaveCount(98, "");
         diagnosticGroups
             .Where(group => group.Key != "STXM001")
             .Should()
@@ -66,7 +66,7 @@ public sealed class LegacyArchitectureParityTests(SampleArchitectureFixture fixt
         Architecture.Links.Should().HaveCount(90, "");
 
         CreateClassProjectionHash().Should()
-            .Be("34DC6E8F3767A129F574F790033DC3803E3A0C6B369B7235BC1F31E2A4406DF9", "");
+            .Be("47622B01C524D406DAFBF640043DADA0F55A3A99B8EF32EFD42866B1EE54BFFD", "");
         CreateLinkProjectionHash().Should()
             .Be("3D4E4B4D8DB33150763929B65DA48D3D67BA1A8C54E05C80C4873805B8A4A986", "");
     }

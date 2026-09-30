@@ -14,5 +14,7 @@ internal interface IInvalidFoundationService
 
     IEnumerable<Student> GetStudents();
 
+    IEnumerable<Student> GetAllStudent();
+
     Student ConvertTeacher(Teacher teacher);
 }
