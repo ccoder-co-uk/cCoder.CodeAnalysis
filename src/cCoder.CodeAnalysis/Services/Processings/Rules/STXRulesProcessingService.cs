@@ -363,17 +363,23 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         string pluralSubject,
         out bool namesPluralSubject)
     {
-        if (ContainsPascalCaseWord(
+        int pluralSubjectIndex = FindPascalCaseWordIndex(
             value: methodName,
-            word: pluralSubject))
+            word: pluralSubject);
+
+        int singularSubjectIndex = FindPascalCaseWordIndex(
+            value: methodName,
+            word: singularSubject);
+
+        if (pluralSubjectIndex >= 0
+            && (singularSubjectIndex < 0
+                || pluralSubjectIndex < singularSubjectIndex))
         {
             namesPluralSubject = true;
             return true;
         }
 
-        if (ContainsPascalCaseWord(
-            value: methodName,
-            word: singularSubject))
+        if (singularSubjectIndex >= 0)
         {
             namesPluralSubject = false;
             return true;
@@ -403,6 +409,13 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
     private static bool ContainsPascalCaseWord(
         string value,
+        string word) =>
+        FindPascalCaseWordIndex(
+            value: value,
+            word: word) >= 0;
+
+    private static int FindPascalCaseWordIndex(
+        string value,
         string word)
     {
         int searchIndex = 0;
@@ -416,7 +429,7 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
             if (wordIndex < 0)
             {
-                return false;
+                return -1;
             }
 
             int followingIndex = wordIndex + word.Length;
@@ -429,13 +442,13 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 
             if (beginsWord && endsWord)
             {
-                return true;
+                return wordIndex;
             }
 
             searchIndex = wordIndex + 1;
         }
 
-        return false;
+        return -1;
     }
 
     private static string Pluralize(string subject)
