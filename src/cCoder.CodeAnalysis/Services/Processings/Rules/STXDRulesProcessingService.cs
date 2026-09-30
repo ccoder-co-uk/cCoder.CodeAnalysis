@@ -184,9 +184,24 @@ internal sealed class STXDRulesProcessingService : ISTXDRulesProcessingService
     private static IEnumerable<AnalysisItem> EvaluateSTXD004(
         EvaluationContext context)
     {
-        bool isBusinessElement = IsBusinessElement(architectureModelQueries.GetStandardElementType(context: context));
+        StandardElementType elementType =
+            architectureModelQueries.GetStandardElementType(context: context);
+
+        bool isBusinessElement = IsBusinessElement(elementType: elementType);
+
+        TypeDependency[] externalDependencies =
+            architectureModelQueries.GetDependencies(context: context)
+                .Where(predicate: dependency => !dependency.IsInCurrentProject)
+                .ToArray();
+
+        bool brokerUsesOnlyExternalAbstractions =
+            elementType == StandardElementType.Broker
+            && externalDependencies.Length > 0
+            && externalDependencies.All(
+                predicate: dependency => dependency.IsPublicInterface);
 
         if (isBusinessElement
+            && !brokerUsesOnlyExternalAbstractions
             && architectureModelQueries.UsesExternalResource(context: context))
         {
             yield return new AnalysisItem
