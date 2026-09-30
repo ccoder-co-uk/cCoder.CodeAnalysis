@@ -141,6 +141,7 @@ internal static class DiagnosticCodeStandardPageIndex
         new(diagnosticCode: "STX0025", standardPageUri: $"{FoundationsPage}#2131-validation"),
         new(diagnosticCode: "STX0026", standardPageUri: $"{BrokersPage}#110-language"),
         new(diagnosticCode: "STX0027", standardPageUri: $"{ServicesPage}#23-foundation-services-business-logic"),
+        new(diagnosticCode: "STX0028", standardPageUri: $"{ServicesPage}#2034-naming-conventions"),
         new(diagnosticCode: "STXAPP001", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(diagnosticCode: "STXAPP002", standardPageUri: $"{ModelingPage}#01202-configuration-models"),
         new(

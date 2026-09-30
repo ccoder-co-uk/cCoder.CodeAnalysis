@@ -73,6 +73,12 @@ The model recognises the principal layers used by The Standard, including:
 
 Rules cover architectural dependencies, public contracts, exception handling, validation, naming, asynchronous operations, controller behaviour, test structure, source layout, and formatting.
 
+### Cardinality-aware method names
+
+`STX0028` requires a method that names its returned cCoder model or contract to use the singular subject for one result and the plural subject for a sequence. The rule resolves return types semantically, unwraps `Task<T>`, `ValueTask<T>`, and `ActionResult<T>`, and recognises arrays and standard collection/query contracts. Framework and third-party subjects, `string`, `byte[]`, and methods that do not name their returned subject are outside its scope.
+
+Plural names use a deterministic English inflection policy, including common irregular forms such as `Person`/`People` and unchanged terms such as `Metadata`.
+
 Models are data carriers only. `STXM001` rejects every explicitly declared method-like member, including instance and static constructors, destructors, operators, conversions, and overrides.
 
 ## Runtime use

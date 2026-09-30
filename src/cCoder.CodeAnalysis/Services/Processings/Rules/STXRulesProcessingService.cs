@@ -13,11 +13,51 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
 {
     private static readonly IArchitectureModelQueriesProcessingService
         architectureModelQueries = new ArchitectureModelQueriesProcessingService();
+    private static readonly IReadOnlyDictionary<string, string>
+        irregularSubjectPlurals = new Dictionary<string, string>(
+            StringComparer.OrdinalIgnoreCase)
+        {
+            ["Analysis"] = "Analyses",
+            ["Basis"] = "Bases",
+            ["Child"] = "Children",
+            ["Crisis"] = "Crises",
+            ["Criterion"] = "Criteria",
+            ["Diagnosis"] = "Diagnoses",
+            ["Foot"] = "Feet",
+            ["Goose"] = "Geese",
+            ["Man"] = "Men",
+            ["Matrix"] = "Matrices",
+            ["Mouse"] = "Mice",
+            ["Ox"] = "Oxen",
+            ["Person"] = "People",
+            ["Phenomenon"] = "Phenomena",
+            ["Synthesis"] = "Syntheses",
+            ["Thesis"] = "Theses",
+            ["Tooth"] = "Teeth",
+            ["Vertex"] = "Vertices",
+            ["Woman"] = "Women",
+        };
+    private static readonly ISet<string> uncountableSubjects =
+        new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            "Data",
+            "Deer",
+            "Equipment",
+            "Fish",
+            "Information",
+            "Metadata",
+            "News",
+            "Series",
+            "Sheep",
+            "Species",
+        };
+
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
         return EvaluateSTX0024(context: context)
             .Concat(second: EvaluateSTX0026(context: context))
             .Concat(second: EvaluateSTX0027(context: context))
+            .Concat(second: EvaluateSTX0028(context: context))
             .Concat(second: ImplementsInfrastructureService(context: context)
                 ? []
                 : EvaluateSTX0001(context: context)
@@ -61,6 +101,342 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             or StandardElementType.CoordinationService
             or StandardElementType.ManagementService
             or StandardElementType.AggregationService;
+
+    private static IEnumerable<AnalysisItem> EvaluateSTX0028(
+        EvaluationContext context) =>
+        (context.ArchitectureElement.AnalysisMethods ?? [])
+            .Select(method => CreateCardinalityNamingAnalysisItem(
+                context: context,
+                method: method))
+            .OfType<AnalysisItem>();
+
+    private static AnalysisItem? CreateCardinalityNamingAnalysisItem(
+        EvaluationContext context,
+        Method method)
+    {
+        IMethodSymbol? methodSymbol = method.Symbol;
+
+        if (methodSymbol is null
+            || !TryGetReturnSubject(
+                returnType: methodSymbol.ReturnType,
+                isCollection: out bool isCollection,
+                subjectType: out INamedTypeSymbol? subjectType)
+            || subjectType is null
+            || !IsOwnedModelOrContractSubject(
+                context: context,
+                subjectType: subjectType))
+        {
+            return null;
+        }
+
+        string singularSubject = GetSubjectName(subjectType: subjectType);
+        string pluralSubject = Pluralize(subject: singularSubject);
+
+        if (string.Equals(
+            a: singularSubject,
+            b: pluralSubject,
+            comparisonType: StringComparison.Ordinal)
+            || !TryGetNamedSubjectForm(
+                methodName: methodSymbol.Name,
+                singularSubject: singularSubject,
+                pluralSubject: pluralSubject,
+                namesPluralSubject: out bool namesPluralSubject)
+            || namesPluralSubject == isCollection)
+        {
+            return null;
+        }
+
+        string expectedSubject = isCollection
+            ? pluralSubject
+            : singularSubject;
+
+        Location? location = methodSymbol.Locations
+            .FirstOrDefault(predicate: candidate => candidate.IsInSource);
+
+        return CreateAnalysisItem(
+            code: "STX0028",
+            description:
+                $"Method '{methodSymbol.Name}' must name returned subject '{expectedSubject}' to reflect its cardinality.",
+            context: context,
+            location: location);
+    }
+
+    private static bool TryGetReturnSubject(
+        ITypeSymbol returnType,
+        out bool isCollection,
+        out INamedTypeSymbol? subjectType)
+    {
+        ITypeSymbol unwrappedType = UnwrapReturnType(type: returnType);
+
+        if (unwrappedType.SpecialType == SpecialType.System_String
+            || unwrappedType is IArrayTypeSymbol
+            {
+                ElementType.SpecialType: SpecialType.System_Byte,
+            })
+        {
+            isCollection = false;
+            subjectType = null;
+            return false;
+        }
+
+        if (unwrappedType is IArrayTypeSymbol arrayType)
+        {
+            isCollection = true;
+            subjectType = arrayType.ElementType as INamedTypeSymbol;
+            return subjectType is not null;
+        }
+
+        if (unwrappedType is INamedTypeSymbol namedType
+            && TryGetSequenceElementType(
+                type: namedType,
+                elementType: out ITypeSymbol? elementType))
+        {
+            isCollection = true;
+            subjectType = elementType as INamedTypeSymbol;
+            return subjectType is not null;
+        }
+
+        isCollection = false;
+        subjectType = unwrappedType as INamedTypeSymbol;
+        return subjectType is not null;
+    }
+
+    private static ITypeSymbol UnwrapReturnType(ITypeSymbol type)
+    {
+        ITypeSymbol current = type;
+
+        while (current is INamedTypeSymbol
+            {
+                TypeArguments.Length: 1,
+            } namedType
+            && IsReturnWrapper(type: namedType))
+        {
+            current = namedType.TypeArguments[0];
+        }
+
+        return current;
+    }
+
+    private static bool IsReturnWrapper(INamedTypeSymbol type)
+    {
+        string namespaceName = type.ContainingNamespace.ToDisplayString();
+
+        return namespaceName == "System.Threading.Tasks"
+                && type.Name is "Task" or "ValueTask"
+            || namespaceName == "Microsoft.AspNetCore.Mvc"
+                && type.Name == "ActionResult";
+    }
+
+    private static bool TryGetSequenceElementType(
+        INamedTypeSymbol type,
+        out ITypeSymbol? elementType)
+    {
+        INamedTypeSymbol? sequenceType = type
+            .AllInterfaces
+            .Prepend(element: type)
+            .FirstOrDefault(predicate: IsStandardSequenceContract);
+
+        elementType = sequenceType?.TypeArguments[0];
+        return elementType is not null;
+    }
+
+    private static bool IsStandardSequenceContract(
+        INamedTypeSymbol type)
+    {
+        if (type.TypeArguments.Length != 1)
+        {
+            return false;
+        }
+
+        string namespaceName = type.ContainingNamespace.ToDisplayString();
+
+        return namespaceName == "System.Collections.Generic"
+                && type.Name is "IEnumerable"
+                    or "IAsyncEnumerable"
+                    or "ICollection"
+                    or "IReadOnlyCollection"
+                    or "IList"
+                    or "IReadOnlyList"
+                    or "ISet"
+                    or "IReadOnlySet"
+                    or "List"
+                    or "HashSet"
+                    or "Queue"
+                    or "Stack"
+            || namespaceName == "System.Linq"
+                && type.Name is "IQueryable" or "IOrderedQueryable"
+            || namespaceName == "System.Collections.Immutable"
+                && type.Name == "ImmutableArray";
+    }
+
+    private static bool IsOwnedModelOrContractSubject(
+        EvaluationContext context,
+        INamedTypeSymbol subjectType)
+    {
+        string assemblyName = subjectType.ContainingAssembly.Name;
+        string namespaceName = subjectType.ContainingNamespace.ToDisplayString();
+
+        bool isInCurrentAssembly = string.Equals(
+            a: assemblyName,
+            b: context.ArchitectureModel.Project.AssemblyName,
+            comparisonType: StringComparison.Ordinal);
+
+        bool isInReferencedCCoderAssembly = assemblyName.StartsWith(
+            value: "cCoder.",
+            comparisonType: StringComparison.OrdinalIgnoreCase);
+
+        if (!isInCurrentAssembly && !isInReferencedCCoderAssembly)
+        {
+            return false;
+        }
+
+        if (subjectType.TypeKind == TypeKind.Interface
+            && (isInCurrentAssembly
+                || namespaceName.Contains(
+                    value: ".Contracts",
+                    comparisonType: StringComparison.Ordinal)
+                || namespaceName.Contains(
+                    value: ".Models",
+                    comparisonType: StringComparison.Ordinal)))
+        {
+            return true;
+        }
+
+        if (isInReferencedCCoderAssembly)
+        {
+            return namespaceName.Contains(
+                value: ".Models",
+                comparisonType: StringComparison.Ordinal);
+        }
+
+        string subjectTypeName = subjectType.ToDisplayString();
+
+        return context.ArchitectureModel.Classes.Any(candidate =>
+            candidate.Name == subjectTypeName
+            && candidate.StandardElementType == StandardElementType.Model);
+    }
+
+    private static string GetSubjectName(
+        INamedTypeSymbol subjectType)
+    {
+        string subjectName = subjectType.Name;
+
+        return subjectType.TypeKind == TypeKind.Interface
+            && subjectName.Length > 1
+            && subjectName[0] == 'I'
+            && char.IsUpper(c: subjectName[1])
+                ? subjectName.Substring(startIndex: 1)
+                : subjectName;
+    }
+
+    private static bool TryGetNamedSubjectForm(
+        string methodName,
+        string singularSubject,
+        string pluralSubject,
+        out bool namesPluralSubject)
+    {
+        if (ContainsPascalCaseWord(
+            value: methodName,
+            word: pluralSubject))
+        {
+            namesPluralSubject = true;
+            return true;
+        }
+
+        if (ContainsPascalCaseWord(
+            value: methodName,
+            word: singularSubject))
+        {
+            namesPluralSubject = false;
+            return true;
+        }
+
+        namesPluralSubject = false;
+        return false;
+    }
+
+    private static bool ContainsPascalCaseWord(
+        string value,
+        string word)
+    {
+        int searchIndex = 0;
+
+        while (searchIndex < value.Length)
+        {
+            int wordIndex = value.IndexOf(
+                value: word,
+                startIndex: searchIndex,
+                comparisonType: StringComparison.Ordinal);
+
+            if (wordIndex < 0)
+            {
+                return false;
+            }
+
+            int followingIndex = wordIndex + word.Length;
+
+            bool beginsWord = wordIndex == 0
+                || char.IsUpper(c: value[wordIndex]);
+
+            bool endsWord = followingIndex == value.Length
+                || char.IsUpper(c: value[followingIndex]);
+
+            if (beginsWord && endsWord)
+            {
+                return true;
+            }
+
+            searchIndex = wordIndex + 1;
+        }
+
+        return false;
+    }
+
+    private static string Pluralize(string subject)
+    {
+        if (irregularSubjectPlurals.TryGetValue(
+            key: subject,
+            value: out string? irregularPlural))
+        {
+            return irregularPlural;
+        }
+
+        if (uncountableSubjects.Contains(item: subject))
+        {
+            return subject;
+        }
+
+        if (subject.EndsWith(
+            value: "y",
+            comparisonType: StringComparison.OrdinalIgnoreCase)
+            && subject.Length > 1
+            && !"aeiou".Contains(
+                value: char.ToLowerInvariant(c: subject[subject.Length - 2])))
+        {
+            return $"{subject.Substring(startIndex: 0, length: subject.Length - 1)}ies";
+        }
+
+        if (subject.EndsWith(
+            value: "s",
+            comparisonType: StringComparison.OrdinalIgnoreCase)
+            || subject.EndsWith(
+                value: "x",
+                comparisonType: StringComparison.OrdinalIgnoreCase)
+            || subject.EndsWith(
+                value: "z",
+                comparisonType: StringComparison.OrdinalIgnoreCase)
+            || subject.EndsWith(
+                value: "ch",
+                comparisonType: StringComparison.OrdinalIgnoreCase)
+            || subject.EndsWith(
+                value: "sh",
+                comparisonType: StringComparison.OrdinalIgnoreCase))
+        {
+            return $"{subject}es";
+        }
+
+        return $"{subject}s";
+    }
 
     private static IEnumerable<AnalysisItem> EvaluateStandardElementTypeRules(
         EvaluationContext context) =>
