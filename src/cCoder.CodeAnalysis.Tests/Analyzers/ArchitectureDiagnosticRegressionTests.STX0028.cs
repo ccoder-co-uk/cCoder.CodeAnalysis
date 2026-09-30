@@ -58,6 +58,21 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
     }
 
     [Theory]
+    [InlineData("SelectFolderByPathWithSubFoldersAndFiles")]
+    [InlineData("GetFolderByPathWithSubFoldersAndFiles")]
+    public void SingularReturningMethod_WhenQualifierNamesPluralRelatedSubjects_IsAccepted(
+        string methodName)
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "Example.Models.Folder",
+            methodName: methodName);
+
+        Assert.DoesNotContain(
+            collection: architecture.AnalysisItems,
+            filter: item => item.Code == "STX0028");
+    }
+
+    [Theory]
     [InlineData("Example.Models.MailProviderSummary[]", "CreateMailProviderSummaryArray")]
     [InlineData(
         "System.Collections.Generic.List<Example.Models.MailProviderSummary>",
@@ -271,6 +286,7 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
                 public sealed class Metadata { }
                 public sealed class MailProviderSummary { }
                 public sealed class TenantAnalysis { }
+                public sealed class Folder { }
             }
 
             namespace Microsoft.AspNetCore.Mvc
