@@ -57,6 +57,95 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
         Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
     }
 
+    [Theory]
+    [InlineData("Example.Models.MailProviderSummary[]", "CreateMailProviderSummaryArray")]
+    [InlineData(
+        "System.Collections.Generic.List<Example.Models.MailProviderSummary>",
+        "CreateMailProviderSummaryList")]
+    [InlineData(
+        "System.Collections.Generic.ICollection<Example.Models.MailProviderSummary>",
+        "CreateMailProviderSummaryCollection")]
+    [InlineData(
+        "System.Collections.Generic.ISet<Example.Models.MailProviderSummary>",
+        "CreateMailProviderSummarySet")]
+    [InlineData(
+        "System.Collections.Generic.IEnumerable<Example.Models.MailProviderSummary>",
+        "CreateMailProviderSummaryEnumerable")]
+    [InlineData(
+        "System.Linq.IQueryable<Example.Models.MailProviderSummary>",
+        "CreateMailProviderSummaryQuery")]
+    [InlineData(
+        "System.Threading.Tasks.Task<Example.Models.MailProviderSummary[]>",
+        "CreateMailProviderSummaryArrayAsync")]
+    public void CollectionReturningCreationMethod_WhenContainerSuffixDeclaresCardinality_IsAccepted(
+        string returnType,
+        string methodName)
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: returnType,
+            methodName: methodName);
+
+        Assert.DoesNotContain(
+            collection: architecture.AnalysisItems,
+            filter: item => item.Code is "STX0022" or "STX0028");
+    }
+
+    [Fact]
+    public void CollectionReturningCreationMethod_WhenContainerSuffixIsMissing_IsReported()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "Example.Models.MailProviderSummary[]",
+            methodName: "CreateMailProviderSummary");
+
+        Assert.Contains(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
+        Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0022");
+    }
+
+    [Fact]
+    public void SingularReturningCreationMethod_WhenContainerSuffixDeclaresCollection_IsReported()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "Example.Models.MailProviderSummary",
+            methodName: "CreateMailProviderSummaryArray");
+
+        Assert.Contains(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
+        Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0022");
+    }
+
+    [Fact]
+    public void CompoundIrregularSubject_WhenCollectionNameUsesIrregularPlural_IsAccepted()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "System.Linq.IQueryable<Example.Models.TenantAnalysis>",
+            methodName: "SelectAllTenantAnalyses");
+
+        Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
+    }
+
+    [Fact]
+    public void CompoundIrregularSubject_WhenCollectionNameUsesSingularSubject_IsReported()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "System.Linq.IQueryable<Example.Models.TenantAnalysis>",
+            methodName: "SelectAllTenantAnalysis");
+
+        AnalysisItem analysisItem = Assert.Single(
+            collection: architecture.AnalysisItems,
+            predicate: item => item.Code == "STX0028");
+
+        Assert.Contains(expectedSubstring: "TenantAnalyses", actualString: analysisItem.Description);
+    }
+
+    [Fact]
+    public void CompoundIrregularSubject_WhenSingularNameUsesSingularSubject_IsAccepted()
+    {
+        Architecture architecture = AnalyzeCardinalityMethod(
+            returnType: "Example.Models.TenantAnalysis",
+            methodName: "SelectTenantAnalysis");
+
+        Assert.DoesNotContain(collection: architecture.AnalysisItems, filter: item => item.Code == "STX0028");
+    }
+
     [Fact]
     public async Task CardinalityMismatch_WhenAnalyzedByCompiler_IsReportedAtMethod()
     {
@@ -180,6 +269,8 @@ public sealed partial class ArchitectureDiagnosticRegressionTests
                 public sealed class Person { }
                 public sealed class Analysis { }
                 public sealed class Metadata { }
+                public sealed class MailProviderSummary { }
+                public sealed class TenantAnalysis { }
             }
 
             namespace Microsoft.AspNetCore.Mvc

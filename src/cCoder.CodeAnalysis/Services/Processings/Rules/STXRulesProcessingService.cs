@@ -51,6 +51,16 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             "Sheep",
             "Species",
         };
+    private static readonly ISet<string> collectionContainerSuffixes =
+        new HashSet<string>(StringComparer.Ordinal)
+        {
+            "Array",
+            "Collection",
+            "Enumerable",
+            "List",
+            "Query",
+            "Set",
+        };
 
     public IEnumerable<AnalysisItem> Evaluate(EvaluationContext context)
     {
@@ -135,13 +145,31 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         if (string.Equals(
             a: singularSubject,
             b: pluralSubject,
-            comparisonType: StringComparison.Ordinal)
-            || !TryGetNamedSubjectForm(
+            comparisonType: StringComparison.Ordinal))
+        {
+            return null;
+        }
+
+        bool namesPluralSubject;
+
+        bool namesSubject = NamesExplicitCollectionContainer(
+            methodName: methodSymbol.Name,
+            singularSubject: singularSubject);
+
+        if (namesSubject)
+        {
+            namesPluralSubject = true;
+        }
+        else
+        {
+            namesSubject = TryGetNamedSubjectForm(
                 methodName: methodSymbol.Name,
                 singularSubject: singularSubject,
                 pluralSubject: pluralSubject,
-                namesPluralSubject: out bool namesPluralSubject)
-            || namesPluralSubject == isCollection)
+                namesPluralSubject: out namesPluralSubject);
+        }
+
+        if (!namesSubject || namesPluralSubject == isCollection)
         {
             return null;
         }
@@ -355,6 +383,24 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
         return false;
     }
 
+    private static bool NamesExplicitCollectionContainer(
+        string methodName,
+        string singularSubject)
+    {
+        string methodNameWithoutAsync = methodName.EndsWith(
+            value: "Async",
+            comparisonType: StringComparison.Ordinal)
+                ? methodName.Substring(
+                    startIndex: 0,
+                    length: methodName.Length - "Async".Length)
+                : methodName;
+
+        return collectionContainerSuffixes.Any(containerSuffix =>
+            methodNameWithoutAsync.EndsWith(
+                value: singularSubject + containerSuffix,
+                comparisonType: StringComparison.Ordinal));
+    }
+
     private static bool ContainsPascalCaseWord(
         string value,
         string word)
@@ -399,6 +445,21 @@ internal sealed class STXRulesProcessingService : ISTXRulesProcessingService
             value: out string? irregularPlural))
         {
             return irregularPlural;
+        }
+
+        KeyValuePair<string, string> compoundIrregularSuffix =
+            irregularSubjectPlurals.FirstOrDefault(candidate =>
+                subject.Length > candidate.Key.Length
+                && subject.EndsWith(
+                    value: candidate.Key,
+                    comparisonType: StringComparison.OrdinalIgnoreCase));
+
+        if (!string.IsNullOrEmpty(value: compoundIrregularSuffix.Key))
+        {
+            return subject.Substring(
+                startIndex: 0,
+                length: subject.Length - compoundIrregularSuffix.Key.Length)
+                + compoundIrregularSuffix.Value;
         }
 
         if (uncountableSubjects.Contains(item: subject))
