@@ -7,7 +7,7 @@
     <OutputType>Library</OutputType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="cCoder.Eventing" Version="2026.8.15.955" />
+    <PackageReference Include="cCoder.Eventing" Version="2026.9.30.1112" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="10.0.11" />
   </ItemGroup>
