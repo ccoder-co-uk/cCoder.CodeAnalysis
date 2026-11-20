@@ -2,6 +2,8 @@
 // Copyright (c) Paul.Ward@ccoder.co.uk
 // ---------------------------------------------------------------
 
+using System.Security;
+using System.Security.Authentication;
 using cCoder.CodeAnalysis.Sample.Brokers.Loggings;
 using cCoder.CodeAnalysis.Sample.Models.Exceptions;
 using cCoder.CodeAnalysis.Sample.Models.Schools;
@@ -21,12 +23,42 @@ public sealed class StudentsController(
     {
         try
         {
-            return Ok(value: studentOrchestrationService.GetStudents());
+            ActionResult<IQueryable<Student>> successResponse =
+                Ok(value: studentOrchestrationService.GetStudents());
+
+            loggingBroker.LogInformation(message: "Controller request succeeded.");
+
+            return successResponse;
+        }
+        catch (ServiceValidationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (ArgumentException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (AuthenticationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return Unauthorized(value: "Authentication failed.");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
+        }
+        catch (SecurityException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
         }
         catch (Exception exception)
         {
             loggingBroker.LogError(exception: exception);
-            return StatusCode(statusCode: 500);
+            return StatusCode(statusCode: 500, value: "The operation failed.");
         }
     }
 
@@ -35,50 +67,146 @@ public sealed class StudentsController(
     {
         try
         {
-            Student? student = studentOrchestrationService.GetStudent(studentId: studentId);
+            Student? student = studentOrchestrationService.GetStudent(
+                studentId: studentId);
 
-            return (student == null)
-                ? ((ActionResult<Student>)NotFound())
-                : ((ActionResult<Student>)Ok(value: student));
+            if (student is null)
+            {
+                loggingBroker.LogWarning(message: "Student was not found.");
+                return NotFound();
+            }
+
+            ActionResult<Student> successResponse = Ok(value: student);
+
+            loggingBroker.LogInformation(message: "Controller request succeeded.");
+
+            return successResponse;
+        }
+        catch (ServiceValidationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (ArgumentException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (AuthenticationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return Unauthorized(value: "Authentication failed.");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
+        }
+        catch (SecurityException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
         }
         catch (Exception exception)
         {
             loggingBroker.LogError(exception: exception);
-            return StatusCode(statusCode: 500);
+            return StatusCode(statusCode: 500, value: "The operation failed.");
         }
     }
 
     [HttpPost]
-    public async ValueTask<ActionResult<Student>> PostStudentAsync(Student newStudent)
+    public async ValueTask<ActionResult<Student>> PostStudentAsync(
+        Student newStudent)
     {
         try
         {
-            Student addedStudent = await studentOrchestrationService.AddStudentAsync(newStudent: newStudent);
+            Student addedStudent = await studentOrchestrationService
+                .AddStudentAsync(newStudent: newStudent);
 
-            return CreatedAtAction(
+            ActionResult<Student> successResponse = CreatedAtAction(
                 actionName: "GetStudent",
                 routeValues: new { studentId = addedStudent.Id },
-                value: addedStudent
-            );
+                value: addedStudent);
+
+            loggingBroker.LogInformation(message: "Controller request succeeded.");
+
+            return successResponse;
+        }
+        catch (ServiceValidationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (ArgumentException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (AuthenticationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return Unauthorized(value: "Authentication failed.");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
+        }
+        catch (SecurityException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
         }
         catch (Exception exception)
         {
             loggingBroker.LogError(exception: exception);
-            return StatusCode(statusCode: 500);
+            return StatusCode(statusCode: 500, value: "The operation failed.");
         }
     }
 
     [HttpPut]
-    public async ValueTask<ActionResult<Student>> PutStudentAsync(Student updatedStudent)
+    public async ValueTask<ActionResult<Student>> PutStudentAsync(
+        Student updatedStudent)
     {
         try
         {
-            return Ok(value: await studentOrchestrationService.UpdateStudentAsync(updatedStudent: updatedStudent));
+            ActionResult<Student> successResponse = Ok(
+                value: await studentOrchestrationService.UpdateStudentAsync(
+                    updatedStudent: updatedStudent));
+
+            loggingBroker.LogInformation(message: "Controller request succeeded.");
+
+            return successResponse;
+        }
+        catch (ServiceValidationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (ArgumentException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (AuthenticationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return Unauthorized(value: "Authentication failed.");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
+        }
+        catch (SecurityException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
         }
         catch (Exception exception)
         {
             loggingBroker.LogError(exception: exception);
-            return StatusCode(statusCode: 500);
+            return StatusCode(statusCode: 500, value: "The operation failed.");
         }
     }
 
@@ -87,25 +215,53 @@ public sealed class StudentsController(
     {
         try
         {
-            Student? student = studentOrchestrationService.GetStudent(studentId: studentId);
+            Student? student = studentOrchestrationService.GetStudent(
+                studentId: studentId);
 
-            if (student == null)
+            if (student is null)
             {
+                loggingBroker.LogWarning(message: "Student was not found.");
                 return NotFound();
             }
 
-            await studentOrchestrationService.DeleteStudentAsync(studentId: studentId);
-            return NoContent();
+            await studentOrchestrationService.DeleteStudentAsync(
+                studentId: studentId);
+
+            IActionResult successResponse = NoContent();
+
+            loggingBroker.LogInformation(message: "Controller request succeeded.");
+
+            return successResponse;
         }
         catch (ServiceValidationException exception)
         {
-            loggingBroker.LogError(exception: exception);
-            return BadRequest();
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (ArgumentException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return BadRequest(error: "The request is invalid.");
+        }
+        catch (AuthenticationException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return Unauthorized(value: "Authentication failed.");
+        }
+        catch (UnauthorizedAccessException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
+        }
+        catch (SecurityException exception)
+        {
+            loggingBroker.LogWarning(exception: exception);
+            return StatusCode(statusCode: 403, value: "Access is denied.");
         }
         catch (Exception exception)
         {
             loggingBroker.LogError(exception: exception);
-            return StatusCode(statusCode: 500);
+            return StatusCode(statusCode: 500, value: "The operation failed.");
         }
     }
 }
